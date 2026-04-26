@@ -227,6 +227,7 @@ jobs:
 
       - name: Build Xcode app (iPhone 15 simulator)
         run: |
+          set -o pipefail
           xcodebuild \
             -project QoePlayerApp.xcodeproj \
             -scheme QoePlayerApp \
@@ -235,7 +236,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty || true
+            | xcpretty
         working-directory: ios-player
 
 # ─────────────────────────────────────────────────────────────────────────────

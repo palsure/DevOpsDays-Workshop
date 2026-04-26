@@ -95,7 +95,7 @@ jobs:
           node-version: '18'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: web-player
       
       - name: Run tests
@@ -167,8 +167,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-m2-
       
-      - name: Run tests
-        run: mvn test
+      - name: Compile and validate test sources
+        run: mvn test-compile -DskipTests
         working-directory: qoe-automation-tests
 
   # ── Quality Gate ──────────────────────────────────────────────────────────

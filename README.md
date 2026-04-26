@@ -77,7 +77,7 @@ This workshop is based on production implementations from:
 
 1. **Start all services**:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **Access services**:
@@ -124,11 +124,22 @@ Java/TestNG framework for:
 
 ### 4. CI/CD Pipelines
 
-GitHub Actions workflows for:
-- Automated testing on PR/merge
-- Parallel platform testing
-- Quality score calculation
-- Slack notifications
+Module-isolated GitHub Actions workflows for:
+- Path-filtered triggers — only the affected module's pipeline runs on each commit
+- Per-module stages: Unit Tests → E2E Tests → Automation E2E
+- Threaded Slack notifications with test counts, pass rate, and report links
+- Aggregate acceptance gate (`build-acceptance-release.yml`) triggered manually
+- PR quality gate (`qoe-pr-e2e.yml`) — Playwright gates on every pull request
+
+| Workflow | Trigger | Module |
+|---|---|---|
+| `qoe-api-tests.yml` | push to `backend-api/**` | Backend API |
+| `qoe-web-tests.yml` | push to `web-player/**` | Web Player |
+| `qoe-android-tests.yml` | push to `android-player/**` | Android Player |
+| `qoe-ios-tests.yml` | push to `ios-player/**` | iOS Player |
+| `qoe-validation.yml` | pull request | All modules (lightweight) |
+| `qoe-pr-e2e.yml` | pull request | Web + API (E2E gate) |
+| `build-acceptance-release.yml` | manual | All modules (acceptance + release) |
 
 ### 5. Monitoring
 
@@ -145,7 +156,7 @@ New Relic integration for:
 3. **CI/CD Integration** (60 min)
 4. **Advanced Scenarios & Best Practices** (45 min)
 
-See `workshop-guide.md` for detailed instructions.
+See [`presentations/workshop-guide.md`](presentations/workshop-guide.md) for detailed instructions.
 
 ## Contributing
 

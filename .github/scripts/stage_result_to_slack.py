@@ -34,20 +34,34 @@ PASS_THRESHOLD = 80.0
 
 
 def parse_junit(junit_dir: str) -> tuple[int, int, int, int]:
-    """Return (passed, failed, skipped, total) from JUnit XML files."""
+    """Return (passed, failed, skipped, total) from JUnit XML files.
+
+    Supports both the TEST-*.xml naming convention (Gradle/Maven Surefire) and
+    the vitest-junit.xml output from Vitest's JUnit reporter.
+    """
     total = passed = failed = skipped = 0
-    for f in glob.glob(f"{junit_dir}/**/TEST-*.xml", recursive=True):
-        try:
-            root = ET.parse(f).getroot()
-            t  = int(root.attrib.get("tests",    0))
-            fa = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
-            s  = int(root.attrib.get("skipped",  0))
-            total   += t
-            failed  += fa
-            skipped += s
-            passed  += max(0, t - fa - s)
-        except Exception:
-            pass
+    patterns = [
+        f"{junit_dir}/**/TEST-*.xml",
+        f"{junit_dir}/**/*-junit.xml",
+        f"{junit_dir}/**/vitest-junit.xml",
+    ]
+    seen: set[str] = set()
+    for pattern in patterns:
+        for f in glob.glob(pattern, recursive=True):
+            if f in seen:
+                continue
+            seen.add(f)
+            try:
+                root = ET.parse(f).getroot()
+                t  = int(root.attrib.get("tests",    0))
+                fa = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+                s  = int(root.attrib.get("skipped",  0))
+                total   += t
+                failed  += fa
+                skipped += s
+                passed  += max(0, t - fa - s)
+            except Exception:
+                pass
     return passed, failed, skipped, total
 
 

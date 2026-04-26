@@ -36,7 +36,7 @@ jobs:
       android:     ${{ steps.filter.outputs.android }}
       ios:         ${{ steps.filter.outputs.ios }}
       automation:  ${{ steps.filter.outputs.automation }}
-      is_main:     ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+      is_main:     ${{ github.ref == 'refs/heads/main' }}
       start_epoch: ${{ steps.ts.outputs.start_epoch }}
     steps:
       - name: Record workflow start time
@@ -359,7 +359,6 @@ jobs:
     needs: quality-gate
     runs-on: ubuntu-latest
     if: >-
-      github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       needs.quality-gate.result == 'success' &&
       needs.quality-gate.outputs.approved == 'true'

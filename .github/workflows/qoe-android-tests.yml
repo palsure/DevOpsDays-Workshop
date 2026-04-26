@@ -100,9 +100,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: actions/setup-android@v3
-        with:
-          android-sdk-version: '35'
+      - uses: android-actions/setup-android@v2
         continue-on-error: true
 
       - uses: actions/cache@v3
