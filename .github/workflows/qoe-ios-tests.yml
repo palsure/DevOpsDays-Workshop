@@ -15,13 +15,13 @@ jobs:
   test:
     name: iOS Tests
     runs-on: macos-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Select Xcode version
         run: sudo xcode-select -switch /Applications/Xcode_15.0.app
-      
+
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
@@ -31,16 +31,23 @@ jobs:
           key: ${{ runner.os }}-swift-${{ hashFiles('ios-player/Package.swift', 'ios-player/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-swift-
-      
-      - name: Build
+
+      - name: Build Swift Package (library)
         run: swift build
         working-directory: ios-player
-      
-      - name: Run tests
+
+      - name: Run Swift Package tests
         run: swift test
         working-directory: ios-player
-      
-      - name: Build Xcode project
+
+      - name: Build Xcode app (simulator)
         run: |
-          xcodebuild -scheme QoePlayer -destination 'platform=iOS Simulator,name=iPhone 15' clean build
+          xcodebuild \
+            -project QoePlayerApp.xcodeproj \
+            -scheme QoePlayerApp \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            clean build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
         working-directory: ios-player

@@ -1,0 +1,67 @@
+{
+  "name": "QoE Metrics Dashboard",
+  "description": "Dashboard for Quality of Experience metrics across platforms",
+  "pages": [
+    {
+      "name": "Overview",
+      "widgets": [
+        {
+          "title": "Total Sessions",
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 0,
+                "query": "SELECT count(*) FROM QoEMetric WHERE timestamp >= SINCE 1 hour ago"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Average Startup Time by Platform",
+          "visualization": {
+            "id": "viz.bar"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 0,
+                "query": "SELECT average(startupTime) FROM QoEMetric WHERE timestamp >= SINCE 1 hour ago FACET platform"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Buffering Time Over Time",
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 0,
+                "query": "SELECT average(totalBufferingTime) FROM QoEMetric WHERE timestamp >= SINCE 1 hour ago FACET platform TIMESERIES"
+              }
+            ]
+          }
+        },
+        {
+          "title": "Quality Distribution",
+          "visualization": {
+            "id": "viz.pie"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountId": 0,
+                "query": "SELECT count(*) FROM QoEMetric WHERE timestamp >= SINCE 1 hour ago FACET playbackQuality, platform"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

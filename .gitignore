@@ -53,7 +53,7 @@ slack-payload.json
 # Project-specific build artifacts
 backend-api/bin/
 backend-api/build/
-framework/qoe-tests/target/
+qoe-automation-tests/target/
 web-player/dist/
 web-player/node_modules/
 web-player/test-results/

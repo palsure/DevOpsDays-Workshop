@@ -212,18 +212,18 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-acc-${{ hashFiles('framework/qoe-tests/pom.xml') }}
+          key: ${{ runner.os }}-m2-acc-${{ hashFiles('qoe-automation-tests/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-m2-acc-
       - name: Run stable API + validation tests
         id: mvn_tests
         continue-on-error: true
         run: mvn -B test -Dapi.base.url=http://localhost:8080 -Dtest=QoEMetricsApiTest,QoEValidationTest
-        working-directory: framework/qoe-tests
+        working-directory: qoe-automation-tests
       - name: Summarize JUnit (automation)
         if: always()
         run: |
-          python3 .github/scripts/junit_to_summary.py automation framework/qoe-tests/target/surefire-reports \
+          python3 .github/scripts/junit_to_summary.py automation qoe-automation-tests/target/surefire-reports \
             || echo '{"platform":"automation","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
       - name: Tear down Docker
         if: always()
