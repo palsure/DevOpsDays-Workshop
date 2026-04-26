@@ -1,3 +1,10 @@
+# QoE Web Player Pipeline
+#
+# Stages:
+#   1. unit-tests  — Vitest + lint + build (fast, no browser)
+#   2. e2e-tests   — Playwright QoE gate tests (only runs when unit tests pass)
+#   3. report      — Upload HTML + Allure reports
+
 name: QoE Web Player Tests
 
 on:
@@ -11,46 +18,147 @@ on:
       - 'web-player/**'
   workflow_dispatch:
 
+env:
+  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 1 — Unit Tests (Vitest + lint + type-check + build)
+# ─────────────────────────────────────────────────────────────────────────────
 jobs:
-  test:
-    name: Web Player Tests
+  unit-tests:
+    name: "Stage 1 — Unit Tests & Build"
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
-      
+          cache: 'npm'
+          cache-dependency-path: web-player/package-lock.json
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: web-player
-      
-      - name: Run linter
+
+      - name: Lint
         run: npm run lint
         working-directory: web-player
-      
-      - name: Run tests
+
+      - name: Unit tests (Vitest)
         run: npm test
         working-directory: web-player
-      
+
       - name: Build
         run: npm run build
         working-directory: web-player
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-        working-directory: web-player
-
-      - name: End-to-end QoE gates
-        run: npm run e2e
-        working-directory: web-player
-      
-      - name: Upload coverage
+      - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: web-coverage
-          path: web-player/coverage/
+          name: web-unit-test-results
+          path: web-player/test-results/
+          retention-days: 7
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web-player/dist/
+          retention-days: 3
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 2 — E2E Tests (Playwright QoE gate tests)
+#           Only runs when Stage 1 passes
+# ─────────────────────────────────────────────────────────────────────────────
+  e2e-tests:
+    name: "Stage 2 — E2E Tests (Playwright)"
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web-player/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-player
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: web-player
+
+      - name: Run E2E QoE gate tests
+        id: e2e
+        run: npm run e2e
+        working-directory: web-player
+        continue-on-error: true
+
+      - name: Generate Allure report
+        if: always()
+        run: |
+          if [ -d allure-results ] && [ "$(ls -A allure-results 2>/dev/null)" ]; then
+            npx allure generate allure-results --clean -o allure-report || true
+          fi
+        working-directory: web-player
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-playwright-report
+          path: web-player/playwright-report/
+          retention-days: 14
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-allure-report
+          path: web-player/allure-report/
+          retention-days: 14
+
+      - name: Fail if E2E tests failed
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 3 — Report summary
+# ─────────────────────────────────────────────────────────────────────────────
+  report:
+    name: "Stage 3 — Report"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Pipeline summary
+        run: |
+          echo "## Web Player Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests & Build | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests (Playwright) | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`  |  **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail pipeline if any stage failed
+        if: |
+          needs.unit-tests.result == 'failure' ||
+          needs.e2e-tests.result == 'failure'
+        run: exit 1

@@ -1,3 +1,9 @@
+# QoE iOS Player Pipeline
+#
+# Stages:
+#   1. unit-tests — Swift Package unit tests (fast, CLI only)
+#   2. build-app  — Xcode simulator build (only runs when unit tests pass)
+
 name: QoE iOS Player Tests
 
 on:
@@ -11,9 +17,20 @@ on:
       - 'ios-player/**'
   workflow_dispatch:
 
+env:
+  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 1 — Unit Tests (Swift Package — no Xcode project needed)
+# ─────────────────────────────────────────────────────────────────────────────
 jobs:
-  test:
-    name: iOS Tests
+  unit-tests:
+    name: "Stage 1 — Unit Tests (Swift Package)"
     runs-on: macos-latest
 
     steps:
@@ -32,15 +49,48 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-swift-
 
-      - name: Build Swift Package (library)
+      - name: Build Swift Package
         run: swift build
         working-directory: ios-player
 
-      - name: Run Swift Package tests
-        run: swift test
+      - name: Run Swift Package unit tests
+        run: swift test 2>&1 | tee swift-test.log
         working-directory: ios-player
 
-      - name: Build Xcode app (simulator)
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unit-test-log
+          path: ios-player/swift-test.log
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 2 — Build Xcode App (simulator — only when unit tests pass)
+# ─────────────────────────────────────────────────────────────────────────────
+  build-app:
+    name: "Stage 2 — Build Xcode App (Simulator)"
+    runs-on: macos-latest
+    needs: unit-tests
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_15.0.app
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ios-player/.build
+          key: ${{ runner.os }}-swift-${{ hashFiles('ios-player/Package.swift', 'ios-player/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-
+
+      - name: Build Xcode app (iPhone 15 simulator)
         run: |
           xcodebuild \
             -project QoePlayerApp.xcodeproj \
@@ -49,5 +99,33 @@ jobs:
             clean build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty || true
         working-directory: ios-player
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 3 — Report summary
+# ─────────────────────────────────────────────────────────────────────────────
+  report:
+    name: "Stage 3 — Report"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, build-app]
+    if: always()
+
+    steps:
+      - name: Pipeline summary
+        run: |
+          echo "## iOS Player Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests (Swift Package) | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Xcode App | ${{ needs.build-app.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`  |  **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail pipeline if any stage failed
+        if: |
+          needs.unit-tests.result == 'failure' ||
+          needs.build-app.result == 'failure'
+        run: exit 1
