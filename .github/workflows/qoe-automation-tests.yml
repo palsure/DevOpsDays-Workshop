@@ -1,23 +1,22 @@
-# QoE Android Player Pipeline
+# QoE Automation Tests Pipeline
 #
 # Stages:
-#   0. notify-start — post "build started" to Slack; capture thread ts
-#   1. unit-tests   — JVM unit tests (fast, no emulator)
-#   2. lint         — Android lint static analysis (parallel with unit-tests)
-#   3. build        — Assemble debug APK (only runs when unit-tests pass)
-#   4. report       — Summary + Slack notification
+#   0. notify-start    — post "build started" to Slack; capture thread ts
+#   1. unit-compile    — compile & validate test code (no external deps)
+#   2. integration     — full Maven test run against live backend (Docker Compose)
+#   3. report          — Summary + Slack notification
 
-name: QoE Android Player Tests
+name: QoE Automation Tests
 
 on:
   pull_request:
     paths:
-      - 'android-player/**'
-      - '.github/workflows/qoe-android-tests.yml'
+      - 'qoe-automation-tests/**'
+      - '.github/workflows/qoe-automation-tests.yml'
   push:
     branches: [ main, develop ]
     paths:
-      - 'android-player/**'
+      - 'qoe-automation-tests/**'
   workflow_dispatch:
 
 env:
@@ -28,10 +27,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: android-player
-
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 0 — Notify Start
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,9 +34,6 @@ jobs:
   notify-start:
     name: Notify — build started
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
     outputs:
       thread_ts:   ${{ steps.post.outputs.thread_ts }}
       start_epoch: ${{ steps.ts.outputs.start_epoch }}
@@ -63,14 +55,14 @@ jobs:
           PAYLOAD=$(python3 - <<EOF
           import json
           blocks = [
-            {"type": "header", "text": {"type": "plain_text", "text": "[ANDROID] Build — Started", "emoji": True}},
+            {"type": "header", "text": {"type": "plain_text", "text": "[Automation] Build — Started", "emoji": True}},
             {"type": "section", "fields": [
               {"type": "mrkdwn", "text": "*Branch:*\n\`${{ github.ref_name }}\`"},
               {"type": "mrkdwn", "text": "*Commit:*\n<$COMMIT_URL|${SHORT_SHA}>"},
               {"type": "mrkdwn", "text": "*Triggered by:*\n${{ github.actor }} (${{ github.event_name }})"},
             ]},
             {"type": "divider"},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests & lint running… Build result will follow in this thread."}]},
+            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Compiling tests… Integration results will follow in this thread."}]},
             {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
           ]
           print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "blocks": blocks}))
@@ -90,61 +82,10 @@ jobs:
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — Unit Tests (JVM, no emulator required)
+# STAGE 1 — Compile & validate (no external services needed)
 # ─────────────────────────────────────────────────────────────────────────────
-  unit-tests:
-    name: "Stage 1 — Unit Tests"
-    runs-on: ubuntu-latest
-    needs: notify-start
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: actions/setup-android@v3
-        with:
-          android-sdk-version: '35'
-        continue-on-error: true
-
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Run unit tests
-        run: ./gradlew test --no-daemon
-
-      - name: Upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-unit-test-results
-          path: android-player/app/build/test-results/
-          retention-days: 7
-
-      - name: Upload unit test HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-unit-test-report
-          path: android-player/app/build/reports/tests/
-          retention-days: 7
-
-# ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1b — Lint (runs in parallel with unit tests)
-# ─────────────────────────────────────────────────────────────────────────────
-  lint:
-    name: "Stage 1b — Lint"
+  unit-compile:
+    name: "Stage 1 — Compile & Validate"
     runs-on: ubuntu-latest
     needs: notify-start
 
@@ -158,39 +99,43 @@ jobs:
 
       - uses: actions/cache@v3
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('qoe-automation-tests/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
-        continue-on-error: true
-
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-lint-report
-          path: android-player/app/build/reports/lint-results*.html
-          retention-days: 7
+      - name: Compile test code (validate, no tests run)
+        run: mvn -B test-compile -DskipTests
+        working-directory: qoe-automation-tests
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 2 — Build debug APK (only when unit tests pass)
+# STAGE 2 — Integration tests (requires backend + Postgres via Docker Compose)
+#           Only runs when Stage 1 passes
 # ─────────────────────────────────────────────────────────────────────────────
-  build:
-    name: "Stage 2 — Build Debug APK"
+  integration:
+    name: "Stage 2 — Integration Tests"
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: unit-compile
     if: success()
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Start Postgres + API backend (Docker Compose)
+        run: docker compose up -d postgres backend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "backend is up"
+              exit 0
+            fi
+            echo "waiting… ($i/36)"
+            sleep 5
+          done
+          docker compose logs backend
+          exit 1
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -198,24 +143,31 @@ jobs:
 
       - uses: actions/cache@v3
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('qoe-automation-tests/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Run integration tests
+        id: mvn_tests
+        continue-on-error: true
+        run: mvn -B test -Dapi.base.url=http://localhost:8080
+        working-directory: qoe-automation-tests
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Upload debug APK
+      - name: Upload Surefire reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
-          path: android-player/app/build/outputs/apk/debug/app-debug.apk
+          name: automation-surefire-reports
+          path: qoe-automation-tests/target/surefire-reports/
           retention-days: 14
+
+      - name: Tear down Docker services
+        if: always()
+        run: docker compose down -v || true
+
+      - name: Fail if tests failed
+        if: steps.mvn_tests.outcome == 'failure'
+        run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 3 — Report + Slack notification
@@ -223,37 +175,31 @@ jobs:
   report:
     name: "Stage 3 — Report & Slack"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, lint, build]
+    needs: [notify-start, unit-compile, integration]
     if: always()
-    defaults:
-      run:
-        working-directory: .
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Pipeline summary
         run: |
-          echo "## Android Player Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## QoE Automation Tests Pipeline Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build Debug APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compile & Validate | ${{ needs.unit-compile.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Build Slack result payload
         if: always()
         env:
-          MODULE_NAME: ANDROID
-          STAGE1_NAME: Unit Tests
-          STAGE1_RESULT: ${{ needs.unit-tests.result }}
-          STAGE2_NAME: Build Debug APK
-          STAGE2_RESULT: ${{ needs.build.result }}
-          STAGE3_NAME: Lint
-          STAGE3_RESULT: ${{ needs.lint.result }}
+          MODULE_NAME: Automation
+          STAGE1_NAME: Compile & Validate
+          STAGE1_RESULT: ${{ needs.unit-compile.result }}
+          STAGE2_NAME: Integration Tests
+          STAGE2_RESULT: ${{ needs.integration.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -282,8 +228,8 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-      - name: Fail pipeline if unit tests or build failed
+      - name: Fail pipeline if any stage failed
         if: |
-          needs.unit-tests.result == 'failure' ||
-          needs.build.result == 'failure'
+          needs.unit-compile.result == 'failure' ||
+          needs.integration.result == 'failure'
         run: exit 1

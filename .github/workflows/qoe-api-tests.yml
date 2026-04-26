@@ -65,19 +65,21 @@ jobs:
           EVENT="${{ github.event_name }}"
           ENV_LABEL="${{ env.ENV_LABEL }}"
 
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+
           PAYLOAD=$(python3 - <<EOF
           import json
           blocks = [
             {
               "type": "header",
-              "text": {"type": "plain_text", "text": "🚀 QoE API Pipeline — Started", "emoji": True}
+              "text": {"type": "plain_text", "text": "[API] Build — Started", "emoji": True}
             },
             {
               "type": "section",
               "fields": [
                 {"type": "mrkdwn", "text": f"*Branch:*\n\`{REF}\`"},
                 {"type": "mrkdwn", "text": f"*Environment:*\n{ENV_LABEL}"},
-                {"type": "mrkdwn", "text": f"*Commit:*\n\`{SHORT_SHA}\`"},
+                {"type": "mrkdwn", "text": f"*Commit:*\n<$COMMIT_URL|{SHORT_SHA}>"},
                 {"type": "mrkdwn", "text": f"*Triggered by:*\n{ACTOR} ({EVENT})"},
               ]
             },

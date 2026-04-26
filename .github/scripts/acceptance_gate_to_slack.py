@@ -66,12 +66,14 @@ def main() -> int:
     repo       = os.environ.get("GITHUB_REPOSITORY", "repo")
     run_id     = os.environ.get("GITHUB_RUN_ID", "")
     run_number = os.environ.get("GITHUB_RUN_NUMBER", "")
-    sha        = (os.environ.get("GITHUB_SHA", "") or "unknown")[:7]
+    sha_full   = os.environ.get("GITHUB_SHA", "") or "unknown"
+    sha        = sha_full[:7]
     branch     = os.environ.get("GITHUB_REF_NAME", "unknown")
     run_url    = (
         f"https://github.com/{repo}/actions/runs/{run_id}"
         if run_id else f"https://github.com/{repo}"
     )
+    commit_url = f"https://github.com/{repo}/commit/{sha_full}"
 
     # ── Duration ──────────────────────────────────────────────────────────────
     duration_str = ""
@@ -152,7 +154,7 @@ def main() -> int:
                     "text": (
                         f"{overall_icon}  "
                         f"*Overall:* {rate:.1f}%  |  *Gate:* {threshold:.0f}%  |  "
-                        f"*Branch:* `{branch}`  |  *Commit:* `{sha}`"
+                        f"*Branch:* `{branch}`  |  *Commit:* <{commit_url}|{sha}>"
                     ),
                 },
             },
