@@ -14,9 +14,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Detect which modules changed ─────────────────────────────────────────
+  changes:
+    name: Detect changed modules
+    runs-on: ubuntu-latest
+    outputs:
+      api:        ${{ steps.filter.outputs.api }}
+      web:        ${{ steps.filter.outputs.web }}
+      android:    ${{ steps.filter.outputs.android }}
+      automation: ${{ steps.filter.outputs.automation }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'backend-api/**'
+              - '.github/workflows/qoe-validation.yml'
+            web:
+              - 'web-player/**'
+              - '.github/workflows/qoe-validation.yml'
+            android:
+              - 'android-player/**'
+              - '.github/workflows/qoe-validation.yml'
+            automation:
+              - 'qoe-automation-tests/**'
+              - '.github/workflows/qoe-validation.yml'
+
+  # ── Backend API ───────────────────────────────────────────────────────────
   qoe-api-tests:
     name: Backend API Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     steps:
       - uses: actions/checkout@v4
       
@@ -51,9 +82,12 @@ jobs:
           name: api-test-results
           path: backend-api/build/test-results/unitTest
 
+  # ── Web Player ────────────────────────────────────────────────────────────
   qoe-web-tests:
     name: Web Player Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
       
@@ -82,9 +116,12 @@ jobs:
         run: npm run e2e
         working-directory: web-player
 
+  # ── Android Player ────────────────────────────────────────────────────────
   qoe-android-tests:
     name: Android Player Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
     steps:
       - uses: actions/checkout@v4
       
@@ -109,9 +146,12 @@ jobs:
         run: ./gradlew test
         working-directory: android-player
 
+  # ── Test Automation Framework ─────────────────────────────────────────────
   qoe-test-framework:
     name: Test Automation Framework
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.automation == 'true'
     steps:
       - uses: actions/checkout@v4
       
@@ -133,6 +173,9 @@ jobs:
         run: mvn test
         working-directory: qoe-automation-tests
 
+  # ── Quality Gate ──────────────────────────────────────────────────────────
+  # Passes when all triggered jobs succeed.
+  # Jobs that were skipped (module unchanged) do not count as failures.
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
@@ -141,18 +184,17 @@ jobs:
     steps:
       - name: Check test results
         run: |
-          echo "All QoE validation tests completed"
-          echo "API Tests: ${{ needs.qoe-api-tests.result }}"
-          echo "Web Tests: ${{ needs.qoe-web-tests.result }}"
-          echo "Android Tests: ${{ needs.qoe-android-tests.result }}"
-          echo "Test Framework: ${{ needs.qoe-test-framework.result }}"
-      
-      - name: Fail if any tests failed
+          echo "API Tests:       ${{ needs.qoe-api-tests.result }}"
+          echo "Web Tests:       ${{ needs.qoe-web-tests.result }}"
+          echo "Android Tests:   ${{ needs.qoe-android-tests.result }}"
+          echo "Test Framework:  ${{ needs.qoe-test-framework.result }}"
+
+      - name: Fail if any triggered tests failed
         if: |
-          needs.qoe-api-tests.result != 'success' ||
-          needs.qoe-web-tests.result != 'success' ||
-          needs.qoe-android-tests.result != 'success' ||
-          needs.qoe-test-framework.result != 'success'
+          (needs.qoe-api-tests.result    != 'success' && needs.qoe-api-tests.result    != 'skipped') ||
+          (needs.qoe-web-tests.result    != 'success' && needs.qoe-web-tests.result    != 'skipped') ||
+          (needs.qoe-android-tests.result != 'success' && needs.qoe-android-tests.result != 'skipped') ||
+          (needs.qoe-test-framework.result != 'success' && needs.qoe-test-framework.result != 'skipped')
         run: |
           echo "One or more test suites failed"
           exit 1

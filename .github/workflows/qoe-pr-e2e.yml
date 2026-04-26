@@ -18,6 +18,11 @@ env:
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'backend-api/**'
+      - 'web-player/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/qoe-pr-e2e.yml'
 
 permissions:
   contents: read
