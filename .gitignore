@@ -62,3 +62,5 @@ web-player/test-results/
 tmp/
 temp/
 *.tmp
+presentations/lib/
+presentations/
