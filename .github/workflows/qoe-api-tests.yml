@@ -26,6 +26,9 @@ on:
     branches: [main, develop]
     paths:
       - 'backend-api/**'
+      - '.github/workflows/qoe-api-tests.yml'
+      - '.github/scripts/api_tests_to_slack.py'
+      - '.github/scripts/module_result_to_slack.py'
   workflow_dispatch:
     inputs:
       environment:

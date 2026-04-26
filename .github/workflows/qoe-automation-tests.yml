@@ -17,6 +17,7 @@ on:
     branches: [ main, develop ]
     paths:
       - 'qoe-automation-tests/**'
+      - '.github/workflows/qoe-automation-tests.yml'
   workflow_dispatch:
 
 env:
