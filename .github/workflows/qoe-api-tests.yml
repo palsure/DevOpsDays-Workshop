@@ -782,6 +782,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Calculate total build duration
+        if: always()
+        run: |
+          START="${{ github.run_started_at }}"
+          NOW=$(date -u +%s)
+          START_EPOCH=$(date -u -d "$START" +%s 2>/dev/null || echo "$NOW")
+          ELAPSED=$(( NOW - START_EPOCH ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m ${SECS}s" || DUR="${SECS}s"
+          echo "TOTAL_DURATION=$DUR" >> "$GITHUB_ENV"
+
       - name: Post final Slack summary
         if: always()
         env:
@@ -793,6 +804,7 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
+          TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           MODULE_NAME: API
           STAGE1_NAME: Unit Tests
           STAGE1_RESULT: ${{ needs.unit-tests.result }}

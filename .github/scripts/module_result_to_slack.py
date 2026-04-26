@@ -107,6 +107,12 @@ def main() -> int:
 
     verdict_label = "Success" if overall == "success" else "Failed"
 
+    total_duration = os.environ.get("TOTAL_DURATION", "").strip()
+    if total_duration:
+        header_text = f"[{module}] Build Completed  |  Total Duration: {total_duration}  |  {verdict_label}"
+    else:
+        header_text = f"[{module}] Build Completed  |  {verdict_label}"
+
     payload = {
         "unfurl_links": False,
         "unfurl_media": False,
@@ -115,7 +121,7 @@ def main() -> int:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"[{module}] Build Completed  |  {verdict_label}",
+                    "text": header_text,
                     "emoji": True,
                 },
             },
