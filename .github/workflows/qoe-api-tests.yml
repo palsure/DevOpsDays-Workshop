@@ -36,6 +36,9 @@ on:
         required: false
         default: 'STAGE'
 
+permissions:
+  contents: write   # required to push Allure HTML to gh-pages branch
+
 env:
   QUALITY_GATE_THRESHOLD: '80'
   ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
@@ -467,6 +470,23 @@ jobs:
           name: allure-report-combined
           path: allure-report
 
+      - name: Deploy Allure report to GitHub Pages
+        if: always() && hashFiles('allure-report/index.html') != ''
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: allure/${{ github.run_number }}
+          keep_files: true
+
+      - name: Compute Allure Pages URL
+        id: allure_url
+        if: always()
+        run: |
+          OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
+          REPO=$(echo "${{ github.repository }}"  | cut -d'/' -f2)
+          echo "url=https://${OWNER}.github.io/${REPO}/allure/${{ github.run_number }}/" >> "$GITHUB_OUTPUT"
+
       - name: Assemble E2E report JSON
         if: always()
         env:
@@ -476,6 +496,7 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
+          ALLURE_PAGES_URL: ${{ steps.allure_url.outputs.url }}
         run: |
           python3 - <<'EOF'
           import glob, json, os, pathlib
@@ -484,7 +505,8 @@ jobs:
           run_id = os.environ.get("GITHUB_RUN_ID","")
           branch = os.environ.get("GITHUB_REF_NAME","unknown")
           env_l  = os.environ.get("ENV_LABEL","STAGE")
-          allure_base = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
+          allure_base = os.environ.get("ALLURE_PAGES_URL") or \
+                        f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
 
           summaries = []
           for f in sorted(glob.glob("platform-summaries/*/platform-summary.json")):
