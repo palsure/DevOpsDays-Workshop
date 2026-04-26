@@ -57,8 +57,8 @@ services:
     ports:
       - "8081:80"
     volumes:
-      - ./infrastructure/server/nginx.conf:/etc/nginx/nginx.conf
-      - ./infrastructure/test-content:/usr/share/nginx/html/videos
+      - ./ops/infrastructure/server/nginx.conf:/etc/nginx/nginx.conf
+      - ./ops/infrastructure/test-content:/usr/share/nginx/html/videos
     depends_on:
       - web-player
 
