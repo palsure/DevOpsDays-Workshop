@@ -46,8 +46,8 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
 
     // Flyway — runs migrations on startup so the schema exists before Hibernate validates it
+    // Spring Boot 3.2 manages Flyway 9.x where PostgreSQL support is bundled in flyway-core
     implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'
