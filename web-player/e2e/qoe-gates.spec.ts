@@ -1,0 +1,198 @@
+import { test, expect } from './fixtures';
+import { allure }        from 'allure-playwright';
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+async function snapshot(page: import('@playwright/test').Page) {
+  return page.evaluate(() => window.__QOE_DEMO__?.getSnapshot() ?? null);
+}
+
+/** Wait until the QoE probe bridge has recorded a first frame. */
+async function waitForFirstFrame(page: import('@playwright/test').Page, timeout = 60_000) {
+  await expect
+    .poll(() => snapshot(page).then(s => s?.timeToFirstFrameMs), { timeout })
+    .not.toBeNull();
+}
+
+/**
+ * Snapshot the request log and assert no critical network issues exist.
+ * Called at the end of each test after the scenario has played out.
+ */
+async function assertNoNetworkIssues(
+  entries: import('./fixtures').NetworkFixtures['networkCapture']['entries'],
+) {
+  const failed = entries.filter(e => e.failed);
+  const manifestErrors = failed.filter(e => e.category === 'hls-manifest');
+  const apiErrors      = failed.filter(e => e.category === 'qoe-api');
+
+  // Soft-assert so all issues are visible in one report
+  expect.soft(manifestErrors, `HLS manifest errors: ${manifestErrors.map(e => e.url).join(', ')}`).toHaveLength(0);
+  expect.soft(apiErrors.length, `QoE API failures: ${apiErrors.length}/${entries.filter(e=>e.category==='qoe-api').length}`).toBe(0);
+}
+
+// ── Test suite ────────────────────────────────────────────────────────────────
+
+test.describe('QoE quality gates (workshop demos)', () => {
+
+  test('baseline: first frame within generous budget', async ({ page, networkCapture }) => {
+    await allure.feature('Time to First Frame');
+    await allure.story('Baseline (reference stream)');
+    await allure.severity('critical');
+    await allure.description(`
+**Scenario:** Baseline — no faults injected.
+
+The player loads the HLS manifest immediately and begins buffering segments.
+This test asserts that the first decoded video frame is delivered within a
+generous 45-second budget (cloud CI networks can be slow).
+
+**Pass condition:** \`timeToFirstFrameMs < 45 000\`
+    `.trim());
+    await allure.label('layer', 'e2e');
+    await allure.label('testType', 'automated');
+    await allure.tag('qoe', 'ttff', 'baseline');
+    await allure.link('https://www.w3.org/TR/media-source/', 'MSE spec', 'reference');
+
+    await page.goto('/?scenario=baseline&e2e_autoplay=1');
+
+    await allure.step('Wait for first frame', () => waitForFirstFrame(page));
+
+    const snap = await snapshot(page);
+    const ttff = snap!.timeToFirstFrameMs!;
+
+    await allure.step('Assert time-to-first-frame < 45 s', async () => {
+      await allure.parameter('timeToFirstFrameMs',  String(ttff));
+      await allure.parameter('threshold_ms',  String(45_000));
+      expect(ttff).toBeLessThan(45_000);
+    });
+
+    await allure.step('Assert no critical network issues', async () => {
+      await assertNoNetworkIssues(networkCapture.entries);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('startup_delay: time-to-first-frame reflects injected delay', async ({ page, networkCapture }) => {
+    await allure.feature('Startup Latency');
+    await allure.story('Startup delay (late manifest attach)');
+    await allure.severity('normal');
+    await allure.description(`
+**Scenario:** Startup delay — HLS manifest attach is intentionally delayed by 2 800 ms.
+
+Validates that the QoE probe correctly measures the injected startup penalty.
+47 % of viewers abandon a stream that takes > 3 s to start; early detection
+in CI prevents regressions landing in production.
+
+**Pass condition:** \`timeToFirstFrameMs > 2 000\`
+    `.trim());
+    await allure.label('layer', 'e2e');
+    await allure.label('testType', 'automated');
+    await allure.tag('qoe', 'ttff', 'startup-delay');
+
+    await page.goto('/?scenario=startup_delay&e2e_autoplay=1');
+
+    await allure.step('Wait for first frame (with injected delay)', () => waitForFirstFrame(page));
+
+    const snap = await snapshot(page);
+    const ttff = snap!.timeToFirstFrameMs!;
+
+    await allure.step('Assert startup delay was measured (ttff > 2 000 ms)', async () => {
+      await allure.parameter('timeToFirstFrameMs',  String(ttff));
+      await allure.parameter('injected_delay_ms',  String(2_800));
+      expect(ttff).toBeGreaterThan(2_000);
+    });
+
+    await allure.step('Assert no critical network issues', async () => {
+      await assertNoNetworkIssues(networkCapture.entries);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('black_screen_pulse: blackout overlay appears for CV-style probes', async ({ page, networkCapture }) => {
+    await allure.feature('Visual Fault Detection');
+    await allure.story('Black screen pulse (decoder freeze simulation)');
+    await allure.severity('critical');
+    await allure.description(`
+**Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+
+This fault is *invisible to server-side logs* — only a client-side visual
+probe (or computer-vision CI check) can catch it. The test asserts that the
+\`data-testid="visual-blackout-overlay"\` element appears and then clears.
+
+**Pass conditions:**
+- Overlay becomes visible within 15 s
+- Overlay clears within 15 s of appearing
+    `.trim());
+    await allure.label('layer', 'e2e');
+    await allure.label('testType', 'automated');
+    await allure.tag('qoe', 'visual-fault', 'black-screen');
+
+    await page.goto('/?scenario=black_screen_pulse&e2e_autoplay=1');
+
+    const overlay = page.getByTestId('visual-blackout-overlay');
+
+    await allure.step('Assert blackout overlay becomes visible', async () => {
+      await expect(overlay).toBeVisible({ timeout: 15_000 });
+    });
+
+    await allure.step('Assert blackout overlay clears automatically', async () => {
+      await expect(overlay).toBeHidden({ timeout: 15_000 });
+    });
+
+    await allure.step('Assert no critical network issues', async () => {
+      await assertNoNetworkIssues(networkCapture.entries);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('forced_mid_play_rebuffer: records at least one buffering span', async ({ page, networkCapture }) => {
+    await allure.feature('Rebuffering Detection');
+    await allure.story('Mid-play stall (HLS stop/start)');
+    await allure.severity('critical');
+    await allure.description(`
+**Scenario:** Mid-play rebuffering — HLS segment loading is halted at 4 500 ms
+for 2 200 ms, then resumed.
+
+Rebuffering mid-play is the primary driver of viewer churn. The QoE collector
+must detect the stall via the \`waiting\` media event, measure its duration,
+and accumulate it in \`totalBufferingTime\`.
+
+**Pass condition:** \`bufferingEventsCount > 0\` OR \`totalBufferingTime > 0.05 s\`
+    `.trim());
+    await allure.label('layer', 'e2e');
+    await allure.label('testType', 'automated');
+    await allure.tag('qoe', 'rebuffering', 'stall');
+
+    await page.goto('/?scenario=forced_mid_play_rebuffer&e2e_autoplay=1');
+
+    await allure.step('Wait for first frame', () => waitForFirstFrame(page));
+
+    await allure.step('Assert at least one buffering event was recorded', async () => {
+      await expect
+        .poll(async () => {
+          const s = await snapshot(page);
+          return (s?.bufferingEventsCount ?? 0) > 0 || (s?.totalBufferingTime ?? 0) > 0.05;
+        }, { timeout: 60_000 })
+        .toBe(true);
+
+      const snap = await snapshot(page);
+      await allure.parameter('bufferingEventsCount',   String(snap?.bufferingEventsCount ?? 0));
+      await allure.parameter('totalBufferingTime_s',   String(snap?.totalBufferingTime   ?? 0));
+    });
+
+    await allure.step('Assert HLS segment continuity (no prolonged network error)', async () => {
+      const segErrors     = networkCapture.entries.filter(e => e.category === 'hls-segment' && e.failed);
+      const totalSegs     = networkCapture.entries.filter(e => e.category === 'hls-segment').length;
+      const segErrorRate  = totalSegs > 0 ? Math.round((segErrors.length / totalSegs) * 100) : 0;
+      await allure.parameter('seg_total',       String(totalSegs));
+      await allure.parameter('seg_errors',      String(segErrors.length));
+      await allure.parameter('seg_error_rate', `${segErrorRate}%`);
+      // Segment errors should be below 50% — scenario injects a *stall*, not a hard failure
+      expect(segErrorRate).toBeLessThan(50);
+    });
+  });
+
+});
