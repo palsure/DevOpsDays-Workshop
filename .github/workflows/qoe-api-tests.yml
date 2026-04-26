@@ -1,15 +1,16 @@
 # QoE API Tests
 #
 # Flow:
+#   0. notify-start   — posts "build started" to Slack; captures message ts for threading.
 #   1. unit-tests     — runs @Tag("unit") tests (Mockito, no DB) BEFORE any deploy.
-#                       Slack message sent immediately with per-class results.
+#                       Result posted as a thread reply to the start message.
 #   2. e2e-tests      — matrix across all supported platforms; one job per platform.
 #                       Each job runs @Tag("e2e") REST-Assured tests against an
 #                       embedded Spring Boot server + Testcontainers Postgres.
-#   3. api-report     — collects all platform summaries, generates Allure, sends a
-#                       second Slack message with the per-platform table.
+#   3. api-report     — collects all platform summaries, generates Allure, posts the
+#                       per-platform table as a thread reply to the start message.
 #
-# Required secrets (Slack is optional — skipped if not set):
+# Required secrets (Slack is optional — all Slack steps are skipped if not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
 #   SLACK_CHANNEL_ID  — target channel ID
 
@@ -37,12 +38,90 @@ env:
   ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. UNIT TESTS  (pre-deploy gate, no DB required)
+# 0. NOTIFY START  — post initial Slack message, capture thread ts
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
+  notify-start:
+    name: Notify — build started
+    runs-on: ubuntu-latest
+    outputs:
+      thread_ts: ${{ steps.post.outputs.thread_ts }}
+
+    steps:
+      - name: Post "build started" to Slack
+        id: post
+        if: ${{ secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != '' }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          ACTOR="${{ github.actor }}"
+          REF="${{ github.ref_name }}"
+          EVENT="${{ github.event_name }}"
+          ENV_LABEL="${{ env.ENV_LABEL }}"
+
+          PAYLOAD=$(python3 - <<EOF
+          import json
+          blocks = [
+            {
+              "type": "header",
+              "text": {"type": "plain_text", "text": "🚀 QoE API Pipeline — Started", "emoji": True}
+            },
+            {
+              "type": "section",
+              "fields": [
+                {"type": "mrkdwn", "text": f"*Branch:*\n\`{REF}\`"},
+                {"type": "mrkdwn", "text": f"*Environment:*\n{ENV_LABEL}"},
+                {"type": "mrkdwn", "text": f"*Commit:*\n\`{SHORT_SHA}\`"},
+                {"type": "mrkdwn", "text": f"*Triggered by:*\n{ACTOR} ({EVENT})"},
+              ]
+            },
+            {"type": "divider"},
+            {
+              "type": "context",
+              "elements": [
+                {"type": "mrkdwn", "text": "⏳ Unit tests running… E2E results will follow in this thread."}
+              ]
+            },
+            {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": {"type": "plain_text", "text": "View Run", "emoji": True},
+                  "url": "$RUN_URL",
+                  "style": "primary"
+                }
+              ]
+            }
+          ]
+          print(json.dumps({"channel": "$SLACK_CHANNEL_ID", "blocks": blocks}))
+          EOF
+          )
+
+          RESPONSE=$(curl -sf -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "Slack response: $RESPONSE"
+          TS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ts',''))")
+          echo "thread_ts=$TS" >> "$GITHUB_OUTPUT"
+
+      - name: Set empty thread_ts when Slack not configured
+        if: ${{ secrets.SLACK_BOT_TOKEN == '' || secrets.SLACK_CHANNEL_ID == '' }}
+        run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. UNIT TESTS  (pre-deploy gate, no DB required)
+# ─────────────────────────────────────────────────────────────────────────────
   unit-tests:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
+    needs: notify-start
 
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +141,7 @@ jobs:
 
       - name: Run unit tests
         id: unit
-        run: gradle unitTest --no-daemon
+        run: ./gradlew unitTest --no-daemon
         working-directory: backend-api
 
       - name: Upload unit test results (XML)
@@ -79,7 +158,7 @@ jobs:
           name: unit-html-report
           path: backend-api/build/reports/tests/unitTest
 
-      - name: Build Slack payload — unit tests
+      - name: Build unit test Slack payload
         if: always()
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -88,9 +167,8 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
         run: |
-          # Parse JUnit XML into a single "unit" row
           python3 - <<'EOF'
-          import glob, json, xml.etree.ElementTree as ET, math, os, pathlib
+          import glob, json, xml.etree.ElementTree as ET, os, pathlib
 
           files = glob.glob("backend-api/build/test-results/unitTest/TEST-*.xml")
           total=passed=failed=skipped=0
@@ -118,8 +196,19 @@ jobs:
 
           python3 .github/scripts/api_tests_to_slack.py api-test-report.json
 
-      - name: Send Slack — unit test result
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+      - name: Inject thread_ts into unit test payload
+        if: always() && needs.notify-start.outputs.thread_ts != ''
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib
+          ts = "${{ needs.notify-start.outputs.thread_ts }}"
+          p = json.loads(pathlib.Path("api-slack-payload.json").read_text())
+          p["thread_ts"] = ts
+          pathlib.Path("api-slack-payload.json").write_text(json.dumps(p))
+          EOF
+
+      - name: Post unit test result as Slack thread reply
+        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -133,7 +222,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   e2e-tests:
     name: E2E — ${{ matrix.platform }}
-    needs: unit-tests
+    needs: [notify-start, unit-tests]
     runs-on: ubuntu-latest
     if: always() && needs.unit-tests.result != 'cancelled'
 
@@ -193,13 +282,12 @@ jobs:
       - name: Run E2E tests (platform=${{ matrix.platform }})
         id: e2e
         continue-on-error: true
-        run: gradle e2eTest --no-daemon
+        run: ./gradlew e2eTest --no-daemon
         working-directory: backend-api
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
           SPRING_DATASOURCE_USERNAME: qoe_user
           SPRING_DATASOURCE_PASSWORD: qoe_password
-          # Passed into tests so parameterized suite can filter by this platform
           QOE_TEST_PLATFORM: ${{ matrix.platform }}
 
       - name: Build platform summary JSON
@@ -232,18 +320,17 @@ jobs:
           path: platform-summary.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. REPORT + SLACK  (aggregates all platforms, sends table message)
+# 3. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: e2e-tests
+    needs: [notify-start, e2e-tests]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - uses: actions/checkout@v4
 
-      # Download every platform's summary JSON
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -251,7 +338,6 @@ jobs:
           path: platform-summaries
           merge-multiple: false
 
-      # Download all Allure raw results for the combined report
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -272,7 +358,6 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # Generate consolidated Allure report from merged raw results
       - name: Generate Allure report
         if: always()
         run: |
@@ -292,8 +377,7 @@ jobs:
           name: allure-report-combined
           path: allure-report
 
-      # Assemble per-platform table JSON for Slack script
-      - name: Assemble report JSON
+      - name: Assemble E2E report JSON
         if: always()
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -303,7 +387,7 @@ jobs:
           ENV_LABEL: ${{ env.ENV_LABEL }}
         run: |
           python3 - <<'EOF'
-          import glob, json, os, pathlib, time
+          import glob, json, os, pathlib
 
           repo   = os.environ.get("GITHUB_REPOSITORY","repo")
           run_id = os.environ.get("GITHUB_RUN_ID","")
@@ -331,7 +415,7 @@ jobs:
           print(json.dumps(report, indent=2))
           EOF
 
-      - name: Build Slack payload
+      - name: Build E2E Slack payload
         if: always()
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -341,6 +425,17 @@ jobs:
           QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
         run: python3 .github/scripts/api_tests_to_slack.py api-test-report.json
 
+      - name: Inject thread_ts into E2E payload
+        if: always() && needs.notify-start.outputs.thread_ts != ''
+        run: |
+          python3 - <<'EOF'
+          import json, pathlib
+          ts = "${{ needs.notify-start.outputs.thread_ts }}"
+          p = json.loads(pathlib.Path("api-slack-payload.json").read_text())
+          p["thread_ts"] = ts
+          pathlib.Path("api-slack-payload.json").write_text(json.dumps(p))
+          EOF
+
       - name: Upload Slack payload artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -348,8 +443,8 @@ jobs:
           name: api-slack-payload
           path: api-slack-payload.json
 
-      - name: Send Slack — E2E results per platform
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+      - name: Post E2E results as Slack thread reply
+        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
