@@ -102,6 +102,9 @@ def main() -> int:
     footer_parts.append(f"<{run_url}|:arrow_forward: View Run #{run_number or run_id}>")
     footer_text = "    ".join(footer_parts)
 
+    thread_ts  = os.environ.get("THREAD_TS", "")
+    channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
+
     payload = {
         "unfurl_links": False,
         "unfurl_media": False,
@@ -136,6 +139,11 @@ def main() -> int:
             },
         ],
     }
+
+    if channel_id:
+        payload["channel"] = channel_id
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
 
     out = Path("module-slack-payload.json")
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
