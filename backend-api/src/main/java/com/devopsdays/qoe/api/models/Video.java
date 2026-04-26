@@ -34,9 +34,20 @@ public class Video {
     private String thumbnailUrl;
     private String hlsManifestUrl;
     private String dashManifestUrl;
-    private Long duration; // seconds
+    private Long duration;      // seconds
     private String resolution;
-    private Long bitrate; // bits per second
+    private Long bitrate;       // bits per second
+
+    /** Broad content type: movie | show | live | sports | documentary */
+    private String category;
+
+    /** Descriptive genre: drama, comedy, action, news, etc. */
+    private String genre;
+
+    /** Soft-delete / visibility flag */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

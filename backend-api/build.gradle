@@ -10,7 +10,8 @@ version = '1.0.0'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        // Java 21 LTS — supported by Spring Boot 3.2+ and available on all CI runners.
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
