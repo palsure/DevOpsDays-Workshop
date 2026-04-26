@@ -473,23 +473,6 @@ jobs:
           path: backend-api/build/allure-results/bat
           retention-days: 14
 
-      - name: Generate BAT Allure HTML report
-        if: always()
-        continue-on-error: true
-        run: |
-          gradle downloadAllure --no-daemon -p backend-api
-          backend-api/build/allure/commandline/bin/allure generate \
-            backend-api/build/allure-results/bat \
-            --clean -o bat-allure-report
-
-      - name: Upload BAT Allure HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bat-allure-report
-          path: bat-allure-report
-          retention-days: 14
-
       - name: Post BAT result to Slack thread
         if: always()
         env:
@@ -672,23 +655,6 @@ jobs:
           path: backend-api/build/allure-results/smoke
           retention-days: 14
 
-      - name: Generate Smoke Allure HTML report
-        if: always()
-        continue-on-error: true
-        run: |
-          gradle downloadAllure --no-daemon -p backend-api
-          backend-api/build/allure/commandline/bin/allure generate \
-            backend-api/build/allure-results/smoke \
-            --clean -o smoke-allure-report
-
-      - name: Upload Smoke Allure HTML report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-allure-report
-          path: smoke-allure-report
-          retention-days: 14
-
       - name: Post Smoke result to Slack thread
         if: always()
         env:
@@ -847,7 +813,6 @@ jobs:
       - name: React to initial Slack message with build outcome
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
-          # Determine overall verdict from stage results
           UNIT="${{ needs.unit-tests.result }}"
           UNIT_GATE="${{ needs.unit-gate.outputs.passed }}"
           DEPLOY="${{ needs.deploy.result }}"
@@ -862,11 +827,14 @@ jobs:
             EMOJI="red_circle"
           fi
 
-          # The initial message ts IS the thread_ts captured by notify-start
           INITIAL_TS="${{ needs.notify-start.outputs.thread_ts }}"
+          echo "Adding '$EMOJI' reaction to message ts='$INITIAL_TS'"
 
-          curl -sf -X POST https://slack.com/api/reactions.add \
+          RESPONSE=$(curl -X POST https://slack.com/api/reactions.add \
             -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{\"channel\":\"${{ secrets.SLACK_CHANNEL_ID }}\",\"timestamp\":\"$INITIAL_TS\",\"name\":\"$EMOJI\"}" \
-            || true
+            2>&1)
+          echo "Slack reactions.add response: $RESPONSE"
+          # Exit 0 regardless — reaction is best-effort
+          exit 0

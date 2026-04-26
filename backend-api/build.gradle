@@ -181,6 +181,8 @@ tasks.register('batTest', Test) {
     useJUnitPlatform {
         includeTags 'BAT'
     }
+    // Run each test class in its own JVM fork — each gets an isolated Testcontainers DB.
+    maxParallelForks = 2
     systemProperty "allure.results.directory",
             layout.buildDirectory.dir('allure-results/bat').get().asFile.absolutePath
     configureDockerHost(it)
@@ -195,6 +197,8 @@ tasks.register('smokeTest', Test) {
     useJUnitPlatform {
         includeTags 'Smoke'
     }
+    // Run each test class in its own JVM fork — each gets an isolated Testcontainers DB.
+    maxParallelForks = 2
     systemProperty "allure.results.directory",
             layout.buildDirectory.dir('allure-results/smoke').get().asFile.absolutePath
     configureDockerHost(it)
