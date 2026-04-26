@@ -328,11 +328,69 @@ jobs:
           path: platform-summary.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
+# 3. AUTOMATION E2E  (system-level — runs after API E2E matrix passes)
+# ─────────────────────────────────────────────────────────────────────────────
+  automation-e2e:
+    name: Automation E2E (System Tests)
+    needs: [notify-start, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always() && needs.e2e-tests.result != 'cancelled'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start backend stack (Docker Compose)
+        run: docker compose up -d postgres backend
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "backend is up"; exit 0
+            fi
+            echo "waiting… ($i/36)"; sleep 5
+          done
+          docker compose logs backend; exit 1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('qoe-automation-tests/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+
+      - name: Run automation E2E tests
+        id: auto_e2e
+        continue-on-error: true
+        run: mvn -B test -Dapi.base.url=http://localhost:8080
+        working-directory: qoe-automation-tests
+
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-automation-surefire
+          path: qoe-automation-tests/target/surefire-reports/
+          retention-days: 14
+
+      - name: Tear down Docker stack
+        if: always()
+        run: docker compose down -v || true
+
+      - name: Fail if automation tests failed
+        if: steps.auto_e2e.outcome == 'failure'
+        run: exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, e2e-tests]
+    needs: [notify-start, e2e-tests, automation-e2e]
     runs-on: ubuntu-latest
     if: always()
 
