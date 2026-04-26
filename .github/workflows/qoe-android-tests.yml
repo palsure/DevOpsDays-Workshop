@@ -8,7 +8,7 @@
 #   4. automation-e2e  — Maven system tests against live backend → post result to Slack thread
 #   5. report          — Final summary + Slack overall result
 
-name: QoE Android Player Tests
+name: Stream-QoE-App-Android
 
 on:
   pull_request:

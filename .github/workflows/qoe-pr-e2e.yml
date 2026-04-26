@@ -1,4 +1,4 @@
-name: PR — QoE E2E Gates
+name: Stream-QoE-App-PR-E2E
 
 # ─────────────────────────────────────────────────────────────────
 # Triggers on every push to an open PR.

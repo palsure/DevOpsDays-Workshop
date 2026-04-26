@@ -6,7 +6,7 @@
 #   2. build-app    — Xcode simulator build (only runs when unit tests pass)
 #   3. report       — Summary + Slack notification
 
-name: QoE iOS Player Tests
+name: Stream-QoE-App-iOS
 
 on:
   pull_request:

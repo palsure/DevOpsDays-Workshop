@@ -1,6 +1,6 @@
 # Full-stack validation (parallel jobs). For an aggregate 80% pass-rate gate across platforms
 # plus optional GitHub Release on main, see: build-acceptance-release.yml
-name: QoE Validation
+name: Stream-QoE-App-Validation
 
 on:
   pull_request:

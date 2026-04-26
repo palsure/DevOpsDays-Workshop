@@ -1,6 +1,8 @@
 spring:
   jpa:
     hibernate:
+      # create-drop: Hibernate creates schema from JPA entities (no Flyway needed in tests).
+      # The Testcontainers PostgreSQL container starts fresh each test-class run.
       ddl-auto: create-drop
   test:
     database:

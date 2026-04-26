@@ -1,4 +1,4 @@
-name: QoE Build Template
+name: Stream-QoE-App-Build-Template
 
 on:
   workflow_call:

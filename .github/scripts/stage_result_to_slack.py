@@ -162,6 +162,8 @@ def main() -> int:
     footer_text = "    ".join(footer_parts)
 
     # ── Payload ───────────────────────────────────────────────────────────────
+    channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
+
     payload: dict = {
         "unfurl_links": False,
         "unfurl_media": False,
@@ -185,6 +187,8 @@ def main() -> int:
         ],
     }
 
+    if channel_id:
+        payload["channel"] = channel_id
     if thread_ts:
         payload["thread_ts"] = thread_ts
 

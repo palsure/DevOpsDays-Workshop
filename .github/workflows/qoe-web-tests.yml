@@ -7,7 +7,7 @@
 #   3. automation-e2e  — Maven system tests against live backend → post result to Slack thread
 #   4. report          — Final summary + Slack overall result
 
-name: QoE Web Player Tests
+name: Stream-QoE-App-Web
 
 on:
   pull_request:

@@ -1,6 +1,6 @@
 # Local Testing Guide
 
-Step-by-step instructions to run unit tests, E2E tests, and view reports for every module.
+Step-by-step instructions to run unit tests, E2E tests, and view Allure reports for every module.
 
 ---
 
@@ -8,7 +8,7 @@ Step-by-step instructions to run unit tests, E2E tests, and view reports for eve
 
 | Tool | Min version | Install |
 |---|---|---|
-| Java (JDK) | 17+ | `brew install --cask temurin@17` |
+| Java (JDK) | 21+ | `brew install --cask temurin@21` |
 | Gradle | via wrapper (`gradlew`) | included in each module |
 | Docker Desktop | 24+ | [docs.docker.com](https://docs.docker.com/desktop/mac/install/) |
 | Node.js | 18+ | `brew install node` |
@@ -52,9 +52,35 @@ docker compose down
 
 ## 1 — Backend API (`backend-api/`)
 
-The API uses separate Gradle tasks for unit and E2E tests.  
-The E2E tests are fully self-contained: they spin up their own throwaway  
-PostgreSQL via Testcontainers — **no running stack required**.
+The API uses separate Gradle tasks for each test stage.  
+E2E tests (BAT, Smoke, Regression) are **fully self-contained**: Testcontainers
+spins up a throwaway PostgreSQL container automatically — **no running stack required**.
+
+### Test stages
+
+| Stage | Tag | Gradle task | Purpose |
+|---|---|---|---|
+| Unit | `@Tag("unit")` | `unitTest` | Fast Mockito tests, no Docker needed |
+| BAT | `@Tag("BAT")` | `batTest` | Build Acceptance Tests — core sanity gate |
+| Smoke | `@Tag("Smoke")` | `smokeTest` | Broader coverage after BAT passes |
+| Regression | `@Tag("Regression")` | `regressionTest` | Full suite, run on-demand or nightly |
+| All E2E | `@Tag("e2e")` | `e2eTest` | BAT + Smoke + Regression in one run |
+
+### 1.0 Clean build
+
+Remove all compiled classes, Allure results, and generated reports before a fresh run:
+
+```bash
+cd backend-api
+
+# Full clean (classes + Allure results + reports)
+./gradlew cleanAll
+
+# Allure-only clean (keeps compiled classes — faster)
+./gradlew cleanAllure
+```
+
+---
 
 ### 1.1 Unit tests
 
@@ -63,48 +89,176 @@ cd backend-api
 ./gradlew unitTest
 ```
 
-- Runs only tests tagged `@Tag("unit")`
-- No Docker, no network access needed
+- Runs tests tagged `@Tag("unit")` (Mockito, no Docker)
 - Fast (~10 s)
+- Every test class includes `@ExtendWith(AllureJunit5.class)` and `Allure.step()` calls  
+  for full step details in the Allure report
 
-**View the HTML report:**
+**View the JUnit HTML report:**
 
 ```bash
 open build/reports/tests/unitTest/index.html
 ```
 
-### 1.2 E2E / Integration tests
+**Generate and open the Allure report:**
+
+```bash
+./gradlew unitTest allureReportUnit
+allure serve build/allure-results/unit --port 5050
+# open http://127.0.0.1:5050
+```
+
+**Clean + run + report in one command:**
+
+```bash
+./gradlew cleanAll unitTest allureReportUnit
+allure serve build/allure-results/unit --port 5050
+```
+
+---
+
+### 1.2 BAT — Build Acceptance Tests
+
+BAT tests are the critical gate. All must pass before Smoke tests are allowed to run.
 
 ```bash
 cd backend-api
-./gradlew e2eTest
+./gradlew batTest
 ```
 
-- Runs only tests tagged `@Tag("e2e")` (`QoEApiE2EIT`)
-- Testcontainers automatically starts a fresh PostgreSQL container
-- Docker must be running
+- Docker must be running (Testcontainers starts PostgreSQL automatically)
+- 100% pass rate required — any failure blocks the build
 
-**View the HTML report:**
+**Generate and open the BAT Allure report:**
 
 ```bash
-open build/reports/tests/e2eTest/index.html
+./gradlew batTest allureReportBat
+allure serve build/allure-results/bat --port 5052
+# open http://127.0.0.1:5052
 ```
 
-### 1.3 Allure report (E2E)
+**Clean + run + report:**
 
 ```bash
-# run tests then generate + open report in one step
-./gradlew e2eTest allureReport
+./gradlew cleanAll batTest allureReportBat
+allure serve build/allure-results/bat --port 5052
 ```
 
-The Allure report opens automatically in your browser.  
-Manual path: `build/reports/allure-report/allureReport/index.html`
+---
 
-### 1.4 Run all tests together
+### 1.3 Smoke tests
+
+Smoke tests run after the BAT gate passes. They cover broader API functionality.
 
 ```bash
-./gradlew test allureReport
+cd backend-api
+./gradlew smokeTest
 ```
+
+**Generate and open the Smoke Allure report:**
+
+```bash
+./gradlew smokeTest allureReportSmoke
+allure serve build/allure-results/smoke --port 5053
+# open http://127.0.0.1:5053
+```
+
+**Clean + run + report:**
+
+```bash
+./gradlew cleanAll smokeTest allureReportSmoke
+allure serve build/allure-results/smoke --port 5053
+```
+
+---
+
+### 1.4 Regression tests
+
+Full regression suite — run on-demand or as a nightly job.
+
+```bash
+cd backend-api
+./gradlew regressionTest
+```
+
+**Generate and open the Regression Allure report:**
+
+```bash
+./gradlew regressionTest allureReportRegression
+allure serve build/allure-results/regression --port 5054
+# open http://127.0.0.1:5054
+```
+
+**Clean + run + report:**
+
+```bash
+./gradlew cleanAll regressionTest allureReportRegression
+allure serve build/allure-results/regression --port 5054
+```
+
+---
+
+### 1.5 Run all E2E stages together
+
+```bash
+cd backend-api
+./gradlew e2eTest allureReportE2e
+allure serve build/allure-results/e2e --port 5051
+# open http://127.0.0.1:5051
+```
+
+---
+
+### 1.6 Full pipeline simulation (BAT → Smoke → Regression)
+
+Mimics the CI pipeline locally:
+
+```bash
+cd backend-api
+
+# Step 1 — clean slate
+./gradlew cleanAll
+
+# Step 2 — unit tests
+./gradlew unitTest
+
+# Step 3 — BAT (gate: all must pass)
+./gradlew batTest
+# Check: exit code 0 = gate PASSED, exit code non-0 = gate FAILED (stop here)
+
+# Step 4 — Smoke (only if BAT passed)
+./gradlew smokeTest
+
+# Step 5 — Regression
+./gradlew regressionTest
+
+# Step 6 — view all reports simultaneously
+allure serve build/allure-results/unit       --port 5050 &
+allure serve build/allure-results/bat        --port 5052 &
+allure serve build/allure-results/smoke      --port 5053 &
+allure serve build/allure-results/regression --port 5054 &
+```
+
+Stop all Allure servers:
+
+```bash
+pkill -f "allure.*serve"
+```
+
+---
+
+### 1.7 Allure report reference
+
+| Report | Command | URL |
+|---|---|---|
+| Unit | `./gradlew allureReportUnit` | `allure serve build/allure-results/unit --port 5050` |
+| BAT | `./gradlew allureReportBat` | `allure serve build/allure-results/bat --port 5052` |
+| Smoke | `./gradlew allureReportSmoke` | `allure serve build/allure-results/smoke --port 5053` |
+| Regression | `./gradlew allureReportRegression` | `allure serve build/allure-results/regression --port 5054` |
+| All E2E | `./gradlew allureReportE2e` | `allure serve build/allure-results/e2e --port 5051` |
+
+> Always use `allure serve <results-dir> --port <port>` (not `open index.html`) to avoid  
+> browser security restrictions that block the report from loading.
 
 ---
 
@@ -179,7 +333,7 @@ npm run allure:report
 
 ## 3 — Android Player (`android-player/`)
 
-Requires **Java 17+** and **Android SDK** (or Android Studio).
+Requires **Java 21+** and **Android SDK** (or Android Studio).
 
 ### 3.1 Unit tests
 
@@ -324,36 +478,56 @@ qoe-automation-tests/target/surefire-reports/TEST-*.xml
 # generate HTML from allure-results/ captured during the test run
 mvn allure:report
 
-# open the report
-open target/allure-report/index.html
+# open the report (use allure serve to avoid browser file:// restrictions)
+allure serve target/allure-results --port 5055
+# open http://127.0.0.1:5055
 ```
 
 ---
 
 ## Quick-reference cheat sheet
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  MODULE           │  UNIT TESTS                  │  E2E / INTEGRATION        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  backend-api/     │  ./gradlew unitTest           │  ./gradlew e2eTest        │
-│  web-player/      │  npm test                     │  npm run e2e:docker       │
-│  android-player/  │  ./gradlew test               │  ./gradlew connectedTest  │
-│  ios-player/      │  swift test                   │  xcodebuild test …        │
-│  qoe-auto-tests/  │  —                            │  mvn test -Dapi.base.url… │
-└─────────────────────────────────────────────────────────────────────────────┘
+### Run commands
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  MODULE           │  REPORT COMMAND                                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  backend-api/     │  ./gradlew allureReport                                  │
-│                   │  open build/reports/tests/unitTest/index.html            │
-│  web-player/      │  npx playwright show-report                              │
-│                   │  npm run allure:report                                   │
-│  android-player/  │  open app/build/reports/tests/testDebugUnitTest/…       │
-│  ios-player/      │  xcpretty --report html  (see section 4.3)              │
-│  qoe-auto-tests/  │  mvn allure:report && open target/allure-report/…       │
-└─────────────────────────────────────────────────────────────────────────────┘
+```
+┌──────────────────┬──────────────────────────────┬───────────────────────────────────┐
+│ Module           │ Unit tests                   │ E2E / Integration                 │
+├──────────────────┼──────────────────────────────┼───────────────────────────────────┤
+│ backend-api/     │ ./gradlew unitTest            │ ./gradlew batTest      (BAT)      │
+│                  │                              │ ./gradlew smokeTest    (Smoke)    │
+│                  │                              │ ./gradlew regressionTest          │
+│                  │                              │ ./gradlew e2eTest      (all E2E)  │
+│ web-player/      │ npm test                     │ npm run e2e:docker                │
+│ android-player/  │ ./gradlew test               │ ./gradlew connectedTest           │
+│ ios-player/      │ swift test                   │ xcodebuild test …                 │
+│ qoe-auto-tests/  │ —                            │ mvn test -Dapi.base.url…          │
+└──────────────────┴──────────────────────────────┴───────────────────────────────────┘
+```
+
+### Clean commands (backend-api/)
+
+```
+┌────────────────────────────┬───────────────────────────────────────────────────────┐
+│ Command                    │ What it removes                                       │
+├────────────────────────────┼───────────────────────────────────────────────────────┤
+│ ./gradlew cleanAll         │ Compiled classes + all Allure results + HTML reports  │
+│ ./gradlew cleanAllure      │ Allure results + HTML reports only (keeps classes)    │
+│ ./gradlew clean            │ Compiled classes only (standard Gradle clean)         │
+└────────────────────────────┴───────────────────────────────────────────────────────┘
+```
+
+### Allure report commands (backend-api/)
+
+```
+┌──────────────────────────────────┬──────────────────────────────────────────────────┐
+│ Stage    │ Generate               │ Serve (browser URL)                             │
+├──────────┼────────────────────────┼─────────────────────────────────────────────────┤
+│ Unit     │ allureReportUnit       │ allure serve build/allure-results/unit  :5050   │
+│ BAT      │ allureReportBat        │ allure serve build/allure-results/bat   :5052   │
+│ Smoke    │ allureReportSmoke      │ allure serve build/allure-results/smoke :5053   │
+│ Regression│ allureReportRegression│ allure serve build/allure-results/regression :5054│
+│ All E2E  │ allureReportE2e        │ allure serve build/allure-results/e2e   :5051   │
+└──────────┴────────────────────────┴─────────────────────────────────────────────────┘
 ```
 
 ---
@@ -362,10 +536,13 @@ open target/allure-report/index.html
 
 | Problem | Fix |
 |---|---|
-| `No matching toolchains found` (Gradle) | Install Java 17: `brew install --cask temurin@17` |
+| `No matching toolchains found` (Gradle) | Install Java 21: `brew install --cask temurin@21` |
 | `Could not connect to Docker` | Start Docker Desktop |
+| `disabledWithoutDocker — Docker not available` | Ensure Docker Desktop is running and its socket is accessible |
 | `backend is not healthy` | `docker compose logs backend` to inspect errors |
 | `npm run e2e:docker` fails immediately | Ensure Docker web-player is running: `docker compose up -d` |
 | `xcode-select` error on iOS build | `sudo xcode-select -switch /Applications/Xcode.app` |
 | `allure: command not found` | `brew install allure` |
+| Allure report shows `Loading…` (blank page) | Use `allure serve <dir> --port <port>` instead of opening `index.html` directly |
 | Playwright browsers missing | `npm run e2e:install` (inside `web-player/`) |
+| BAT gate blocks downstream tests | Check Allure BAT report — fix failing tests before running Smoke |

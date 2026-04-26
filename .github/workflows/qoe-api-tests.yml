@@ -1,33 +1,39 @@
 # QoE API Tests
 #
-# Flow:
-#   0. notify-start   — posts "build started" to Slack; captures message ts for threading.
-#   1. unit-tests     — runs @Tag("unit") tests (Mockito, no DB) BEFORE any deploy.
-#                       Result posted as a thread reply to the start message.
-#   2. e2e-tests      — matrix across all supported platforms; one job per platform.
-#                       Each job runs @Tag("e2e") REST-Assured tests against an
-#                       embedded Spring Boot server + Testcontainers Postgres.
-#   3. api-report     — collects all platform summaries, generates Allure, posts the
-#                       per-platform table as a thread reply to the start message.
+# Pipeline flow:
+#   0. notify-start      — Post "build started" to Slack; capture message ts for threading.
+#   1. unit-tests        — @Tag("unit") tests (Mockito, no DB). Pre-deploy safety check.
+#   2. bat-tests         — @Tag("BAT")  Build Acceptance Tests via ./gradlew batTest.
+#                          Core sanity checks — if ANY BAT test fails the gate blocks.
+#   3. bat-gate          — Evaluate BAT outcome (outputs: passed=true|false).
+#                          PASS → deploy approved → run Smoke.
+#                          FAIL → build blocked, Smoke skipped.
+#   4. smoke-tests       — @Tag("Smoke") tests via ./gradlew smokeTest.
+#                          Only runs when bat-gate PASSES.
+#   5. automation-e2e    — System acceptance tests (Maven/TestNG).
+#                          Only runs when smoke-tests succeed.
+#   6. quality-gate      — Final aggregate gate (unit + BAT + Smoke + Automation).
+#   7. api-report        — Collect Allure results, post full Slack summary.
 #
-# Required secrets (Slack is optional — all Slack steps are skipped if not set):
+# Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
-#   SLACK_CHANNEL_ID  — target channel ID
+#   SLACK_CHANNEL_ID  — Target channel ID
 
-name: QoE API Tests
+name: Stream-QoE-App-API
 
 on:
   pull_request:
     paths:
       - 'backend-api/**'
       - '.github/workflows/qoe-api-tests.yml'
-      - '.github/scripts/api_tests_to_slack.py'
+      - '.github/scripts/stage_result_to_slack.py'
+      - '.github/scripts/module_result_to_slack.py'
   push:
     branches: [main, develop]
     paths:
       - 'backend-api/**'
       - '.github/workflows/qoe-api-tests.yml'
-      - '.github/scripts/api_tests_to_slack.py'
+      - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
   workflow_dispatch:
     inputs:
@@ -42,7 +48,7 @@ on:
         default: 'STAGE'
 
 permissions:
-  contents: write   # required to push Allure HTML to gh-pages branch
+  contents: write
 
 env:
   QUALITY_GATE_THRESHOLD: '80'
@@ -51,7 +57,7 @@ env:
   SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 0. NOTIFY START  — post initial Slack message, capture thread ts
+# 0. NOTIFY START
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
@@ -75,7 +81,6 @@ jobs:
           REF="${{ github.ref_name }}"
           EVENT="${{ github.event_name }}"
           ENV_LABEL="${{ env.ENV_LABEL }}"
-
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
 
           PAYLOAD=$(python3 - <<EOF
@@ -98,7 +103,7 @@ jobs:
             {
               "type": "context",
               "elements": [
-                {"type": "mrkdwn", "text": "⏳ Unit tests running… E2E results will follow in this thread."}
+                {"type": "mrkdwn", "text": "⏳ Unit tests → BAT → Smoke. Results will follow in this thread."}
               ]
             },
             {
@@ -131,15 +136,13 @@ jobs:
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. UNIT TESTS  (pre-deploy gate, no DB required)
+# 1. UNIT TESTS  — fast pre-deploy gate, no DB required
 # ─────────────────────────────────────────────────────────────────────────────
   unit-tests:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
     needs: notify-start
     if: inputs.skip_tests != true
-    # Re-export thread_ts so downstream jobs can read it without crossing
-    # the e2e-tests matrix boundary (matrix jobs can break output propagation).
     outputs:
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
 
@@ -178,96 +181,40 @@ jobs:
           name: unit-html-report
           path: backend-api/build/reports/tests/unitTest
 
-      - name: Build unit test Slack payload
+      - name: Post unit test result to Slack thread
         if: always()
         env:
+          MODULE_NAME: API
+          STAGE_NAME: Unit Tests
+          JUNIT_DIR: backend-api/build/test-results/unitTest
+          STAGE_RESULT: ${{ steps.unit.outcome }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
-          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
-        run: |
-          python3 - <<'EOF'
-          import glob, json, xml.etree.ElementTree as ET, os, pathlib
+        run: python3 .github/scripts/stage_result_to_slack.py
 
-          files = glob.glob("backend-api/build/test-results/unitTest/TEST-*.xml")
-          total=passed=failed=skipped=0
-          for f in files:
-              root = ET.parse(f).getroot()
-              t = int(root.attrib.get("tests",0))
-              fa = int(root.attrib.get("failures",0)) + int(root.attrib.get("errors",0))
-              s = int(root.attrib.get("skipped",0))
-              total+=t; failed+=fa; skipped+=s; passed+=max(0,t-fa-s)
-
-          repo = os.environ.get("GITHUB_REPOSITORY","repo")
-          run_id = os.environ.get("GITHUB_RUN_ID","")
-          allure_url = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
-
-          report = {
-            "env":      os.environ.get("ENV_LABEL","STAGE"),
-            "testType": "unit",
-            "stage":    "pre-deploy",
-            "branch":   os.environ.get("GITHUB_REF_NAME","unknown"),
-            "platforms": [{"platform":"all-unit","passed":passed,"failed":failed,
-                           "skipped":skipped,"total":total,"allureUrl":allure_url}]
-          }
-          pathlib.Path("api-test-report.json").write_text(json.dumps(report,indent=2))
-          EOF
-
-          python3 .github/scripts/api_tests_to_slack.py api-test-report.json
-
-      - name: Inject thread_ts into unit test payload
-        if: always() && needs.notify-start.outputs.thread_ts != ''
-        run: |
-          python3 - <<'EOF'
-          import json, pathlib
-          ts = "${{ needs.notify-start.outputs.thread_ts }}"
-          p = json.loads(pathlib.Path("api-slack-payload.json").read_text())
-          p["thread_ts"] = ts
-          pathlib.Path("api-slack-payload.json").write_text(json.dumps(p))
-          EOF
-
-      - name: Post unit test result as Slack thread reply
+      - name: Send unit test result to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          payload-file-path: ./api-slack-payload.json
+          payload-file-path: ./stage-slack-payload.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. E2E TESTS  (per-platform matrix, post-deploy / Testcontainers)
+# 2. BAT — Build Acceptance Tests  (critical gate — blocks all downstream)
 # ─────────────────────────────────────────────────────────────────────────────
-  e2e-tests:
-    name: E2E — ${{ matrix.platform }}
-    needs: [notify-start, unit-tests]
+  bat-tests:
+    name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests]
     if: inputs.skip_tests != true && needs.unit-tests.result == 'success'
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - web
-          - iphone
-          - ipad
-          - androidphone
-          - androidtablet
-          - appletv
-          - androidtv
-          - firetv
-          - samsungtv
-          - lgtv
-          - roku
-          - chromecast
-          - xbox
-          - playstation
-          - desktop_macos
-          - desktop_windows
-          - desktop_linux
 
     services:
       postgres:
@@ -300,54 +247,261 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Run E2E tests (platform=${{ matrix.platform }})
-        id: e2e
-        continue-on-error: true
-        run: ./gradlew e2eTest --no-daemon
+      - name: Run BAT tests
+        id: bat
+        run: ./gradlew batTest --no-daemon
         working-directory: backend-api
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
           SPRING_DATASOURCE_USERNAME: qoe_user
           SPRING_DATASOURCE_PASSWORD: qoe_password
-          QOE_TEST_PLATFORM: ${{ matrix.platform }}
 
-      - name: Build platform summary JSON
+      - name: Upload BAT test results (XML)
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bat-test-results
+          path: backend-api/build/test-results/batTest
+          retention-days: 14
+
+      - name: Upload BAT Allure raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-bat
+          path: backend-api/build/allure-results/bat
+          retention-days: 14
+
+      - name: Generate BAT Allure HTML report
+        if: always()
+        continue-on-error: true
         run: |
-          python3 .github/scripts/junit_to_summary.py "${{ matrix.platform }}" \
-            backend-api/build/test-results/e2eTest \
-            || echo '{"platform":"${{ matrix.platform }}","passed":0,"failed":1,"skipped":0,"total":1}' \
-               > platform-summary.json
+          gradle downloadAllure --no-daemon -p backend-api
+          backend-api/build/allure/commandline/bin/allure generate \
+            backend-api/build/allure-results/bat \
+            --clean -o bat-allure-report
 
-      - name: Upload XML results
+      - name: Upload BAT Allure HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-${{ matrix.platform }}
-          path: backend-api/build/test-results/e2eTest
+          name: bat-allure-report
+          path: bat-allure-report
+          retention-days: 14
 
-      - name: Upload Allure raw results
+      - name: Post BAT result to Slack thread
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results-${{ matrix.platform }}
-          path: backend-api/build/allure-results
+        env:
+          MODULE_NAME: API
+          STAGE_NAME: BAT
+          JUNIT_DIR: backend-api/build/test-results/batTest
+          STAGE_RESULT: ${{ steps.bat.outcome }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
 
-      - name: Upload platform summary
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Send BAT Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
         with:
-          name: platform-summary-${{ matrix.platform }}
-          path: platform-summary.json
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. AUTOMATION E2E  (system-level — runs after API E2E matrix passes)
+# 3. BAT GATE  — evaluate BAT result; decide approve or block
+# ─────────────────────────────────────────────────────────────────────────────
+  bat-gate:
+    name: "BAT Quality Gate"
+    runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests, bat-tests]
+    if: always()
+    outputs:
+      passed: ${{ steps.evaluate.outputs.passed }}
+      thread_ts: ${{ needs.unit-tests.outputs.thread_ts }}
+
+    steps:
+      - id: evaluate
+        name: Evaluate BAT gate
+        run: |
+          SKIP="${{ inputs.skip_tests }}"
+          BAT="${{ needs.bat-tests.result }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Force-publish mode — BAT skipped, gate bypassed"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$BAT" = "success" ]; then
+            echo "✅ BAT gate PASSED — all Build Acceptance Tests succeeded"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ BAT gate FAILED (bat=$BAT) — blocking downstream jobs"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post BAT gate decision to Slack
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        run: |
+          PASSED="${{ steps.evaluate.outputs.passed }}"
+          TS="${{ needs.unit-tests.outputs.thread_ts }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$PASSED" = "true" ]; then
+            ICON="✅"; MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"
+          else
+            ICON="🚫"; MSG="BAT gate *FAILED* — build *BLOCKED*. Smoke tests will not run."
+          fi
+
+          python3 - <<EOF
+          import json, subprocess
+          blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
+            {"type": "context", "elements": [
+              {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
+            ]}
+          ]
+          payload = {
+            "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+            "thread_ts": "$TS",
+            "unfurl_links": False, "unfurl_media": False,
+            "blocks": blocks
+          }
+          import pathlib
+          pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
+          EOF
+
+          curl -sf -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @bat-gate-payload.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. SMOKE TESTS  — only run when BAT gate passes
+# ─────────────────────────────────────────────────────────────────────────────
+  smoke-tests:
+    name: "Smoke Tests"
+    runs-on: ubuntu-latest
+    needs: [bat-gate]
+    if: needs.bat-gate.outputs.passed == 'true'
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: qoe_user
+          POSTGRES_PASSWORD: qoe_password
+          POSTGRES_DB: qoe_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Run Smoke tests
+        id: smoke
+        continue-on-error: true
+        run: ./gradlew smokeTest --no-daemon
+        working-directory: backend-api
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
+          SPRING_DATASOURCE_USERNAME: qoe_user
+          SPRING_DATASOURCE_PASSWORD: qoe_password
+
+      - name: Upload Smoke test results (XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: backend-api/build/test-results/smokeTest
+          retention-days: 14
+
+      - name: Upload Smoke Allure raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-smoke
+          path: backend-api/build/allure-results/smoke
+          retention-days: 14
+
+      - name: Generate Smoke Allure HTML report
+        if: always()
+        continue-on-error: true
+        run: |
+          gradle downloadAllure --no-daemon -p backend-api
+          backend-api/build/allure/commandline/bin/allure generate \
+            backend-api/build/allure-results/smoke \
+            --clean -o smoke-allure-report
+
+      - name: Upload Smoke Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-allure-report
+          path: smoke-allure-report
+          retention-days: 14
+
+      - name: Post Smoke result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: API
+          STAGE_NAME: Smoke Tests
+          JUNIT_DIR: backend-api/build/test-results/smokeTest
+          STAGE_RESULT: ${{ steps.smoke.outcome }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send Smoke Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      - name: Fail if smoke tests failed
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. AUTOMATION E2E  — system-level acceptance; runs after Smoke passes
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
     name: Acceptance Tests (System)
-    needs: [notify-start, unit-tests, e2e-tests]
+    needs: [bat-gate, smoke-tests]
     runs-on: ubuntu-latest
-    if: inputs.skip_tests != true && needs.e2e-tests.result != 'cancelled' && needs.e2e-tests.result != 'skipped'
+    if: needs.bat-gate.outputs.passed == 'true' && needs.smoke-tests.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -415,8 +569,9 @@ jobs:
           STAGE_NAME: Acceptance Tests
           JUNIT_DIR: qoe-automation-tests/target/surefire-reports
           STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
-          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -431,19 +586,19 @@ jobs:
           payload-file-path: ./stage-slack-payload.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail if automation tests failed
         if: steps.auto_e2e.outcome == 'failure'
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. QUALITY GATE
-# Passes when all test stages succeed OR skip_tests=true (force-publish mode).
+# 6. QUALITY GATE  — final aggregate; passes when all stages succeed
 # ─────────────────────────────────────────────────────────────────────────────
   quality-gate:
     name: "Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
+    needs: [notify-start, unit-tests, bat-tests, bat-gate, smoke-tests, automation-e2e]
     if: always()
     outputs:
       passed: ${{ steps.check.outputs.passed }}
@@ -454,38 +609,36 @@ jobs:
         run: |
           SKIP="${{ inputs.skip_tests }}"
           UNIT="${{ needs.unit-tests.result }}"
-          E2E="${{ needs.e2e-tests.result }}"
+          BAT="${{ needs.bat-tests.result }}"
+          BAT_GATE="${{ needs.bat-gate.outputs.passed }}"
+          SMOKE="${{ needs.smoke-tests.result }}"
           ACCEPT="${{ needs.automation-e2e.result }}"
 
           if [ "$SKIP" = "true" ]; then
             echo "⚡ Force-publish mode — tests skipped, gate bypassed"
             echo "passed=true" >> "$GITHUB_OUTPUT"
-          elif [ "$UNIT" = "success" ] && [ "$E2E" != "failure" ] && [ "$ACCEPT" = "success" ]; then
-            echo "✅ Quality gate PASSED (unit=$UNIT, e2e=$E2E, acceptance=$ACCEPT)"
+          elif [ "$BAT_GATE" != "true" ]; then
+            echo "❌ Quality gate FAILED — BAT gate did not pass (unit=$UNIT, bat=$BAT)"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          elif [ "$UNIT" = "success" ] && [ "$SMOKE" != "failure" ] && [ "$ACCEPT" != "failure" ]; then
+            echo "✅ Quality gate PASSED (unit=$UNIT, bat=$BAT, smoke=$SMOKE, acceptance=$ACCEPT)"
             echo "passed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ Quality gate FAILED (unit=$UNIT, e2e=$E2E, acceptance=$ACCEPT)"
+            echo "❌ Quality gate FAILED (unit=$UNIT, bat=$BAT, smoke=$SMOKE, acceptance=$ACCEPT)"
             echo "passed=false" >> "$GITHUB_OUTPUT"
           fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
+# 7. API REPORT + SLACK  — aggregate Allure, post final summary
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, e2e-tests, automation-e2e, quality-gate]
+    needs: [notify-start, unit-tests, bat-tests, bat-gate, smoke-tests, automation-e2e, quality-gate]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          pattern: platform-summary-*
-          path: platform-summaries
-          merge-multiple: false
 
       - uses: actions/download-artifact@v4
         continue-on-error: true
@@ -507,7 +660,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Generate Allure report
+      - name: Generate combined Allure report
         if: always()
         run: |
           if [ -d allure-results-all ] && [ "$(ls -A allure-results-all 2>/dev/null)" ]; then
@@ -519,12 +672,13 @@ jobs:
             mkdir -p allure-report
           fi
 
-      - name: Upload Allure HTML report
+      - name: Upload combined Allure HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report-combined
           path: allure-report
+          retention-days: 14
 
       - name: Ensure allure-report exists for Pages deploy
         if: always()
@@ -543,81 +697,37 @@ jobs:
           destination_dir: allure/${{ github.run_number }}
           keep_files: true
 
-      - name: Assemble E2E report JSON
+      - name: Post final Slack summary
         if: always()
         env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
-        run: |
-          python3 - <<'EOF'
-          import glob, json, os, pathlib
+          MODULE_NAME: API
+          STAGE1_NAME: Unit Tests
+          STAGE1_RESULT: ${{ needs.unit-tests.result }}
+          STAGE2_NAME: BAT
+          STAGE2_RESULT: ${{ needs.bat-tests.result }}
+          STAGE3_NAME: BAT Gate
+          STAGE3_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE4_NAME: Smoke Tests
+          STAGE4_RESULT: ${{ needs.smoke-tests.result }}
+          STAGE5_NAME: Acceptance Tests
+          STAGE5_RESULT: ${{ needs.automation-e2e.result }}
+          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
+        run: python3 .github/scripts/module_result_to_slack.py
 
-          repo   = os.environ.get("GITHUB_REPOSITORY","repo")
-          run_id = os.environ.get("GITHUB_RUN_ID","")
-          branch = os.environ.get("GITHUB_REF_NAME","unknown")
-          env_l  = os.environ.get("ENV_LABEL","STAGE")
-          # Use the run artifacts page — always valid, no GitHub Pages setup needed
-          allure_base = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
-
-          summaries = []
-          for f in sorted(glob.glob("platform-summaries/*/platform-summary.json")):
-              try:
-                  s = json.loads(pathlib.Path(f).read_text())
-                  s["allureUrl"] = allure_base
-                  summaries.append(s)
-              except Exception as e:
-                  print(f"skip {f}: {e}")
-
-          report = {
-            "env":      env_l,
-            "testType": "e2e",
-            "stage":    "post-deploy",
-            "branch":   branch,
-            "platforms": summaries,
-          }
-          pathlib.Path("api-test-report.json").write_text(json.dumps(report, indent=2))
-          print(json.dumps(report, indent=2))
-          EOF
-
-      - name: Build E2E Slack payload
-        if: always()
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_SHA: ${{ github.sha }}
-          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
-        run: python3 .github/scripts/api_tests_to_slack.py api-test-report.json
-
-      - name: Inject thread_ts into E2E payload
-        if: always() && needs.unit-tests.outputs.thread_ts != ''
-        run: |
-          python3 - <<'EOF'
-          import json, pathlib
-          ts = "${{ needs.unit-tests.outputs.thread_ts }}"
-          p = json.loads(pathlib.Path("api-slack-payload.json").read_text())
-          p["thread_ts"] = ts
-          pathlib.Path("api-slack-payload.json").write_text(json.dumps(p))
-          EOF
-
-      - name: Upload Slack payload artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-slack-payload
-          path: api-slack-payload.json
-
-      - name: Post E2E results as Slack thread reply
+      - name: Send final summary to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          payload-file-path: ./api-slack-payload.json
+          payload-file-path: ./module-slack-payload.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
