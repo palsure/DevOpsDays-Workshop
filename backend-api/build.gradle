@@ -44,6 +44,10 @@ dependencies {
     
     // Database
     runtimeOnly 'org.postgresql:postgresql'
+
+    // Flyway — runs migrations on startup so the schema exists before Hibernate validates it
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'

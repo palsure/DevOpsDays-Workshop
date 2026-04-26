@@ -1,4 +1,7 @@
 spring:
+  flyway:
+    # Tests use Testcontainers with create-drop — Flyway not needed and would conflict.
+    enabled: false
   jpa:
     hibernate:
       # create-drop: Hibernate creates schema from JPA entities (no Flyway needed in tests).
