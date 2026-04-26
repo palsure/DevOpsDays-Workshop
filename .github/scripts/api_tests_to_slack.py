@@ -73,15 +73,16 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Context from input + GitHub env
     # ------------------------------------------------------------------
-    repo      = os.environ.get("GITHUB_REPOSITORY", data.get("repo", "repo"))
-    run_id    = os.environ.get("GITHUB_RUN_ID", data.get("runId", ""))
-    branch    = os.environ.get("GITHUB_REF_NAME", data.get("branch", "unknown"))
-    sha       = (os.environ.get("GITHUB_SHA", "") or "")[:7] or "unknown"
-    env_name  = data.get("env", "STAGE").upper()
-    test_type = data.get("testType", "e2e").upper()
-    stage     = data.get("stage", "post-deploy")
-    duration  = data.get("duration", "")
-    platforms = data.get("platforms", [])
+    repo       = os.environ.get("GITHUB_REPOSITORY", data.get("repo", "repo"))
+    run_id     = os.environ.get("GITHUB_RUN_ID", data.get("runId", ""))
+    run_number = os.environ.get("GITHUB_RUN_NUMBER", "")
+    branch     = os.environ.get("GITHUB_REF_NAME", data.get("branch", "unknown"))
+    sha        = (os.environ.get("GITHUB_SHA", "") or "")[:7] or "unknown"
+    env_name   = data.get("env", "STAGE").upper()
+    test_type  = data.get("testType", "e2e").upper()
+    stage      = data.get("stage", "post-deploy")
+    duration   = data.get("duration", "")
+    platforms  = data.get("platforms", [])
 
     build_url = (
         f"https://github.com/{repo}/actions/runs/{run_id}"
@@ -147,19 +148,22 @@ def main() -> int:
     footer_parts = []
     if duration:
         footer_parts.append(f"*Duration:* {duration}")
-    footer_parts.append(f"*BuildUrl:* <{build_url}|Actions Run #{run_id or '?'}>")
-    unit_artifact = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts" if run_id else build_url
-    e2e_artifact  = unit_artifact
-    footer_parts.append(f"*Artifacts:* <{unit_artifact}|UnitReport> | <{e2e_artifact}|E2EReport>")
-    footer_text = "\n".join(footer_parts)
+    build_label = f"Run #{run_number}" if run_number else f"Run {run_id}"
+    footer_parts.append(f"<{build_url}|:arrow_forward: {build_label}>")
+    artifact_url = f"{build_url}#artifacts" if run_id else build_url
+    footer_parts.append(f"<{artifact_url}|:page_facing_up: Artifacts>")
+    footer_text = "    ".join(footer_parts)
 
     # ------------------------------------------------------------------
     # Slack payload (Block Kit)
     # ------------------------------------------------------------------
     overall_icon = ":large_green_circle:" if overall_ok else ":red_circle:"
-    title = f"*[{env_name}] QoE — API Automation Tests Report*"
+    build_label  = f"Build #{run_number}" if run_number else f"Run {run_id}"
+    title = f"*[{env_name}] QoE — API Automation Tests  |  {build_label}*"
 
     payload = {
+        "unfurl_links": False,
+        "unfurl_media": False,
         "blocks": [
             # Title + overall verdict
             {

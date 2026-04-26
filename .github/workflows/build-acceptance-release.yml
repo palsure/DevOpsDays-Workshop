@@ -12,8 +12,6 @@ name: Build acceptance & release gate
 on:
   push:
     branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
   workflow_dispatch:
 
 env:
@@ -33,13 +31,17 @@ jobs:
     name: Detect changed modules
     runs-on: ubuntu-latest
     outputs:
-      api:        ${{ steps.filter.outputs.api }}
-      web:        ${{ steps.filter.outputs.web }}
-      android:    ${{ steps.filter.outputs.android }}
-      ios:        ${{ steps.filter.outputs.ios }}
-      automation: ${{ steps.filter.outputs.automation }}
-      is_main:    ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+      api:         ${{ steps.filter.outputs.api }}
+      web:         ${{ steps.filter.outputs.web }}
+      android:     ${{ steps.filter.outputs.android }}
+      ios:         ${{ steps.filter.outputs.ios }}
+      automation:  ${{ steps.filter.outputs.automation }}
+      is_main:     ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+      start_epoch: ${{ steps.ts.outputs.start_epoch }}
     steps:
+      - name: Record workflow start time
+        id: ts
+        run: echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
@@ -335,6 +337,13 @@ jobs:
           path: acceptance-gate-manifest.json
       - name: Build Slack payload
         if: always()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          WORKFLOW_START_EPOCH: ${{ needs.changes.outputs.start_epoch }}
         run: python3 .github/scripts/acceptance_gate_to_slack.py acceptance-gate-manifest.json
       - name: Send Slack notification
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
