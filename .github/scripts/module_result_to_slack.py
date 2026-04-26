@@ -3,19 +3,15 @@
 Generate a Slack Block Kit payload for a single module build result.
 
 Required env vars:
-  MODULE_NAME          — display name, e.g. "API", "WEB", "ANDROID", "iOS", "Automation"
+  MODULE_NAME          — display name, e.g. "API", "WEB", "ANDROID", "iOS"
   STAGE1_NAME          — e.g. "Unit Tests"
   STAGE1_RESULT        — success | failure | skipped | cancelled
-  STAGE2_NAME          — e.g. "E2E Tests" or "Build"
+  STAGE2_NAME          — e.g. "Build"
   STAGE2_RESULT        — success | failure | skipped | cancelled
-  STAGE3_NAME          — optional third stage name
-  STAGE3_RESULT        — optional third stage result
-  GITHUB_REPOSITORY    — e.g. "org/repo"
-  GITHUB_RUN_ID        — numeric run ID
-  GITHUB_RUN_NUMBER    — sequential run number
-  GITHUB_REF_NAME      — branch name
-  GITHUB_SHA           — full commit SHA
-  WORKFLOW_START_EPOCH — Unix timestamp when workflow started (for duration)
+  STAGE{N}_NAME        — optional additional stages (N = 3, 4, 5, 6 ...)
+  STAGE{N}_RESULT      — result for stage N
+  GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_RUN_NUMBER, GITHUB_REF_NAME,
+  GITHUB_SHA, WORKFLOW_START_EPOCH
 
 Output file: module-slack-payload.json
 """
@@ -45,13 +41,7 @@ def fmt_duration(seconds: float) -> str:
 
 
 def main() -> int:
-    module  = os.environ.get("MODULE_NAME", "MODULE")
-    s1_name = os.environ.get("STAGE1_NAME", "Unit Tests")
-    s1_res  = os.environ.get("STAGE1_RESULT", "skipped")
-    s2_name = os.environ.get("STAGE2_NAME", "Build / E2E")
-    s2_res  = os.environ.get("STAGE2_RESULT", "skipped")
-    s3_name = os.environ.get("STAGE3_NAME", "")
-    s3_res  = os.environ.get("STAGE3_RESULT", "skipped")
+    module = os.environ.get("MODULE_NAME", "MODULE")
 
     repo       = os.environ.get("GITHUB_REPOSITORY", "repo")
     run_id     = os.environ.get("GITHUB_RUN_ID", "")
@@ -60,17 +50,29 @@ def main() -> int:
     sha        = sha_full[:7]
     branch     = os.environ.get("GITHUB_REF_NAME", "unknown")
 
-    run_url    = (
+    run_url     = (
         f"https://github.com/{repo}/actions/runs/{run_id}"
         if run_id else f"https://github.com/{repo}"
     )
-    commit_url = f"https://github.com/{repo}/commit/{sha_full}"
+    commit_url  = f"https://github.com/{repo}/commit/{sha_full}"
     build_label = f"Build #{run_number}" if run_number else f"Run {run_id}"
 
-    # Overall result — failure beats all, then cancelled, else success
-    stage_results = [s1_res, s2_res] + ([s3_res] if s3_name else [])
+    # Collect all STAGE{N}_NAME / STAGE{N}_RESULT pairs dynamically (up to 12)
+    stages: list[tuple[str, str]] = []
+    for n in range(1, 13):
+        name = os.environ.get(f"STAGE{n}_NAME", "")
+        if not name:
+            break
+        result = os.environ.get(f"STAGE{n}_RESULT", "skipped")
+        stages.append((name, result))
+
+    # Fallback: at least show two placeholder rows
+    if not stages:
+        stages = [("Stage 1", "skipped"), ("Stage 2", "skipped")]
+
+    # Overall result — failure/cancelled beats success
     overall = "success"
-    for r in stage_results:
+    for _, r in stages:
         if r in ("failure", "cancelled"):
             overall = "failure"
             break
@@ -88,13 +90,11 @@ def main() -> int:
         except ValueError:
             pass
 
-    # Stage rows
+    # Stage rows — each on its own line
     stage_rows = [
-        f"{result_icon(s1_res)}  *{s1_name}:* {s1_res}",
-        f"{result_icon(s2_res)}  *{s2_name}:* {s2_res}",
+        f"{result_icon(r)}  *{name}:* {r}"
+        for name, r in stages
     ]
-    if s3_name:
-        stage_rows.append(f"{result_icon(s3_res)}  *{s3_name}:* {s3_res}")
 
     footer_parts = []
     if duration_str:

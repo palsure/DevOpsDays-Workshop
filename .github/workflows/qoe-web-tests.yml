@@ -327,6 +327,20 @@ jobs:
           path: qoe-automation-tests/target/surefire-reports/
           retention-days: 14
 
+      - name: Generate Allure HTML report
+        if: always()
+        run: mvn --no-transfer-progress allure:report -q
+        working-directory: qoe-automation-tests
+        continue-on-error: true
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-acceptance-allure-report
+          path: qoe-automation-tests/target/allure-report/
+          retention-days: 14
+
       - name: Tear down Docker stack
         if: always()
         run: docker compose down -v || true
@@ -335,7 +349,7 @@ jobs:
         if: always()
         env:
           MODULE_NAME: WEB
-          STAGE_NAME: Automation E2E
+          STAGE_NAME: Acceptance Tests
           JUNIT_DIR: qoe-automation-tests/target/surefire-reports
           STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
           REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
@@ -682,7 +696,8 @@ jobs:
           echo "| E2E Tests (Playwright) | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Acceptance Tests | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Quality Gate | ${{ needs.quality-gate.result }} (${{ needs.quality-gate.outputs.passed }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Firebase Hosting | ${{ needs.publish-firebase.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Preview  | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Live     | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
@@ -696,8 +711,12 @@ jobs:
           STAGE2_RESULT: ${{ needs.unit-tests.result }}
           STAGE3_NAME: E2E Tests (Playwright)
           STAGE3_RESULT: ${{ needs.e2e-tests.result }}
-          STAGE4_NAME: Firebase Live
-          STAGE4_RESULT: ${{ needs.promote-live.result }}
+          STAGE4_NAME: Acceptance Tests
+          STAGE4_RESULT: ${{ needs.automation-e2e.result }}
+          STAGE5_NAME: Firebase Preview
+          STAGE5_RESULT: ${{ needs.deploy-preview.result }}
+          STAGE6_NAME: Firebase Live
+          STAGE6_RESULT: ${{ needs.promote-live.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}

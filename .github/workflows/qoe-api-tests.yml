@@ -390,6 +390,20 @@ jobs:
           path: qoe-automation-tests/target/surefire-reports/
           retention-days: 14
 
+      - name: Generate Allure HTML report
+        if: always()
+        run: mvn --no-transfer-progress allure:report -q
+        working-directory: qoe-automation-tests
+        continue-on-error: true
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-acceptance-allure-report
+          path: qoe-automation-tests/target/allure-report/
+          retention-days: 14
+
       - name: Tear down Docker stack
         if: always()
         run: docker compose down -v || true
@@ -398,7 +412,7 @@ jobs:
         if: always()
         env:
           MODULE_NAME: API
-          STAGE_NAME: Automation E2E
+          STAGE_NAME: Acceptance Tests
           JUNIT_DIR: qoe-automation-tests/target/surefire-reports
           STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
           REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
