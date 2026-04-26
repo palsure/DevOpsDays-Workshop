@@ -753,37 +753,36 @@ jobs:
           name: allure-results-smoke
           path: allure-results/smoke
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-
-
-      - name: Download Allure CLI
-        run: gradle downloadAllure --no-daemon -p backend-api
-        continue-on-error: true
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline --save-dev
 
       - name: Generate per-stage Allure HTML reports
         if: always()
         run: |
-          ALLURE="backend-api/build/allure/commandline/bin/allure"
           mkdir -p allure-report/unit allure-report/bat allure-report/smoke
+
+          # Write placeholder first so there is always an index.html to deploy,
+          # even if Allure generation fails or results are missing.
+          placeholder() {
+            local dst="$1" label="$2"
+            cat > "$dst/index.html" <<EOF
+          <html><head><title>$label — No results</title></head>
+          <body><h2>No $label test results available for run ${{ github.run_number }}.</h2></body></html>
+          EOF
+          }
+          placeholder allure-report/unit  "Unit Tests"
+          placeholder allure-report/bat   "BAT Tests"
+          placeholder allure-report/smoke "Smoke Tests"
 
           generate() {
             local src="$1" dst="$2" label="$3"
             if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
-              "$ALLURE" generate "$src" --clean -o "$dst" && echo "✅ $label report generated"
+              echo "▶ Generating $label Allure report from $src → $dst"
+              allure generate "$src" -o "$dst" --clean \
+                && echo "✅ $label report generated" \
+                || echo "⚠️  Allure generation failed for $label — placeholder kept"
             else
-              echo "⚠️  No $label results found — creating placeholder"
-              echo "<html><body><h2>No $label test results for this run.</h2></body></html>" \
-                > "$dst/index.html"
+              echo "⚠️  No $label results found — placeholder kept"
             fi
           }
 
