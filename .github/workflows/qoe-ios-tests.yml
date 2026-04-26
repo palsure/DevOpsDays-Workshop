@@ -19,6 +19,16 @@ on:
       - 'ios-player/**'
       - '.github/workflows/qoe-ios-tests.yml'
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests and force-publish to Firebase (hotfix mode)'
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: 'Target environment (STAGE / PROD)'
+        required: false
+        default: 'STAGE'
 
 env:
   SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -89,6 +99,7 @@ jobs:
     name: "Stage 1 — Unit Tests (Swift Package)"
     runs-on: macos-latest
     needs: notify-start
+    if: ${{ !inputs.skip_tests }}
 
     steps:
       - uses: actions/checkout@v4
@@ -206,8 +217,9 @@ jobs:
   build-app:
     name: "Stage 2 — Build Xcode App (Simulator)"
     runs-on: macos-latest
-    needs: unit-tests
-    if: success()
+    needs: [notify-start, unit-tests]
+    # Run when tests pass (normal) OR tests were skipped (force-publish).
+    if: always() && needs.notify-start.result == 'success' && needs.unit-tests.result != 'failure'
 
     steps:
       - uses: actions/checkout@v4
@@ -243,10 +255,10 @@ jobs:
 # STAGE 3 — Automation E2E (system-level, runs after build passes)
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
-    name: "Stage 3 — Automation E2E (System Tests)"
+    name: "Stage 3 — Acceptance Tests"
     runs-on: ubuntu-latest
     needs: [notify-start, build-app]
-    if: always() && needs.build-app.result != 'cancelled'
+    if: ${{ !inputs.skip_tests }} && needs.build-app.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -324,10 +336,99 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 4 — Report + Slack notification
 # ─────────────────────────────────────────────────────────────────────────────
-  report:
-    name: "Stage 4 — Report & Slack"
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 4 — Quality Gate
+# ─────────────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: "Stage 4 — Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, build-app, automation-e2e]
+    needs: [notify-start, build-app, unit-tests, automation-e2e]
+    if: always() && needs.build-app.result == 'success'
+    outputs:
+      passed: ${{ steps.check.outputs.passed }}
+
+    steps:
+      - id: check
+        name: Evaluate quality gate
+        run: |
+          SKIP="${{ inputs.skip_tests }}"
+          UNIT="${{ needs.unit-tests.result }}"
+          E2E="${{ needs.automation-e2e.result }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Force-publish mode — tests skipped, gate bypassed"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UNIT" = "success" ] && [ "$E2E" = "success" ]; then
+            echo "✅ Quality gate PASSED (unit=$UNIT, acceptance=$E2E)"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Quality gate FAILED (unit=$UNIT, acceptance=$E2E)"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 5 — Publish to Firebase App Distribution
+# Requires secrets:
+#   FIREBASE_APP_ID_IOS           — Firebase iOS app ID (1:xxx:ios:yyy)
+#   FIREBASE_CREDENTIAL_FILE_CONTENT — Service account JSON content
+# Note: Firebase App Distribution requires a real IPA (signed build).
+#       The simulator build uploaded here is for demonstration; configure
+#       proper code signing + xcodebuild -exportArchive for production use.
+# ─────────────────────────────────────────────────────────────────────────────
+  publish-firebase:
+    name: "Stage 5 — Publish to Firebase"
+    runs-on: ubuntu-latest
+    needs: [notify-start, build-app, quality-gate]
+    if: always() && needs.quality-gate.outputs.passed == 'true' && needs.build-app.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Distribute to Firebase App Distribution
+        id: firebase
+        if: env.FIREBASE_APP_ID_IOS != '' && env.FIREBASE_CREDENTIAL_FILE_CONTENT != ''
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID_IOS }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          groups: testers
+          releaseNotes: |
+            Build #${{ github.run_number }} — ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            ${{ inputs.skip_tests == true && 'Mode: force-publish (tests skipped)' || 'Mode: full pipeline (tests passed)' }}
+        env:
+          FIREBASE_APP_ID_IOS: ${{ secrets.FIREBASE_APP_ID_IOS }}
+          FIREBASE_CREDENTIAL_FILE_CONTENT: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+
+      - name: Post Firebase publish result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: iOS
+          STAGE_NAME: Firebase App Distribution
+          STAGE_RESULT: ${{ steps.firebase.outcome || 'skipped' }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send Firebase Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 6 — Final summary + Slack overall result
+# ─────────────────────────────────────────────────────────────────────────────
+  report:
+    name: "Stage 6 — Report & Slack"
+    runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests, build-app, automation-e2e, quality-gate, publish-firebase]
     if: always()
 
     steps:
@@ -341,7 +442,9 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests (Swift Package) | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build Xcode App | ${{ needs.build-app.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Automation E2E (System) | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Acceptance Tests | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | ${{ needs.quality-gate.result }} (${{ needs.quality-gate.outputs.passed }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Publish | ${{ needs.publish-firebase.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
@@ -351,10 +454,12 @@ jobs:
           MODULE_NAME: iOS
           STAGE1_NAME: Unit Tests (Swift)
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
-          STAGE2_NAME: Build Xcode App (Simulator)
+          STAGE2_NAME: Build Xcode App
           STAGE2_RESULT: ${{ needs.build-app.result }}
-          STAGE3_NAME: Automation E2E
+          STAGE3_NAME: Acceptance Tests
           STAGE3_RESULT: ${{ needs.automation-e2e.result }}
+          STAGE4_NAME: Firebase Publish
+          STAGE4_RESULT: ${{ needs.publish-firebase.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -383,7 +488,7 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-      - name: Fail pipeline if any stage failed
+      - name: Fail pipeline if any critical stage failed
         if: |
           needs.unit-tests.result == 'failure' ||
           needs.build-app.result == 'failure' ||

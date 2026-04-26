@@ -20,6 +20,16 @@ on:
       - 'web-player/**'
       - '.github/workflows/qoe-web-tests.yml'
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests and force-publish to Firebase (hotfix mode)'
+        required: false
+        default: false
+        type: boolean
+      environment:
+        description: 'Target environment (STAGE / PROD)'
+        required: false
+        default: 'STAGE'
 
 env:
   SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -84,12 +94,45 @@ jobs:
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — Unit Tests + Slack thread reply
+# STAGE 1 — Build (always runs; produces the deployable dist/ artifact)
 # ─────────────────────────────────────────────────────────────────────────────
-  unit-tests:
-    name: "Stage 1 — Unit Tests & Build"
+  build:
+    name: "Stage 1 — Build"
     runs-on: ubuntu-latest
     needs: notify-start
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web-player/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-player
+
+      - name: Build
+        run: npm run build
+        working-directory: web-player
+
+      - name: Upload build artifact (dist/)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web-player/dist/
+          retention-days: 7
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 2 — Unit Tests + Slack thread reply
+# ─────────────────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: "Stage 2 — Unit Tests (Vitest)"
+    runs-on: ubuntu-latest
+    needs: [notify-start, build]
+    if: ${{ !inputs.skip_tests }} && needs.build.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -114,10 +157,6 @@ jobs:
         working-directory: web-player
         continue-on-error: true
 
-      - name: Build
-        run: npm run build
-        working-directory: web-player
-
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -125,14 +164,6 @@ jobs:
           name: web-unit-test-results
           path: web-player/test-results/
           retention-days: 7
-
-      - name: Upload build artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist/
-          retention-days: 3
 
       - name: Post unit test result to Slack thread
         if: always()
@@ -166,10 +197,10 @@ jobs:
 # STAGE 2 — E2E Tests (Playwright) + Slack thread reply
 # ─────────────────────────────────────────────────────────────────────────────
   e2e-tests:
-    name: "Stage 2 — E2E Tests (Playwright)"
+    name: "Stage 3 — E2E Tests (Playwright)"
     runs-on: ubuntu-latest
     needs: [notify-start, unit-tests]
-    if: success()
+    if: ${{ !inputs.skip_tests }} && needs.unit-tests.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -250,10 +281,10 @@ jobs:
 # STAGE 3 — Automation E2E + Slack thread reply
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
-    name: "Stage 3 — Automation E2E (System Tests)"
+    name: "Stage 4 — Acceptance Tests"
     runs-on: ubuntu-latest
     needs: [notify-start, e2e-tests]
-    if: always() && needs.e2e-tests.result != 'cancelled'
+    if: ${{ !inputs.skip_tests }} && needs.e2e-tests.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -331,10 +362,108 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 4 — Final summary + Slack overall result
 # ─────────────────────────────────────────────────────────────────────────────
-  report:
-    name: "Stage 4 — Report & Slack Summary"
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 5 — Quality Gate
+# ─────────────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: "Stage 5 — Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
+    needs: [notify-start, build, unit-tests, e2e-tests, automation-e2e]
+    if: always() && needs.build.result == 'success'
+    outputs:
+      passed: ${{ steps.check.outputs.passed }}
+
+    steps:
+      - id: check
+        name: Evaluate quality gate
+        run: |
+          SKIP="${{ inputs.skip_tests }}"
+          UNIT="${{ needs.unit-tests.result }}"
+          E2E="${{ needs.e2e-tests.result }}"
+          ACCEPT="${{ needs.automation-e2e.result }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Force-publish mode — tests skipped, gate bypassed"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UNIT" = "success" ] && [ "$E2E" = "success" ] && [ "$ACCEPT" = "success" ]; then
+            echo "✅ Quality gate PASSED"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Quality gate FAILED (unit=$UNIT, e2e=$E2E, acceptance=$ACCEPT)"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 6 — Publish to Firebase Hosting
+# Requires secrets:
+#   FIREBASE_TOKEN      — obtained via `firebase login:ci` locally
+#   FIREBASE_PROJECT_ID — your Firebase project ID
+# Also requires web-player/firebase.json (already committed).
+# ─────────────────────────────────────────────────────────────────────────────
+  publish-firebase:
+    name: "Stage 6 — Publish to Firebase Hosting"
+    runs-on: ubuntu-latest
+    needs: [notify-start, build, quality-gate]
+    if: always() && needs.quality-gate.outputs.passed == 'true' && needs.build.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-player/dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase Hosting
+        id: firebase
+        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
+        run: |
+          firebase deploy --only hosting \
+            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
+            --token "${{ secrets.FIREBASE_TOKEN }}" \
+            --message "Build #${{ github.run_number }} — ${{ github.ref_name }} @ ${{ github.sha }}"
+        working-directory: web-player
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Post Firebase publish result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: Firebase Hosting
+          STAGE_RESULT: ${{ steps.firebase.outcome || 'skipped' }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send Firebase Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 7 — Final summary + Slack overall result
+# ─────────────────────────────────────────────────────────────────────────────
+  report:
+    name: "Stage 7 — Report & Slack Summary"
+    runs-on: ubuntu-latest
+    needs: [notify-start, build, unit-tests, e2e-tests, automation-e2e, quality-gate, publish-firebase]
     if: always()
 
     steps:
@@ -346,9 +475,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Tests & Build | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests (Vitest) | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| E2E Tests (Playwright) | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Automation E2E | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Acceptance Tests | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | ${{ needs.quality-gate.result }} (${{ needs.quality-gate.outputs.passed }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Hosting | ${{ needs.publish-firebase.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
@@ -356,12 +488,14 @@ jobs:
         if: always()
         env:
           MODULE_NAME: WEB
-          STAGE1_NAME: Unit Tests (Vitest)
-          STAGE1_RESULT: ${{ needs.unit-tests.result }}
-          STAGE2_NAME: E2E Tests (Playwright)
-          STAGE2_RESULT: ${{ needs.e2e-tests.result }}
-          STAGE3_NAME: Automation E2E
-          STAGE3_RESULT: ${{ needs.automation-e2e.result }}
+          STAGE1_NAME: Build
+          STAGE1_RESULT: ${{ needs.build.result }}
+          STAGE2_NAME: Unit Tests (Vitest)
+          STAGE2_RESULT: ${{ needs.unit-tests.result }}
+          STAGE3_NAME: E2E Tests (Playwright)
+          STAGE3_RESULT: ${{ needs.e2e-tests.result }}
+          STAGE4_NAME: Firebase Hosting
+          STAGE4_RESULT: ${{ needs.publish-firebase.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -390,8 +524,9 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
-      - name: Fail pipeline if any stage failed
+      - name: Fail pipeline if any critical stage failed
         if: |
+          needs.build.result == 'failure' ||
           needs.unit-tests.result == 'failure' ||
           needs.e2e-tests.result == 'failure' ||
           needs.automation-e2e.result == 'failure'

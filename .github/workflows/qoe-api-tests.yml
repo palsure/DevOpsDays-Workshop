@@ -31,6 +31,11 @@ on:
       - '.github/scripts/module_result_to_slack.py'
   workflow_dispatch:
     inputs:
+      skip_tests:
+        description: 'Skip tests and bypass quality gate (hotfix mode)'
+        required: false
+        default: false
+        type: boolean
       environment:
         description: 'Environment label (STAGE / PROD)'
         required: false
@@ -132,6 +137,7 @@ jobs:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
     needs: notify-start
+    if: ${{ !inputs.skip_tests }}
     # Re-export thread_ts so downstream jobs can read it without crossing
     # the e2e-tests matrix boundary (matrix jobs can break output propagation).
     outputs:
@@ -239,7 +245,7 @@ jobs:
     name: E2E — ${{ matrix.platform }}
     needs: [notify-start, unit-tests]
     runs-on: ubuntu-latest
-    if: always() && needs.unit-tests.result != 'cancelled'
+    if: ${{ !inputs.skip_tests }} && needs.unit-tests.result == 'success'
 
     strategy:
       fail-fast: false
@@ -338,10 +344,10 @@ jobs:
 # 3. AUTOMATION E2E  (system-level — runs after API E2E matrix passes)
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
-    name: Automation E2E (System Tests)
+    name: Acceptance Tests (System)
     needs: [notify-start, unit-tests, e2e-tests]
     runs-on: ubuntu-latest
-    if: always() && needs.e2e-tests.result != 'cancelled'
+    if: ${{ !inputs.skip_tests }} && needs.e2e-tests.result != 'cancelled' && needs.e2e-tests.result != 'skipped'
 
     steps:
       - uses: actions/checkout@v4
@@ -417,11 +423,43 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
+# 4. QUALITY GATE
+# Passes when all test stages succeed OR skip_tests=true (force-publish mode).
+# ─────────────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: "Quality Gate"
+    runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
+    if: always()
+    outputs:
+      passed: ${{ steps.check.outputs.passed }}
+
+    steps:
+      - id: check
+        name: Evaluate quality gate
+        run: |
+          SKIP="${{ inputs.skip_tests }}"
+          UNIT="${{ needs.unit-tests.result }}"
+          E2E="${{ needs.e2e-tests.result }}"
+          ACCEPT="${{ needs.automation-e2e.result }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Force-publish mode — tests skipped, gate bypassed"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UNIT" = "success" ] && [ "$E2E" != "failure" ] && [ "$ACCEPT" = "success" ]; then
+            echo "✅ Quality gate PASSED (unit=$UNIT, e2e=$E2E, acceptance=$ACCEPT)"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Quality gate FAILED (unit=$UNIT, e2e=$E2E, acceptance=$ACCEPT)"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. REPORT + SLACK  (aggregates all platforms, posts table as thread reply)
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
+    needs: [notify-start, unit-tests, e2e-tests, automation-e2e, quality-gate]
     runs-on: ubuntu-latest
     if: always()
 
