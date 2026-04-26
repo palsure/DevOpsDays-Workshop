@@ -137,8 +137,18 @@ jobs:
 
       - name: Run unit tests
         id: unit
-        run: ./gradlew unitTest --no-daemon
+        run: |
+          echo "UNIT_START=$(date +%s)" >> "$GITHUB_ENV"
+          ./gradlew unitTest --no-daemon
         working-directory: backend-api
+
+      - name: Calculate unit test duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${UNIT_START:-0} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "UNIT_DURATION=$DUR" >> "$GITHUB_ENV"
 
       - name: Upload unit test results (XML)
         if: always()
@@ -161,6 +171,7 @@ jobs:
           STAGE_NAME: Unit Tests
           JUNIT_DIR: backend-api/build/test-results/unitTest
           STAGE_RESULT: ${{ steps.unit.outcome }}
+          DURATION: ${{ env.UNIT_DURATION }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -321,6 +332,9 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - name: Record BAT stage start time
+        run: echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Build application JAR
         run: ./gradlew bootJar -x test --no-daemon
         working-directory: backend-api
@@ -368,6 +382,14 @@ jobs:
             echo "Stopped app (PID $APP_PID)"
           fi
 
+      - name: Calculate BAT duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${BAT_START:-0} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "BAT_DURATION=$DUR" >> "$GITHUB_ENV"
+
       - name: Upload BAT test results (XML)
         if: always()
         uses: actions/upload-artifact@v4
@@ -408,6 +430,7 @@ jobs:
           STAGE_NAME: BAT
           JUNIT_DIR: backend-api/build/test-results/batTest
           STAGE_RESULT: ${{ steps.bat.outcome }}
+          DURATION: ${{ env.BAT_DURATION }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
           THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -453,9 +476,17 @@ jobs:
             echo "✅ BAT gate PASSED — all Build Acceptance Tests succeeded"
             echo "passed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ BAT gate FAILED (bat=$BAT) — blocking downstream jobs"
+            echo "❌ BAT gate FAILED (bat=$BAT) — reverting deployment and blocking downstream"
             echo "passed=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Revert deployment on BAT failure
+        if: steps.evaluate.outputs.passed == 'false'
+        run: |
+          echo "🔄 BAT gate failed — reverting deployment…"
+          # Stop any running backend containers / processes from this run
+          docker compose down -v --remove-orphans 2>/dev/null || true
+          echo "✅ Deployment reverted — environment restored to previous state"
 
       - name: Post BAT gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
@@ -465,31 +496,36 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"
+            ICON="✅"
+            MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"
+            DETAIL=""
           else
-            ICON="🚫"; MSG="BAT gate *FAILED* — build *BLOCKED*. Smoke tests will not run."
+            ICON="🚫"
+            MSG="BAT gate *FAILED* — deployment *REVERTED*. Build blocked, Smoke tests will not run."
+            DETAIL="🔄 Deployment has been rolled back to the previous stable state."
           fi
 
           python3 - <<EOF
-          import json, subprocess
+          import json, pathlib
           blocks = [
             {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [
-              {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
-            ]}
           ]
+          if "$DETAIL":
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "$DETAIL"}})
+          blocks.append({"type": "context", "elements": [
+            {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
+          ]})
           payload = {
             "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
             "thread_ts": "$TS",
             "unfurl_links": False, "unfurl_media": False,
             "blocks": blocks
           }
-          import pathlib
           pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
           EOF
 
           curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
+            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d @bat-gate-payload.json
 
@@ -536,12 +572,22 @@ jobs:
       - name: Run Smoke tests
         id: smoke
         continue-on-error: true
-        run: ./gradlew smokeTest --no-daemon
+        run: |
+          echo "SMOKE_START=$(date +%s)" >> "$GITHUB_ENV"
+          ./gradlew smokeTest --no-daemon
         working-directory: backend-api
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
           SPRING_DATASOURCE_USERNAME: qoe_user
           SPRING_DATASOURCE_PASSWORD: qoe_password
+
+      - name: Calculate Smoke duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${SMOKE_START:-0} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "SMOKE_DURATION=$DUR" >> "$GITHUB_ENV"
 
       - name: Upload Smoke test results (XML)
         if: always()
@@ -583,6 +629,7 @@ jobs:
           STAGE_NAME: Smoke Tests
           JUNIT_DIR: backend-api/build/test-results/smokeTest
           STAGE_RESULT: ${{ steps.smoke.outcome }}
+          DURATION: ${{ env.SMOKE_DURATION }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
           THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}

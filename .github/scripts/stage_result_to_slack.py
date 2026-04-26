@@ -95,6 +95,13 @@ def pct(passed: int, total: int) -> str:
     return f"{math.floor(100.0 * passed / total)}%"
 
 
+def fmt_duration(seconds: int) -> str:
+    """Format integer seconds as 'Xm Ys' or 'Xs'."""
+    if seconds < 60:
+        return f"{seconds}s"
+    return f"{seconds // 60}m {seconds % 60:02d}s"
+
+
 def main() -> int:
     module       = os.environ.get("MODULE_NAME", "MODULE")
     stage        = os.environ.get("STAGE_NAME", "Stage")
@@ -103,6 +110,7 @@ def main() -> int:
     report_url   = os.environ.get("REPORT_URL", "")
     stage_result = os.environ.get("STAGE_RESULT", "unknown")
     thread_ts    = os.environ.get("THREAD_TS", "")
+    duration_raw = os.environ.get("DURATION", "")
 
     repo       = os.environ.get("GITHUB_REPOSITORY", "repo")
     run_id     = os.environ.get("GITHUB_RUN_ID", "")
@@ -116,6 +124,21 @@ def main() -> int:
     )
     commit_url  = f"https://github.com/{repo}/commit/{sha_full}"
     build_label = f"Build #{run_number}" if run_number else f"Run {run_id}"
+
+    # Resolve display duration: prefer explicit DURATION env, else compute
+    # from STAGE_START_EPOCH if set, else fall back to build label.
+    duration_str = ""
+    if duration_raw:
+        duration_str = duration_raw
+    else:
+        start_epoch = os.environ.get("STAGE_START_EPOCH", "")
+        if start_epoch:
+            try:
+                import time
+                elapsed = int(time.time()) - int(start_epoch)
+                duration_str = fmt_duration(max(0, elapsed))
+            except (ValueError, OSError):
+                pass
 
     # ── Parse test results ────────────────────────────────────────────────────
     passed = failed = skipped = total = 0
@@ -172,7 +195,11 @@ def main() -> int:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"[{module}] {stage} — {verdict}  |  {build_label}",
+                    "text": (
+                        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
+                        if duration_str
+                        else f"[{module}] {stage} — {verdict}  |  {build_label}"
+                    ),
                     "emoji": True,
                 },
             },
