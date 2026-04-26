@@ -381,6 +381,30 @@ jobs:
         if: always()
         run: docker compose down -v || true
 
+      - name: Post automation E2E result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: API
+          STAGE_NAME: Automation E2E
+          JUNIT_DIR: qoe-automation-tests/target/surefire-reports
+          STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send automation E2E Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Fail if automation tests failed
         if: steps.auto_e2e.outcome == 'failure'
         run: exit 1

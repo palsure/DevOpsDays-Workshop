@@ -1,10 +1,11 @@
 # QoE Web Player Pipeline
 #
 # Stages:
-#   0. notify-start — post "build started" to Slack; capture thread ts
-#   1. unit-tests   — Vitest + lint + build (fast, no browser)
-#   2. e2e-tests    — Playwright QoE gate tests (only runs when unit tests pass)
-#   3. report       — Upload reports, send Slack result
+#   0. notify-start    — post "build started" to Slack; capture thread ts + start epoch
+#   1. unit-tests      — Vitest + lint + build → post result to Slack thread
+#   2. e2e-tests       — Playwright QoE gate tests → post result to Slack thread
+#   3. automation-e2e  — Maven system tests against live backend → post result to Slack thread
+#   4. report          — Final summary + Slack overall result
 
 name: QoE Web Player Tests
 
@@ -63,7 +64,7 @@ jobs:
               {"type": "mrkdwn", "text": "*Triggered by:*\n${{ github.actor }} (${{ github.event_name }})"},
             ]},
             {"type": "divider"},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests running… E2E results will follow in this thread."}]},
+            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests running… results will follow in this thread."}]},
             {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
           ]
           print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "unfurl_links": False, "unfurl_media": False, "blocks": blocks}))
@@ -83,7 +84,7 @@ jobs:
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — Unit Tests (Vitest + lint + type-check + build)
+# STAGE 1 — Unit Tests + Slack thread reply
 # ─────────────────────────────────────────────────────────────────────────────
   unit-tests:
     name: "Stage 1 — Unit Tests & Build"
@@ -108,8 +109,10 @@ jobs:
         working-directory: web-player
 
       - name: Unit tests (Vitest)
+        id: unit
         run: npm test
         working-directory: web-player
+        continue-on-error: true
 
       - name: Build
         run: npm run build
@@ -131,13 +134,41 @@ jobs:
           path: web-player/dist/
           retention-days: 3
 
+      - name: Post unit test result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: Unit Tests (Vitest)
+          JUNIT_DIR: web-player/test-results
+          STAGE_RESULT: ${{ steps.unit.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send unit test Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Fail if unit tests failed
+        if: steps.unit.outcome == 'failure'
+        run: exit 1
+
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 2 — E2E Tests (Playwright)  — only runs when Stage 1 passes
+# STAGE 2 — E2E Tests (Playwright) + Slack thread reply
 # ─────────────────────────────────────────────────────────────────────────────
   e2e-tests:
     name: "Stage 2 — E2E Tests (Playwright)"
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: [notify-start, unit-tests]
     if: success()
 
     steps:
@@ -187,17 +218,41 @@ jobs:
           path: web-player/allure-report/
           retention-days: 14
 
+      - name: Post E2E result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: E2E Tests (Playwright)
+          PLAYWRIGHT_JSON: web-player/playwright-results.json
+          STAGE_RESULT: ${{ steps.e2e.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send E2E Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Fail if E2E tests failed
         if: steps.e2e.outcome == 'failure'
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 3 — Automation E2E (system-level, runs after module E2E passes)
+# STAGE 3 — Automation E2E + Slack thread reply
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
     name: "Stage 3 — Automation E2E (System Tests)"
     runs-on: ubuntu-latest
-    needs: e2e-tests
+    needs: [notify-start, e2e-tests]
     if: always() && needs.e2e-tests.result != 'cancelled'
 
     steps:
@@ -245,15 +300,39 @@ jobs:
         if: always()
         run: docker compose down -v || true
 
+      - name: Post automation E2E result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: Automation E2E
+          JUNIT_DIR: qoe-automation-tests/target/surefire-reports
+          STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send automation E2E Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
       - name: Fail if automation tests failed
         if: steps.auto_e2e.outcome == 'failure'
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 4 — Report + Slack notification
+# STAGE 4 — Final summary + Slack overall result
 # ─────────────────────────────────────────────────────────────────────────────
   report:
-    name: "Stage 4 — Report & Slack"
+    name: "Stage 4 — Report & Slack Summary"
     runs-on: ubuntu-latest
     needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
     if: always()
@@ -269,15 +348,15 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests & Build | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| E2E Tests (Playwright) | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Automation E2E (System) | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Automation E2E | ${{ needs.automation-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
-      - name: Build Slack result payload
+      - name: Build Slack overall summary payload
         if: always()
         env:
           MODULE_NAME: WEB
-          STAGE1_NAME: Unit Tests & Build
+          STAGE1_NAME: Unit Tests (Vitest)
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
           STAGE2_NAME: E2E Tests (Playwright)
           STAGE2_RESULT: ${{ needs.e2e-tests.result }}
@@ -291,7 +370,7 @@ jobs:
           WORKFLOW_START_EPOCH: ${{ needs.notify-start.outputs.start_epoch }}
         run: python3 .github/scripts/module_result_to_slack.py
 
-      - name: Inject thread_ts into Slack payload
+      - name: Inject thread_ts into summary payload
         if: always() && needs.notify-start.outputs.thread_ts != ''
         run: |
           python3 - <<'EOF'
@@ -302,7 +381,7 @@ jobs:
           pathlib.Path("module-slack-payload.json").write_text(json.dumps(p))
           EOF
 
-      - name: Send Slack result notification
+      - name: Send overall summary Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:

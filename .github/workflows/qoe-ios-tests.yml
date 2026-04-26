@@ -111,8 +111,10 @@ jobs:
         working-directory: ios-player
 
       - name: Run Swift Package unit tests
+        id: unit
         run: swift test 2>&1 | tee swift-test.log
         working-directory: ios-player
+        continue-on-error: true
 
       - name: Upload test log
         if: always()
@@ -121,6 +123,82 @@ jobs:
           name: ios-unit-test-log
           path: ios-player/swift-test.log
           retention-days: 7
+
+      - name: Post unit test result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: iOS
+          STAGE_NAME: Unit Tests (Swift)
+          STAGE_RESULT: ${{ steps.unit.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          # Parse swift test log for counts
+          python3 - <<'EOF'
+          import os, re, json
+          from pathlib import Path
+
+          log = Path("ios-player/swift-test.log").read_text(encoding="utf-8", errors="replace")
+          passed = len(re.findall(r"Test Case '.*?' passed", log))
+          failed  = len(re.findall(r"Test Case '.*?' failed", log))
+          total   = passed + failed
+          pct     = f"{int(100*passed/total)}%" if total else "0%"
+          icon    = ":large_green_circle:" if failed == 0 and total > 0 else ":red_circle:" if failed > 0 else ":white_circle:"
+
+          repo       = os.environ.get("GITHUB_REPOSITORY", "repo")
+          run_id     = os.environ.get("GITHUB_RUN_ID", "")
+          run_number = os.environ.get("GITHUB_RUN_NUMBER", "")
+          sha_full   = os.environ.get("GITHUB_SHA", "unknown")
+          sha        = sha_full[:7]
+          thread_ts  = os.environ.get("THREAD_TS", "")
+          report_url = os.environ.get("REPORT_URL", "")
+          verdict    = "PASSED" if failed == 0 and total > 0 else "FAILED" if failed > 0 else os.environ.get("STAGE_RESULT","UNKNOWN").upper()
+          run_url    = f"https://github.com/{repo}/actions/runs/{run_id}" if run_id else f"https://github.com/{repo}"
+          commit_url = f"https://github.com/{repo}/commit/{sha_full}"
+          build_label = f"Build #{run_number}" if run_number else f"Run {run_id}"
+
+          if total > 0:
+              stats = f"{icon}  *Passed:* {passed}  |  *Failed:* {failed}  |  *Total:* {total}  |  *Pass Rate:* {pct}"
+          else:
+              r = os.environ.get("STAGE_RESULT","unknown")
+              icon2 = ":large_green_circle:" if r == "success" else ":red_circle:"
+              stats = f"{icon2}  *Result:* {verdict}"
+
+          footer_parts = [f"<{commit_url}|{sha}>  •  {build_label}"]
+          if report_url:
+              footer_parts.append(f"<{report_url}|:bar_chart: View Report>")
+          footer_parts.append(f"<{run_url}|:arrow_forward: View Run>")
+
+          payload = {
+              "unfurl_links": False, "unfurl_media": False,
+              "blocks": [
+                  {"type": "header", "text": {"type": "plain_text", "text": f"[iOS] Unit Tests (Swift) — {verdict}  |  {build_label}", "emoji": True}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": stats}},
+                  {"type": "context", "elements": [{"type": "mrkdwn", "text": "    ".join(footer_parts)}]},
+              ]
+          }
+          if thread_ts:
+              payload["thread_ts"] = thread_ts
+          Path("stage-slack-payload.json").write_text(json.dumps(payload, indent=2))
+          print("Wrote stage-slack-payload.json")
+          EOF
+
+      - name: Send unit test Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Fail if unit tests failed
+        if: steps.unit.outcome == 'failure'
+        run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STAGE 2 — Build Xcode App (simulator — only when unit tests pass)
@@ -213,6 +291,30 @@ jobs:
       - name: Tear down Docker stack
         if: always()
         run: docker compose down -v || true
+
+      - name: Post automation E2E result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: iOS
+          STAGE_NAME: Automation E2E
+          JUNIT_DIR: qoe-automation-tests/target/surefire-reports
+          STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send automation E2E Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Fail if automation tests failed
         if: steps.auto_e2e.outcome == 'failure'
