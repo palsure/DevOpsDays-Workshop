@@ -36,6 +36,8 @@ on:
 env:
   QUALITY_GATE_THRESHOLD: '80'
   ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
+  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. NOTIFY START  — post initial Slack message, capture thread ts
@@ -50,7 +52,7 @@ jobs:
     steps:
       - name: Post "build started" to Slack
         id: post
-        if: ${{ secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != '' }}
+        if: env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -112,7 +114,7 @@ jobs:
           echo "thread_ts=$TS" >> "$GITHUB_OUTPUT"
 
       - name: Set empty thread_ts when Slack not configured
-        if: ${{ secrets.SLACK_BOT_TOKEN == '' || secrets.SLACK_CHANNEL_ID == '' }}
+        if: env.SLACK_BOT_TOKEN == '' || env.SLACK_CHANNEL_ID == ''
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -208,7 +210,7 @@ jobs:
           EOF
 
       - name: Post unit test result as Slack thread reply
-        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -444,7 +446,7 @@ jobs:
           path: api-slack-payload.json
 
       - name: Post E2E results as Slack thread reply
-        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}

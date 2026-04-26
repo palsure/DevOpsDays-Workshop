@@ -18,6 +18,8 @@ on:
 
 env:
   QUALITY_GATE_THRESHOLD: '80'
+  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 concurrency:
   group: acceptance-${{ github.workflow }}-${{ github.ref }}
@@ -335,7 +337,7 @@ jobs:
         if: always()
         run: python3 .github/scripts/acceptance_gate_to_slack.py acceptance-gate-manifest.json
       - name: Send Slack notification
-        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
