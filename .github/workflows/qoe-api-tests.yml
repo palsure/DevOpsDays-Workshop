@@ -175,6 +175,34 @@ jobs:
           path: backend-api/build/allure-results/unit
           retention-days: 14
 
+      - name: Install Allure CLI
+        if: always()
+        run: npm install -g allure-commandline
+
+      - name: Generate unit Allure report
+        if: always()
+        run: |
+          mkdir -p stage-allure-report
+          echo "<html><head><title>Unit Tests</title></head><body><h2>No Unit results for run ${{ github.run_number }}.</h2></body></html>" \
+            > stage-allure-report/index.html
+          SRC="backend-api/build/allure-results/unit"
+          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
+            allure generate "$SRC" -o stage-allure-report --clean \
+              && echo "✅ Unit Allure report generated" \
+              || echo "⚠️ Generation failed — placeholder kept"
+          else
+            echo "⚠️ No unit results found — placeholder kept"
+          fi
+
+      - name: Deploy unit Allure report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./stage-allure-report
+          destination_dir: allure/${{ github.run_number }}/unit
+          keep_files: true
+
       - name: Post unit test result to Slack thread
         if: always()
         env:
@@ -473,6 +501,34 @@ jobs:
           path: backend-api/build/allure-results/bat
           retention-days: 14
 
+      - name: Install Allure CLI
+        if: always()
+        run: npm install -g allure-commandline
+
+      - name: Generate BAT Allure report
+        if: always()
+        run: |
+          mkdir -p stage-allure-report
+          echo "<html><head><title>BAT Tests</title></head><body><h2>No BAT results for run ${{ github.run_number }}.</h2></body></html>" \
+            > stage-allure-report/index.html
+          SRC="backend-api/build/allure-results/bat"
+          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
+            allure generate "$SRC" -o stage-allure-report --clean \
+              && echo "✅ BAT Allure report generated" \
+              || echo "⚠️ Generation failed — placeholder kept"
+          else
+            echo "⚠️ No BAT results found — placeholder kept"
+          fi
+
+      - name: Deploy BAT Allure report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./stage-allure-report
+          destination_dir: allure/${{ github.run_number }}/bat
+          keep_files: true
+
       - name: Post BAT result to Slack thread
         if: always()
         env:
@@ -655,6 +711,34 @@ jobs:
           path: backend-api/build/allure-results/smoke
           retention-days: 14
 
+      - name: Install Allure CLI
+        if: always()
+        run: npm install -g allure-commandline
+
+      - name: Generate Smoke Allure report
+        if: always()
+        run: |
+          mkdir -p stage-allure-report
+          echo "<html><head><title>Smoke Tests</title></head><body><h2>No Smoke results for run ${{ github.run_number }}.</h2></body></html>" \
+            > stage-allure-report/index.html
+          SRC="backend-api/build/allure-results/smoke"
+          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
+            allure generate "$SRC" -o stage-allure-report --clean \
+              && echo "✅ Smoke Allure report generated" \
+              || echo "⚠️ Generation failed — placeholder kept"
+          else
+            echo "⚠️ No Smoke results found — placeholder kept"
+          fi
+
+      - name: Deploy Smoke Allure report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./stage-allure-report
+          destination_dir: allure/${{ github.run_number }}/smoke
+          keep_files: true
+
       - name: Post Smoke result to Slack thread
         if: always()
         env:
@@ -687,7 +771,7 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. API REPORT + SLACK  — generate per-stage Allure reports, deploy to Pages
+# 6. API REPORT + SLACK  — post final build summary; Allure already live per-stage
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
@@ -697,81 +781,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download unit Allure results
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: allure-results-unit
-          path: allure-results/unit
-
-      - name: Download BAT Allure results
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: allure-results-bat
-          path: allure-results/bat
-
-      - name: Download Smoke Allure results
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: allure-results-smoke
-          path: allure-results/smoke
-
-      - name: Install Allure CLI
-        run: npm install -g allure-commandline --save-dev
-
-      - name: Generate per-stage Allure HTML reports
-        if: always()
-        run: |
-          mkdir -p allure-report/unit allure-report/bat allure-report/smoke
-
-          # Write placeholder first so there is always an index.html to deploy,
-          # even if Allure generation fails or results are missing.
-          placeholder() {
-            local dst="$1" label="$2"
-            cat > "$dst/index.html" <<EOF
-          <html><head><title>$label — No results</title></head>
-          <body><h2>No $label test results available for run ${{ github.run_number }}.</h2></body></html>
-          EOF
-          }
-          placeholder allure-report/unit  "Unit Tests"
-          placeholder allure-report/bat   "BAT Tests"
-          placeholder allure-report/smoke "Smoke Tests"
-
-          generate() {
-            local src="$1" dst="$2" label="$3"
-            if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
-              echo "▶ Generating $label Allure report from $src → $dst"
-              allure generate "$src" -o "$dst" --clean \
-                && echo "✅ $label report generated" \
-                || echo "⚠️  Allure generation failed for $label — placeholder kept"
-            else
-              echo "⚠️  No $label results found — placeholder kept"
-            fi
-          }
-
-          generate allure-results/unit  allure-report/unit  "Unit"
-          generate allure-results/bat   allure-report/bat   "BAT"
-          generate allure-results/smoke allure-report/smoke "Smoke"
-
-      - name: Upload per-stage Allure HTML reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-reports
-          path: allure-report
-          retention-days: 14
-
-      - name: Deploy per-stage Allure reports to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report
-          destination_dir: allure/${{ github.run_number }}
-          keep_files: true
 
       - name: Post final Slack summary
         if: always()
