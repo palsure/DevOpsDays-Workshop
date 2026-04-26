@@ -1,14 +1,15 @@
-FROM gradle:7.6-jdk17 AS build
+FROM gradle:8.7-jdk21 AS build
 
 WORKDIR /app
 
-COPY build.gradle settings.gradle ./
+COPY build.gradle settings.gradle gradle.properties ./
+COPY gradle ./gradle
 COPY src ./src
 
-# Unit tests before packaging (no E2E / Testcontainers in image build)
-RUN gradle unitTest bootJar --no-daemon
+# Tests run in CI pipeline — skip here to keep image build fast
+RUN gradle bootJar -x test --no-daemon
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 

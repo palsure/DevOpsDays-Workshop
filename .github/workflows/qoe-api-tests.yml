@@ -1,19 +1,23 @@
-# QoE API Tests
+# Stream-QoE-App-API
 #
 # Pipeline flow:
-#   0. notify-start      — Post "build started" to Slack; capture message ts for threading.
-#   1. unit-tests        — @Tag("unit") tests (Mockito, no DB). Pre-deploy safety check.
-#   2. bat-tests         — @Tag("BAT")  Build Acceptance Tests via ./gradlew batTest.
-#                          Core sanity checks — if ANY BAT test fails the gate blocks.
-#   3. bat-gate          — Evaluate BAT outcome (outputs: passed=true|false).
-#                          PASS → deploy approved → run Smoke.
-#                          FAIL → build blocked, Smoke skipped.
-#   4. smoke-tests       — @Tag("Smoke") tests via ./gradlew smokeTest.
-#                          Only runs when bat-gate PASSES.
-#   5. automation-e2e    — System acceptance tests (Maven/TestNG).
-#                          Only runs when smoke-tests succeed.
-#   6. quality-gate      — Final aggregate gate (unit + BAT + Smoke + Automation).
-#   7. api-report        — Collect Allure results, post full Slack summary.
+#   0. notify-start   — Post "build started" to Slack; capture message ts for threading.
+#   1. unit-tests     — @Tag("unit") tests (Mockito, no DB). Fast pre-deploy safety check.
+#   2. unit-gate      — Evaluate unit pass rate (≥80% required).
+#                       PASS → build JAR, start app, health-check → run BAT.
+#                       FAIL → BAT blocked.
+#   3. bat-tests      — Build JAR, deploy app (postgres + Spring Boot), health-check,
+#                       then run @Tag("BAT") Build Acceptance Tests.
+#                       Core sanity checks — if ANY BAT test fails the gate blocks.
+#   4. bat-gate       — Evaluate BAT outcome (outputs: passed=true|false).
+#                       PASS → deployment approved → run Smoke.
+#                       FAIL → build blocked, Smoke skipped.
+#   5. smoke-tests    — @Tag("Smoke") tests via ./gradlew smokeTest.
+#                       Only runs when bat-gate PASSES.
+#   6. automation-e2e — System acceptance tests (Maven/TestNG).
+#                       Only runs when smoke-tests succeed.
+#   7. quality-gate   — Final aggregate gate (unit + unit-gate + BAT + Smoke + Automation).
+#   8. api-report     — Collect Allure results, post full Slack summary.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -180,13 +184,114 @@ jobs:
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. BAT — Build Acceptance Tests  (critical gate — blocks all downstream)
+# 2. UNIT GATE  — enforce ≥80% pass rate before deploying
+# ─────────────────────────────────────────────────────────────────────────────
+  unit-gate:
+    name: "Unit Quality Gate (≥80%)"
+    runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests]
+    if: always()
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
+      thread_ts: ${{ needs.unit-tests.outputs.thread_ts }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download unit test results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: unit-test-results
+          path: unit-test-results
+
+      - name: Evaluate unit quality gate
+        id: gate
+        env:
+          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
+        run: |
+          SKIP="${{ inputs.skip_tests }}"
+          UNIT="${{ needs.unit-tests.result }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Force-publish mode — unit gate bypassed"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$UNIT" != "success" ]; then
+            echo "❌ Unit tests did not succeed (result=$UNIT) — gate FAILED"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python3 - <<'EOF'
+          import glob, xml.etree.ElementTree as ET, os, sys
+          files = glob.glob("unit-test-results/**/TEST-*.xml", recursive=True)
+          total = passed = failed = skipped = 0
+          for f in files:
+              root = ET.parse(f).getroot()
+              t  = int(root.attrib.get("tests",    0))
+              fa = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+              s  = int(root.attrib.get("skipped",  0))
+              total += t; failed += fa; skipped += s; passed += max(0, t - fa - s)
+
+          threshold = float(os.environ.get("QUALITY_GATE_THRESHOLD", "80"))
+          rate = (100.0 * passed / total) if total > 0 else 0.0
+          gate_ok = rate >= threshold and failed == 0
+
+          print(f"Unit gate: {passed}/{total} passed ({rate:.1f}%) — threshold {threshold}%")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
+              gh.write(f"passed={'true' if gate_ok else 'false'}\n")
+          if not gate_ok:
+              print(f"❌ FAILED — {rate:.1f}% < {threshold}% or {failed} test(s) failed")
+          else:
+              print(f"✅ PASSED — deploying app for BAT tests")
+          EOF
+
+      - name: Post unit gate decision to Slack
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        run: |
+          PASSED="${{ steps.gate.outputs.passed }}"
+          TS="${{ needs.unit-tests.outputs.thread_ts }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$PASSED" = "true" ]; then
+            ICON="✅"; MSG="Unit gate *PASSED* — deploying app and running BAT tests…"
+          else
+            ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          fi
+
+          python3 - <<EOF
+          import json, pathlib
+          blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
+            {"type": "context", "elements": [
+              {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
+            ]}
+          ]
+          payload = {
+            "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+            "thread_ts": "$TS",
+            "unfurl_links": False, "unfurl_media": False,
+            "blocks": blocks
+          }
+          pathlib.Path("unit-gate-payload.json").write_text(json.dumps(payload))
+          EOF
+
+          curl -sf -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @unit-gate-payload.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. BAT — Build JAR → deploy app → health-check → Build Acceptance Tests
 # ─────────────────────────────────────────────────────────────────────────────
   bat-tests:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests]
-    if: inputs.skip_tests != true && needs.unit-tests.result == 'success'
+    needs: [notify-start, unit-tests, unit-gate]
+    if: inputs.skip_tests != true && needs.unit-gate.outputs.passed == 'true'
 
     services:
       postgres:
@@ -219,6 +324,36 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - name: Build application JAR
+        run: ./gradlew bootJar -x test --no-daemon
+        working-directory: backend-api
+
+      - name: Start backend app
+        run: |
+          java -jar backend-api/build/libs/application.jar \
+            --spring.datasource.url=jdbc:postgresql://localhost:5432/qoe_db \
+            --spring.datasource.username=qoe_user \
+            --spring.datasource.password=qoe_password \
+            --server.port=8080 \
+            > /tmp/app.log 2>&1 &
+          echo "APP_PID=$!" >> "$GITHUB_ENV"
+          echo "Started app with PID $!"
+
+      - name: Wait for app health check
+        run: |
+          echo "Waiting for backend to be healthy…"
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "✅ Backend is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "  attempt $i/36 — not ready yet, retrying in 5s…"
+            sleep 5
+          done
+          echo "❌ Backend health check timed out after 3 minutes"
+          cat /tmp/app.log
+          exit 1
+
       - name: Run BAT tests
         id: bat
         run: ./gradlew batTest --no-daemon
@@ -227,6 +362,14 @@ jobs:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
           SPRING_DATASOURCE_USERNAME: qoe_user
           SPRING_DATASOURCE_PASSWORD: qoe_password
+
+      - name: Stop backend app
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill "$APP_PID" 2>/dev/null || true
+            echo "Stopped app (PID $APP_PID)"
+          fi
 
       - name: Upload BAT test results (XML)
         if: always()
@@ -269,7 +412,7 @@ jobs:
           JUNIT_DIR: backend-api/build/test-results/batTest
           STAGE_RESULT: ${{ steps.bat.outcome }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
-          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
+          THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -293,11 +436,11 @@ jobs:
   bat-gate:
     name: "BAT Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, bat-tests]
+    needs: [notify-start, unit-tests, unit-gate, bat-tests]
     if: always()
     outputs:
       passed: ${{ steps.evaluate.outputs.passed }}
-      thread_ts: ${{ needs.unit-tests.outputs.thread_ts }}
+      thread_ts: ${{ needs.unit-gate.outputs.thread_ts }}
 
     steps:
       - id: evaluate
@@ -321,7 +464,7 @@ jobs:
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
           PASSED="${{ steps.evaluate.outputs.passed }}"
-          TS="${{ needs.unit-tests.outputs.thread_ts }}"
+          TS="${{ needs.unit-gate.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           if [ "$PASSED" = "true" ]; then
@@ -570,7 +713,7 @@ jobs:
   quality-gate:
     name: "Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, bat-tests, bat-gate, smoke-tests, automation-e2e]
+    needs: [notify-start, unit-tests, unit-gate, bat-tests, bat-gate, smoke-tests, automation-e2e]
     if: always()
     outputs:
       passed: ${{ steps.check.outputs.passed }}
@@ -581,6 +724,7 @@ jobs:
         run: |
           SKIP="${{ inputs.skip_tests }}"
           UNIT="${{ needs.unit-tests.result }}"
+          UNIT_GATE="${{ needs.unit-gate.outputs.passed }}"
           BAT="${{ needs.bat-tests.result }}"
           BAT_GATE="${{ needs.bat-gate.outputs.passed }}"
           SMOKE="${{ needs.smoke-tests.result }}"
@@ -589,8 +733,11 @@ jobs:
           if [ "$SKIP" = "true" ]; then
             echo "⚡ Force-publish mode — tests skipped, gate bypassed"
             echo "passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$UNIT_GATE" != "true" ]; then
+            echo "❌ Quality gate FAILED — unit gate did not pass (unit=$UNIT)"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
           elif [ "$BAT_GATE" != "true" ]; then
-            echo "❌ Quality gate FAILED — BAT gate did not pass (unit=$UNIT, bat=$BAT)"
+            echo "❌ Quality gate FAILED — BAT gate did not pass (bat=$BAT)"
             echo "passed=false" >> "$GITHUB_OUTPUT"
           elif [ "$UNIT" = "success" ] && [ "$SMOKE" != "failure" ] && [ "$ACCEPT" != "failure" ]; then
             echo "✅ Quality gate PASSED (unit=$UNIT, bat=$BAT, smoke=$SMOKE, acceptance=$ACCEPT)"
@@ -605,7 +752,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, bat-tests, bat-gate, smoke-tests, automation-e2e, quality-gate]
+    needs: [notify-start, unit-tests, unit-gate, bat-tests, bat-gate, smoke-tests, automation-e2e, quality-gate]
     runs-on: ubuntu-latest
     if: always()
 
@@ -683,15 +830,17 @@ jobs:
           MODULE_NAME: API
           STAGE1_NAME: Unit Tests
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
-          STAGE2_NAME: BAT
-          STAGE2_RESULT: ${{ needs.bat-tests.result }}
-          STAGE3_NAME: BAT Gate
-          STAGE3_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
-          STAGE4_NAME: Smoke Tests
-          STAGE4_RESULT: ${{ needs.smoke-tests.result }}
-          STAGE5_NAME: Acceptance Tests
-          STAGE5_RESULT: ${{ needs.automation-e2e.result }}
-          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
+          STAGE2_NAME: Unit Gate
+          STAGE2_RESULT: ${{ needs.unit-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE3_NAME: BAT
+          STAGE3_RESULT: ${{ needs.bat-tests.result }}
+          STAGE4_NAME: BAT Gate
+          STAGE4_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE5_NAME: Smoke Tests
+          STAGE5_RESULT: ${{ needs.smoke-tests.result }}
+          STAGE6_NAME: Acceptance Tests
+          STAGE6_RESULT: ${{ needs.automation-e2e.result }}
+          THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
         run: python3 .github/scripts/module_result_to_slack.py
 
       - name: Send final summary to Slack
