@@ -844,3 +844,30 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      - name: React to initial Slack message with build outcome
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        run: |
+          # Determine overall verdict from stage results
+          UNIT="${{ needs.unit-tests.result }}"
+          UNIT_GATE="${{ needs.unit-gate.outputs.passed }}"
+          DEPLOY="${{ needs.deploy.result }}"
+          BAT_GATE="${{ needs.bat-gate.outputs.passed }}"
+          SMOKE="${{ needs.smoke-tests.result }}"
+
+          if [ "$UNIT" = "success" ] && [ "$UNIT_GATE" = "true" ] && \
+             [ "$DEPLOY" = "success" ] && [ "$BAT_GATE" = "true" ] && \
+             [ "$SMOKE" != "failure" ]; then
+            EMOJI="white_check_mark"
+          else
+            EMOJI="red_circle"
+          fi
+
+          # The initial message ts IS the thread_ts captured by notify-start
+          INITIAL_TS="${{ needs.notify-start.outputs.thread_ts }}"
+
+          curl -sf -X POST https://slack.com/api/reactions.add \
+            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"channel\":\"${{ secrets.SLACK_CHANNEL_ID }}\",\"timestamp\":\"$INITIAL_TS\",\"name\":\"$EMOJI\"}" \
+            || true

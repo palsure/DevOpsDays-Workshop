@@ -105,6 +105,8 @@ def main() -> int:
     thread_ts  = os.environ.get("THREAD_TS", "")
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
+    verdict_label = "Success" if overall == "success" else "Failed"
+
     payload = {
         "unfurl_links": False,
         "unfurl_media": False,
@@ -113,19 +115,8 @@ def main() -> int:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"[{module}] Build Results — {verdict}  |  {build_label}",
+                    "text": f"[{module}] Build Completed  |  {verdict_label}",
                     "emoji": True,
-                },
-            },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"{overall_icon}  "
-                        f"*Branch:* `{branch}`  |  "
-                        f"*Commit:* <{commit_url}|{sha}>"
-                    ),
                 },
             },
             {"type": "divider"},
