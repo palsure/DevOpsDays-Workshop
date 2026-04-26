@@ -132,6 +132,10 @@ jobs:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
     needs: notify-start
+    # Re-export thread_ts so downstream jobs can read it without crossing
+    # the e2e-tests matrix boundary (matrix jobs can break output propagation).
+    outputs:
+      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
 
     steps:
       - uses: actions/checkout@v4
@@ -335,7 +339,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   automation-e2e:
     name: Automation E2E (System Tests)
-    needs: [notify-start, e2e-tests]
+    needs: [notify-start, unit-tests, e2e-tests]
     runs-on: ubuntu-latest
     if: always() && needs.e2e-tests.result != 'cancelled'
 
@@ -392,7 +396,7 @@ jobs:
           JUNIT_DIR: qoe-automation-tests/target/surefire-reports
           STAGE_RESULT: ${{ steps.auto_e2e.outcome }}
           REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          THREAD_TS: ${{ needs.unit-tests.outputs.thread_ts }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -417,7 +421,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, e2e-tests, automation-e2e]
+    needs: [notify-start, unit-tests, e2e-tests, automation-e2e]
     runs-on: ubuntu-latest
     if: always()
 
@@ -487,14 +491,6 @@ jobs:
           destination_dir: allure/${{ github.run_number }}
           keep_files: true
 
-      - name: Compute Allure Pages URL
-        id: allure_url
-        if: always()
-        run: |
-          OWNER=$(echo "${{ github.repository }}" | cut -d'/' -f1)
-          REPO=$(echo "${{ github.repository }}"  | cut -d'/' -f2)
-          echo "url=https://${OWNER}.github.io/${REPO}/allure/${{ github.run_number }}/" >> "$GITHUB_OUTPUT"
-
       - name: Assemble E2E report JSON
         if: always()
         env:
@@ -504,7 +500,6 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
-          ALLURE_PAGES_URL: ${{ steps.allure_url.outputs.url }}
         run: |
           python3 - <<'EOF'
           import glob, json, os, pathlib
@@ -513,8 +508,8 @@ jobs:
           run_id = os.environ.get("GITHUB_RUN_ID","")
           branch = os.environ.get("GITHUB_REF_NAME","unknown")
           env_l  = os.environ.get("ENV_LABEL","STAGE")
-          allure_base = os.environ.get("ALLURE_PAGES_URL") or \
-                        f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
+          # Use the run artifacts page — always valid, no GitHub Pages setup needed
+          allure_base = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
 
           summaries = []
           for f in sorted(glob.glob("platform-summaries/*/platform-summary.json")):
@@ -548,11 +543,11 @@ jobs:
         run: python3 .github/scripts/api_tests_to_slack.py api-test-report.json
 
       - name: Inject thread_ts into E2E payload
-        if: always() && needs.notify-start.outputs.thread_ts != ''
+        if: always() && needs.unit-tests.outputs.thread_ts != ''
         run: |
           python3 - <<'EOF'
           import json, pathlib
-          ts = "${{ needs.notify-start.outputs.thread_ts }}"
+          ts = "${{ needs.unit-tests.outputs.thread_ts }}"
           p = json.loads(pathlib.Path("api-slack-payload.json").read_text())
           p["thread_ts"] = ts
           pathlib.Path("api-slack-payload.json").write_text(json.dumps(p))
