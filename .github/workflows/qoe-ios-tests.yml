@@ -245,7 +245,7 @@ jobs:
   automation-e2e:
     name: "Stage 3 — Automation E2E (System Tests)"
     runs-on: ubuntu-latest
-    needs: build-app
+    needs: [notify-start, build-app]
     if: always() && needs.build-app.result != 'cancelled'
 
     steps:
