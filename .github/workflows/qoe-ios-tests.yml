@@ -99,7 +99,7 @@ jobs:
     name: "Stage 1 — Unit Tests (Swift Package)"
     runs-on: macos-latest
     needs: notify-start
-    if: ${{ !inputs.skip_tests }}
+    if: inputs.skip_tests != true
 
     steps:
       - uses: actions/checkout@v4
@@ -258,7 +258,7 @@ jobs:
     name: "Stage 3 — Acceptance Tests"
     runs-on: ubuntu-latest
     needs: [notify-start, build-app]
-    if: ${{ !inputs.skip_tests }} && needs.build-app.result == 'success'
+    if: inputs.skip_tests != true && needs.build-app.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
