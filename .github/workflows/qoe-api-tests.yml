@@ -4,17 +4,20 @@
 #   0. notify-start   — Post "build started" to Slack; capture message ts for threading.
 #   1. unit-tests     — @Tag("unit") tests (Mockito, no DB). Fast pre-deploy safety check.
 #   2. unit-gate      — Evaluate unit pass rate (≥80% required).
-#                       PASS → build JAR, start app, health-check → run BAT.
-#                       FAIL → BAT blocked.
-#   3. bat-tests      — Build JAR, deploy app (postgres + Spring Boot), health-check,
-#                       then run @Tag("BAT") Build Acceptance Tests.
+#                       PASS → trigger deploy stage.
+#                       FAIL → deploy and all downstream blocked.
+#   3. deploy         — Build JAR, start app (postgres + Spring Boot), health-check.
+#                       PASS → run BAT.
+#                       FAIL → stop pipeline, Smoke skipped.
+#   4. bat-tests      — @Tag("BAT") Build Acceptance Tests (Testcontainers, own DB).
 #                       Core sanity checks — if ANY BAT test fails the gate blocks.
 #   4. bat-gate       — Evaluate BAT outcome (outputs: passed=true|false).
 #                       PASS → deployment approved → run Smoke.
 #                       FAIL → build blocked, Smoke skipped.
 #   5. smoke-tests    — @Tag("Smoke") tests via ./gradlew smokeTest.
 #                       Only runs when bat-gate PASSES.
-#   6. api-report     — Collect Allure results, post full Slack summary.
+#   6. api-report     — Generate per-stage Allure reports (unit/bat/smoke),
+#                       deploy to GitHub Pages, post full Slack summary.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -164,6 +167,14 @@ jobs:
           name: unit-html-report
           path: backend-api/build/reports/tests/unitTest
 
+      - name: Upload unit Allure raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-unit
+          path: backend-api/build/allure-results/unit
+          retention-days: 14
+
       - name: Post unit test result to Slack thread
         if: always()
         env:
@@ -172,7 +183,7 @@ jobs:
           JUNIT_DIR: backend-api/build/test-results/unitTest
           STAGE_RESULT: ${{ steps.unit.outcome }}
           DURATION: ${{ env.UNIT_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/unit
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -293,13 +304,15 @@ jobs:
             -d @unit-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. BAT — Build JAR → deploy app → health-check → Build Acceptance Tests
+# 3. DEPLOY — Build JAR, start app, health-check. Fail fast if app won't start.
 # ─────────────────────────────────────────────────────────────────────────────
-  bat-tests:
-    name: "BAT — Build Acceptance Tests"
+  deploy:
+    name: "App Deployment & Health Check"
     runs-on: ubuntu-latest
     needs: [notify-start, unit-tests, unit-gate]
     if: inputs.skip_tests != true && needs.unit-gate.outputs.passed == 'true'
+    outputs:
+      thread_ts: ${{ needs.unit-gate.outputs.thread_ts }}
 
     services:
       postgres:
@@ -332,8 +345,8 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Record BAT stage start time
-        run: echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Record deploy start time
+        run: echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Build application JAR
         run: ./gradlew bootJar -x test --no-daemon
@@ -351,36 +364,90 @@ jobs:
           echo "Started app with PID $!"
 
       - name: Wait for app health check
+        id: healthcheck
         run: |
-          echo "Waiting for backend to be healthy…"
+          echo "Polling /actuator/health…"
           for i in $(seq 1 36); do
             if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
-              echo "✅ Backend is healthy (attempt $i)"
+              echo "✅ App is healthy (attempt $i)"
               exit 0
             fi
-            echo "  attempt $i/36 — not ready yet, retrying in 5s…"
+            echo "  attempt $i/36 — not ready, retrying in 5s…"
             sleep 5
           done
-          echo "❌ Backend health check timed out after 3 minutes"
+          echo "❌ Health check timed out after 3 minutes"
           cat /tmp/app.log
           exit 1
+
+      - name: Stop backend app
+        if: always()
+        run: kill "$APP_PID" 2>/dev/null || true
+
+      - name: Calculate deploy duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${DEPLOY_START:-0} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "DEPLOY_DURATION=$DUR" >> "$GITHUB_ENV"
+
+      - name: Post deploy result to Slack thread
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        env:
+          MODULE_NAME: API
+          STAGE_NAME: App Deployment
+          STAGE_RESULT: ${{ steps.healthcheck.outcome }}
+          DURATION: ${{ env.DEPLOY_DURATION }}
+          THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send deploy result to Slack
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. BAT — Build Acceptance Tests (Testcontainers — own embedded DB)
+# ─────────────────────────────────────────────────────────────────────────────
+  bat-tests:
+    name: "BAT — Build Acceptance Tests"
+    runs-on: ubuntu-latest
+    needs: [notify-start, unit-tests, unit-gate, deploy]
+    if: inputs.skip_tests != true && needs.deploy.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Record BAT stage start time
+        run: echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Run BAT tests
         id: bat
         run: ./gradlew batTest --no-daemon
         working-directory: backend-api
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
-          SPRING_DATASOURCE_USERNAME: qoe_user
-          SPRING_DATASOURCE_PASSWORD: qoe_password
-
-      - name: Stop backend app
-        if: always()
-        run: |
-          if [ -n "$APP_PID" ]; then
-            kill "$APP_PID" 2>/dev/null || true
-            echo "Stopped app (PID $APP_PID)"
-          fi
 
       - name: Calculate BAT duration
         if: always()
@@ -431,7 +498,7 @@ jobs:
           JUNIT_DIR: backend-api/build/test-results/batTest
           STAGE_RESULT: ${{ steps.bat.outcome }}
           DURATION: ${{ env.BAT_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/bat
           THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -456,7 +523,7 @@ jobs:
   bat-gate:
     name: "BAT Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate, bat-tests]
+    needs: [notify-start, unit-tests, unit-gate, deploy, bat-tests]
     if: always()
     outputs:
       passed: ${{ steps.evaluate.outputs.passed }}
@@ -630,7 +697,7 @@ jobs:
           JUNIT_DIR: backend-api/build/test-results/smokeTest
           STAGE_RESULT: ${{ steps.smoke.outcome }}
           DURATION: ${{ env.SMOKE_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/smoke
           THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -654,23 +721,37 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. API REPORT + SLACK  — aggregate Allure, post final summary
+# 6. API REPORT + SLACK  — generate per-stage Allure reports, deploy to Pages
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, unit-gate, bat-tests, bat-gate, smoke-tests]
+    needs: [notify-start, unit-tests, unit-gate, deploy, bat-tests, bat-gate, smoke-tests]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - name: Download unit Allure results
+        uses: actions/download-artifact@v4
         continue-on-error: true
         with:
-          pattern: allure-results-*
-          path: allure-results-all
-          merge-multiple: true
+          name: allure-results-unit
+          path: allure-results/unit
+
+      - name: Download BAT Allure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: allure-results-bat
+          path: allure-results/bat
+
+      - name: Download Smoke Allure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: allure-results-smoke
+          path: allure-results/smoke
 
       - uses: actions/setup-java@v4
         with:
@@ -685,35 +766,40 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Generate combined Allure report
+      - name: Download Allure CLI
+        run: gradle downloadAllure --no-daemon -p backend-api
+        continue-on-error: true
+
+      - name: Generate per-stage Allure HTML reports
         if: always()
         run: |
-          if [ -d allure-results-all ] && [ "$(ls -A allure-results-all 2>/dev/null)" ]; then
-            gradle downloadAllure --no-daemon -p backend-api
-            backend-api/build/allure/commandline/bin/allure generate allure-results-all \
-              --clean -o allure-report
-          else
-            echo "No Allure results found, skipping report generation"
-            mkdir -p allure-report
-          fi
+          ALLURE="backend-api/build/allure/commandline/bin/allure"
+          mkdir -p allure-report/unit allure-report/bat allure-report/smoke
 
-      - name: Upload combined Allure HTML report
+          generate() {
+            local src="$1" dst="$2" label="$3"
+            if [ -d "$src" ] && [ "$(ls -A "$src" 2>/dev/null)" ]; then
+              "$ALLURE" generate "$src" --clean -o "$dst" && echo "✅ $label report generated"
+            else
+              echo "⚠️  No $label results found — creating placeholder"
+              echo "<html><body><h2>No $label test results for this run.</h2></body></html>" \
+                > "$dst/index.html"
+            fi
+          }
+
+          generate allure-results/unit  allure-report/unit  "Unit"
+          generate allure-results/bat   allure-report/bat   "BAT"
+          generate allure-results/smoke allure-report/smoke "Smoke"
+
+      - name: Upload per-stage Allure HTML reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-combined
+          name: allure-reports
           path: allure-report
           retention-days: 14
 
-      - name: Ensure allure-report exists for Pages deploy
-        if: always()
-        run: |
-          if [ ! -f allure-report/index.html ]; then
-            mkdir -p allure-report
-            echo "<html><body><h2>No Allure results for this run.</h2></body></html>" > allure-report/index.html
-          fi
-
-      - name: Deploy Allure report to GitHub Pages
+      - name: Deploy per-stage Allure reports to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -738,12 +824,14 @@ jobs:
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
           STAGE2_NAME: Unit Gate (≥80%)
           STAGE2_RESULT: ${{ needs.unit-gate.outputs.passed == 'true' && 'success' || 'failure' }}
-          STAGE3_NAME: BAT
-          STAGE3_RESULT: ${{ needs.bat-tests.result }}
-          STAGE4_NAME: BAT Gate
-          STAGE4_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
-          STAGE5_NAME: Smoke Tests
-          STAGE5_RESULT: ${{ needs.smoke-tests.result }}
+          STAGE3_NAME: App Deployment
+          STAGE3_RESULT: ${{ needs.deploy.result }}
+          STAGE4_NAME: BAT
+          STAGE4_RESULT: ${{ needs.bat-tests.result }}
+          STAGE5_NAME: BAT Gate
+          STAGE5_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE6_NAME: Smoke Tests
+          STAGE6_RESULT: ${{ needs.smoke-tests.result }}
           THREAD_TS: ${{ needs.unit-gate.outputs.thread_ts }}
         run: python3 .github/scripts/module_result_to_slack.py
 
