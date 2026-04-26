@@ -1,0 +1,46 @@
+name: QoE iOS Player Tests
+
+on:
+  pull_request:
+    paths:
+      - 'ios-player/**'
+      - '.github/workflows/qoe-ios-tests.yml'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'ios-player/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: iOS Tests
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode version
+        run: sudo xcode-select -switch /Applications/Xcode_15.0.app
+      
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ios-player/.build
+          key: ${{ runner.os }}-swift-${{ hashFiles('ios-player/Package.swift', 'ios-player/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-
+      
+      - name: Build
+        run: swift build
+        working-directory: ios-player
+      
+      - name: Run tests
+        run: swift test
+        working-directory: ios-player
+      
+      - name: Build Xcode project
+        run: |
+          xcodebuild -scheme QoePlayer -destination 'platform=iOS Simulator,name=iPhone 15' clean build
+        working-directory: ios-player

@@ -1,0 +1,64 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+dist/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Dependencies
+node_modules/
+.gradle/
+.m2/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Docker
+docker-compose.override.yml
+
+# Test results
+test-results/
+coverage/
+allure-results/
+allure-report/
+playwright-report/
+playwright-results.json
+
+# CI generated reports / payloads
+acceptance-gate-manifest.json
+acceptance-slack-payload.json
+api-slack-payload.json
+api-test-report.json
+pr-comment.md
+slack-payload.json
+
+# Project-specific build artifacts
+backend-api/bin/
+backend-api/build/
+framework/qoe-tests/target/
+web-player/dist/
+web-player/node_modules/
+web-player/test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

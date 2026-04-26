@@ -1,0 +1,111 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'io.qameta.allure' version '2.11.2'
+}
+
+group = 'com.devopsdays.qoe'
+version = '1.0.0'
+sourceCompatibility = '17'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // OpenAPI / Swagger UI (Spring Boot 3.2 — use 2.5.x line for path/trailing-slash fixes)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+    
+    // Database
+    runtimeOnly 'org.postgresql:postgresql'
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // New Relic
+    implementation 'com.newrelic.agent.java:newrelic-api:8.0.0'
+    
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:postgresql:1.19.3'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.3'
+
+    // API E2E (HTTP) + Allure
+    testImplementation 'io.rest-assured:rest-assured:5.4.0'
+    testImplementation 'io.rest-assured:json-path:5.4.0'
+    testImplementation 'io.qameta.allure:allure-junit5:2.29.0'
+    testImplementation 'io.qameta.allure:allure-rest-assured:2.29.0'
+}
+
+allure {
+    version = '2.29.0'
+    adapter {
+        autoconfigure.set(true)
+        // Do not weave main sources — breaks plain unit tests (missing $AjcClosure classes).
+        aspectjWeaver.set(false)
+        frameworks {
+            junit5 {
+                adapterVersion.set('2.29.0')
+            }
+        }
+    }
+}
+
+tasks.named('bootJar') {
+    archiveFileName.set('application.jar')
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform {
+        // OR: any test tagged unit or e2e (all current tests must carry one of these tags)
+        includeTags 'unit', 'e2e'
+    }
+}
+
+tasks.register('unitTest', Test) {
+    group = 'verification'
+    description = 'Unit tests only (fast, no Docker). Run before image build / deployment.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter(tasks.compileTestJava)
+    useJUnitPlatform {
+        includeTags 'unit'
+    }
+}
+
+tasks.register('e2eTest', Test) {
+    group = 'verification'
+    description = 'API E2E tests (REST Assured + Testcontainers). Run after the stack is up, or in CI with Docker.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter(tasks.compileTestJava)
+    useJUnitPlatform {
+        includeTags 'e2e'
+    }
+}
+
+tasks.named('allureReport') {
+    dependsOn 'e2eTest'
+    // Allure CLI refuses to overwrite an existing report directory; delete it first.
+    doFirst {
+        delete layout.buildDirectory.dir('reports/allure-report/allureReport')
+    }
+}

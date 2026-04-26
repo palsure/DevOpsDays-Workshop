@@ -1,0 +1,359 @@
+# QoE API Tests
+#
+# Flow:
+#   1. unit-tests     — runs @Tag("unit") tests (Mockito, no DB) BEFORE any deploy.
+#                       Slack message sent immediately with per-class results.
+#   2. e2e-tests      — matrix across all supported platforms; one job per platform.
+#                       Each job runs @Tag("e2e") REST-Assured tests against an
+#                       embedded Spring Boot server + Testcontainers Postgres.
+#   3. api-report     — collects all platform summaries, generates Allure, sends a
+#                       second Slack message with the per-platform table.
+#
+# Required secrets (Slack is optional — skipped if not set):
+#   SLACK_BOT_TOKEN   — Slack bot OAuth token
+#   SLACK_CHANNEL_ID  — target channel ID
+
+name: QoE API Tests
+
+on:
+  pull_request:
+    paths:
+      - 'backend-api/**'
+      - '.github/workflows/qoe-api-tests.yml'
+      - '.github/scripts/api_tests_to_slack.py'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend-api/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment label (STAGE / PROD)'
+        required: false
+        default: 'STAGE'
+
+env:
+  QUALITY_GATE_THRESHOLD: '80'
+  ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. UNIT TESTS  (pre-deploy gate, no DB required)
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  unit-tests:
+    name: Unit Tests (pre-deploy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Run unit tests
+        id: unit
+        run: gradle unitTest --no-daemon
+        working-directory: backend-api
+
+      - name: Upload unit test results (XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: backend-api/build/test-results/unitTest
+
+      - name: Upload unit HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-html-report
+          path: backend-api/build/reports/tests/unitTest
+
+      - name: Build Slack payload — unit tests
+        if: always()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
+        run: |
+          # Parse JUnit XML into a single "unit" row
+          python3 - <<'EOF'
+          import glob, json, xml.etree.ElementTree as ET, math, os, pathlib
+
+          files = glob.glob("backend-api/build/test-results/unitTest/TEST-*.xml")
+          total=passed=failed=skipped=0
+          for f in files:
+              root = ET.parse(f).getroot()
+              t = int(root.attrib.get("tests",0))
+              fa = int(root.attrib.get("failures",0)) + int(root.attrib.get("errors",0))
+              s = int(root.attrib.get("skipped",0))
+              total+=t; failed+=fa; skipped+=s; passed+=max(0,t-fa-s)
+
+          repo = os.environ.get("GITHUB_REPOSITORY","repo")
+          run_id = os.environ.get("GITHUB_RUN_ID","")
+          allure_url = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
+
+          report = {
+            "env":      os.environ.get("ENV_LABEL","STAGE"),
+            "testType": "unit",
+            "stage":    "pre-deploy",
+            "branch":   os.environ.get("GITHUB_REF_NAME","unknown"),
+            "platforms": [{"platform":"all-unit","passed":passed,"failed":failed,
+                           "skipped":skipped,"total":total,"allureUrl":allure_url}]
+          }
+          pathlib.Path("api-test-report.json").write_text(json.dumps(report,indent=2))
+          EOF
+
+          python3 .github/scripts/api_tests_to_slack.py api-test-report.json
+
+      - name: Send Slack — unit test result
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./api-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. E2E TESTS  (per-platform matrix, post-deploy / Testcontainers)
+# ─────────────────────────────────────────────────────────────────────────────
+  e2e-tests:
+    name: E2E — ${{ matrix.platform }}
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    if: always() && needs.unit-tests.result != 'cancelled'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - web
+          - iphone
+          - ipad
+          - androidphone
+          - androidtablet
+          - appletv
+          - androidtv
+          - firetv
+          - samsungtv
+          - lgtv
+          - roku
+          - chromecast
+          - xbox
+          - playstation
+          - desktop_macos
+          - desktop_windows
+          - desktop_linux
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: qoe_user
+          POSTGRES_PASSWORD: qoe_password
+          POSTGRES_DB: qoe_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Run E2E tests (platform=${{ matrix.platform }})
+        id: e2e
+        continue-on-error: true
+        run: gradle e2eTest --no-daemon
+        working-directory: backend-api
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
+          SPRING_DATASOURCE_USERNAME: qoe_user
+          SPRING_DATASOURCE_PASSWORD: qoe_password
+          # Passed into tests so parameterized suite can filter by this platform
+          QOE_TEST_PLATFORM: ${{ matrix.platform }}
+
+      - name: Build platform summary JSON
+        if: always()
+        run: |
+          python3 .github/scripts/junit_to_summary.py "${{ matrix.platform }}" \
+            backend-api/build/test-results/e2eTest \
+            || echo '{"platform":"${{ matrix.platform }}","passed":0,"failed":1,"skipped":0,"total":1}' \
+               > platform-summary.json
+
+      - name: Upload XML results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.platform }}
+          path: backend-api/build/test-results/e2eTest
+
+      - name: Upload Allure raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.platform }}
+          path: backend-api/build/allure-results
+
+      - name: Upload platform summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-summary-${{ matrix.platform }}
+          path: platform-summary.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. REPORT + SLACK  (aggregates all platforms, sends table message)
+# ─────────────────────────────────────────────────────────────────────────────
+  api-report:
+    name: API Report & Slack notification
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download every platform's summary JSON
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: platform-summary-*
+          path: platform-summaries
+          merge-multiple: false
+
+      # Download all Allure raw results for the combined report
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: allure-results-*
+          path: allure-results-all
+          merge-multiple: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      # Generate consolidated Allure report from merged raw results
+      - name: Generate Allure report
+        if: always()
+        run: |
+          if [ -d allure-results-all ] && [ "$(ls -A allure-results-all 2>/dev/null)" ]; then
+            gradle downloadAllure --no-daemon -p backend-api
+            backend-api/build/allure/commandline/bin/allure generate allure-results-all \
+              --clean -o allure-report
+          else
+            echo "No Allure results found, skipping report generation"
+            mkdir -p allure-report
+          fi
+
+      - name: Upload Allure HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-combined
+          path: allure-report
+
+      # Assemble per-platform table JSON for Slack script
+      - name: Assemble report JSON
+        if: always()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          ENV_LABEL: ${{ env.ENV_LABEL }}
+        run: |
+          python3 - <<'EOF'
+          import glob, json, os, pathlib, time
+
+          repo   = os.environ.get("GITHUB_REPOSITORY","repo")
+          run_id = os.environ.get("GITHUB_RUN_ID","")
+          branch = os.environ.get("GITHUB_REF_NAME","unknown")
+          env_l  = os.environ.get("ENV_LABEL","STAGE")
+          allure_base = f"https://github.com/{repo}/actions/runs/{run_id}#artifacts"
+
+          summaries = []
+          for f in sorted(glob.glob("platform-summaries/*/platform-summary.json")):
+              try:
+                  s = json.loads(pathlib.Path(f).read_text())
+                  s["allureUrl"] = allure_base
+                  summaries.append(s)
+              except Exception as e:
+                  print(f"skip {f}: {e}")
+
+          report = {
+            "env":      env_l,
+            "testType": "e2e",
+            "stage":    "post-deploy",
+            "branch":   branch,
+            "platforms": summaries,
+          }
+          pathlib.Path("api-test-report.json").write_text(json.dumps(report, indent=2))
+          print(json.dumps(report, indent=2))
+          EOF
+
+      - name: Build Slack payload
+        if: always()
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
+        run: python3 .github/scripts/api_tests_to_slack.py api-test-report.json
+
+      - name: Upload Slack payload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-slack-payload
+          path: api-slack-payload.json
+
+      - name: Send Slack — E2E results per platform
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./api-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}

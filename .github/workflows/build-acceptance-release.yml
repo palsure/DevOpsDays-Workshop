@@ -1,0 +1,322 @@
+# Per-platform acceptance jobs → aggregate pass rate → 80% quality gate → optional GitHub Release on main.
+#
+# Pass rate = sum(passed) / sum(total) across all platform-summary.json files.
+# Platforms: api, web, android, ios, automation (matches demo API /api/v1/pipeline-runs).
+#
+# Optional Slack notification secrets:
+#   SLACK_BOT_TOKEN   — bot OAuth token
+#   SLACK_CHANNEL_ID  — channel ID (e.g. C012AB3CD)
+
+name: Build acceptance & release gate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  QUALITY_GATE_THRESHOLD: '80'
+
+concurrency:
+  group: acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance-api:
+    name: Acceptance — API (Spring)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: qoe_user
+          POSTGRES_PASSWORD: qoe_password
+          POSTGRES_DB: qoe_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-api-${{ hashFiles('backend-api/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-api-
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+        working-directory: backend-api
+      - name: Run API E2E tests (acceptance — full HTTP stack)
+        id: api_tests
+        continue-on-error: true
+        run: ./gradlew e2eTest --no-daemon
+        working-directory: backend-api
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/qoe_db
+          SPRING_DATASOURCE_USERNAME: qoe_user
+          SPRING_DATASOURCE_PASSWORD: qoe_password
+      - name: Summarize JUnit (API)
+        if: always()
+        run: |
+          python3 .github/scripts/junit_to_summary.py api backend-api/build/test-results \
+            || echo '{"platform":"api","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-api-summary
+          path: platform-summary.json
+
+  acceptance-web:
+    name: Acceptance — Web (Vitest + Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-player
+      - name: Vitest (JUnit)
+        id: vitest
+        continue-on-error: true
+        run: npm test
+        working-directory: web-player
+      - name: Summarize Vitest JUnit
+        if: always()
+        run: |
+          mkdir -p web-merge
+          python3 .github/scripts/junit_to_summary.py web-vitest web-player/test-results \
+            || echo '{"platform":"web-vitest","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+          mv platform-summary.json web-merge/vitest.json
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: web-player
+      - name: Playwright E2E
+        id: e2e
+        continue-on-error: true
+        run: npx playwright test --project=chromium
+        working-directory: web-player
+        env:
+          CI: true
+      - name: Summarize Playwright JSON
+        if: always()
+        run: |
+          python3 .github/scripts/playwright_to_summary.py web-player/playwright-results.json \
+            || echo '{"platform":"web","passed":0,"failed":1,"skipped":0,"total":1}' > playwright-summary.json
+          mv playwright-summary.json web-merge/playwright.json
+      - name: Combine web summaries
+        if: always()
+        run: |
+          python3 .github/scripts/combine_web_summaries.py web-merge/vitest.json web-merge/playwright.json \
+            || echo '{"platform":"web","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-web-summary
+          path: platform-summary.json
+
+  acceptance-android:
+    name: Acceptance — Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-android-acc-${{ hashFiles('android-player/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-android-acc-
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+        working-directory: android-player
+      - name: Run Android unit tests
+        id: android_tests
+        continue-on-error: true
+        run: ./gradlew test --no-daemon
+        working-directory: android-player
+      - name: Summarize JUnit (Android)
+        if: always()
+        run: |
+          python3 .github/scripts/junit_to_summary.py android android-player \
+            || echo '{"platform":"android","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-android-summary
+          path: platform-summary.json
+
+  acceptance-ios:
+    name: Acceptance — iOS (Swift)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Swift tests
+        id: swift_tests
+        continue-on-error: true
+        run: swift test 2>&1 | tee swift-test.log
+        working-directory: ios-player
+      - name: Summarize Swift log
+        if: always()
+        run: |
+          python3 .github/scripts/swift_log_to_summary.py ios-player/swift-test.log \
+            || echo '{"platform":"ios","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-ios-summary
+          path: platform-summary.json
+
+  acceptance-automation:
+    name: Acceptance — Automation (qoe-tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Postgres + API (Docker)
+        run: docker compose up -d postgres backend
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "backend up"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs backend
+          exit 1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-acc-${{ hashFiles('framework/qoe-tests/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-acc-
+      - name: Run stable API + validation tests
+        id: mvn_tests
+        continue-on-error: true
+        run: mvn -B test -Dapi.base.url=http://localhost:8080 -Dtest=QoEMetricsApiTest,QoEValidationTest
+        working-directory: framework/qoe-tests
+      - name: Summarize JUnit (automation)
+        if: always()
+        run: |
+          python3 .github/scripts/junit_to_summary.py automation framework/qoe-tests/target/surefire-reports \
+            || echo '{"platform":"automation","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
+      - name: Tear down Docker
+        if: always()
+        run: docker compose down -v || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-automation-summary
+          path: platform-summary.json
+
+  quality-gate:
+    name: Quality gate (80% aggregate)
+    runs-on: ubuntu-latest
+    needs:
+      - acceptance-api
+      - acceptance-web
+      - acceptance-android
+      - acceptance-ios
+      - acceptance-automation
+    if: always()
+    outputs:
+      approved: ${{ steps.gate.outputs.approved }}
+      overall_pass_rate: ${{ steps.gate.outputs.overall_pass_rate }}
+      gate_threshold: ${{ steps.gate.outputs.gate_threshold }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: acceptance-api-summary
+          path: gate-input/api
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: acceptance-web-summary
+          path: gate-input/web
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: acceptance-android-summary
+          path: gate-input/android
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: acceptance-ios-summary
+          path: gate-input/ios
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: acceptance-automation-summary
+          path: gate-input/automation
+      - name: Merge summaries & export outputs
+        id: gate
+        run: |
+          SUMMARY_ROOT=gate-input QUALITY_GATE_THRESHOLD="${QUALITY_GATE_THRESHOLD}" python3 .github/scripts/merge_platform_summaries.py
+          echo "approved=$(jq -r .approved acceptance-gate-manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "overall_pass_rate=$(jq -r .overallPassRatePercent acceptance-gate-manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "gate_threshold=$(jq -r .gateThresholdPercent acceptance-gate-manifest.json)" >> "$GITHUB_OUTPUT"
+          jq -e '.approved == true' acceptance-gate-manifest.json > /dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-gate-manifest
+          path: acceptance-gate-manifest.json
+      - name: Build Slack payload
+        if: always()
+        run: python3 .github/scripts/acceptance_gate_to_slack.py acceptance-gate-manifest.json
+      - name: Send Slack notification
+        if: always() && secrets.SLACK_BOT_TOKEN != '' && secrets.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./acceptance-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+  release:
+    name: Create GitHub Release
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.quality-gate.result == 'success' &&
+      needs.quality-gate.outputs.approved == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "acceptance-${{ github.run_number }}" \
+            --title "Acceptance gate passed (${{ needs.quality-gate.outputs.overall_pass_rate }}%)" \
+            --notes "Aggregate test pass rate met the ${{ needs.quality-gate.outputs.gate_threshold }}% quality gate across api, web, android, ios, and automation jobs."

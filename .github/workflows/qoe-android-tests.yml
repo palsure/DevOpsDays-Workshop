@@ -1,0 +1,50 @@
+name: QoE Android Player Tests
+
+on:
+  pull_request:
+    paths:
+      - 'android-player/**'
+      - '.github/workflows/qoe-android-tests.yml'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'android-player/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Android Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+      
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-android-
+      
+      - name: Run tests
+        run: ./gradlew test
+        working-directory: android-player
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: android-player/app/build/test-results/test/*.xml
