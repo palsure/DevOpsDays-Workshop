@@ -77,7 +77,8 @@ def main() -> int:
     run_id     = os.environ.get("GITHUB_RUN_ID", data.get("runId", ""))
     run_number = os.environ.get("GITHUB_RUN_NUMBER", "")
     branch     = os.environ.get("GITHUB_REF_NAME", data.get("branch", "unknown"))
-    sha        = (os.environ.get("GITHUB_SHA", "") or "")[:7] or "unknown"
+    sha_full   = os.environ.get("GITHUB_SHA", "") or "unknown"
+    sha        = sha_full[:7]
     env_name   = data.get("env", "STAGE").upper()
     test_type  = data.get("testType", "e2e").upper()
     stage      = data.get("stage", "post-deploy")
@@ -88,6 +89,7 @@ def main() -> int:
         f"https://github.com/{repo}/actions/runs/{run_id}"
         if run_id else f"https://github.com/{repo}"
     )
+    commit_url  = f"https://github.com/{repo}/commit/{sha_full}"
     default_allure = data.get("allureUrl", build_url)
 
     # ------------------------------------------------------------------
@@ -100,47 +102,29 @@ def main() -> int:
     overall_ok    = (total_passed / total_total * 100 >= PASS_THRESHOLD) if total_total > 0 else False
 
     # ------------------------------------------------------------------
-    # Build table rows (monospace, aligned)
+    # Build per-platform rows as mrkdwn (no code block — enables emoji + links)
     # ------------------------------------------------------------------
-    col_w = {"pct": 11, "fail": 7, "skip": 8, "tot": 6, "st": 7, "rep": 9, "plat": 14}
-    sep = "-" * 64
-
-    header = (
-        f"{'Passed(%)'.ljust(col_w['pct'])}"
-        f"{'Failed'.ljust(col_w['fail'])}"
-        f"{'Skipped'.ljust(col_w['skip'])}"
-        f"{'Total'.ljust(col_w['tot'])}"
-        f"{'Status'.ljust(col_w['st'])}"
-        f"{'Reports'.ljust(col_w['rep'])}"
-        f"Platform"
-    )
-
     rows: list[str] = []
     for p in platforms:
-        ps  = int(p.get("passed",  0))
-        pf  = int(p.get("failed",  0))
-        pk  = int(p.get("skipped", 0))
-        pt  = int(p.get("total",   0))
+        ps   = int(p.get("passed",  0))
+        pf   = int(p.get("failed",  0))
+        pk   = int(p.get("skipped", 0))
+        pt   = int(p.get("total",   0))
         plat = p.get("platform", "unknown")
         icon = status_icon(ps, pt)
         allure_url = p.get("allureUrl", default_allure)
-        passed_col = f"{ps} ({pct(ps, pt)})"
 
-        # For Slack mrkdwn we use inline link for Reports column
         rows.append(
-            f"{passed_col.ljust(col_w['pct'])}"
-            f"{str(pf).ljust(col_w['fail'])}"
-            f"{str(pk).ljust(col_w['skip'])}"
-            f"{str(pt).ljust(col_w['tot'])}"
-            f"{icon}      "          # status icon + padding
-            f"<{allure_url}|Allure>  "
-            f"{plat}"
+            f"{icon}  *{plat}*"
+            f"  —  {ps}/{pt} ({pct(ps, pt)})  |  "
+            f"Failed: {pf}  |  Skipped: {pk}"
+            f"  |  <{allure_url}|Allure>"
         )
 
     if not rows:
         rows = ["No platform results were collected."]
 
-    table_text = "\n".join([sep, header, sep] + rows + [sep])
+    table_text = "\n".join(rows)
 
     # ------------------------------------------------------------------
     # Footer
@@ -182,17 +166,17 @@ def main() -> int:
                         f"*Branch:* `{branch}`  |  "
                         f"*Test Type:* `{test_type}`  |  "
                         f"*Stage:* `{stage}`  |  "
-                        f"*Commit:* `{sha}`"
+                        f"*Commit:* <{commit_url}|{sha}>"
                     ),
                 },
             },
             {"type": "divider"},
-            # Per-platform table (monospace block)
+            # Per-platform rows (plain mrkdwn — emoji + links render correctly)
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"```\n{table_text}\n```",
+                    "text": table_text,
                 },
             },
             {"type": "divider"},
