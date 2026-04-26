@@ -394,17 +394,18 @@ jobs:
           fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 6 — Publish to Firebase Hosting
-# Requires secrets:
-#   FIREBASE_TOKEN      — obtained via `firebase login:ci` locally
-#   FIREBASE_PROJECT_ID — your Firebase project ID
-# Also requires web-player/firebase.json (already committed).
+# STAGE 6a — Deploy to Firebase Hosting PREVIEW channel (not live yet)
+# The preview URL is a temporary isolated deployment; live channel is untouched.
+# Requires: FIREBASE_TOKEN, FIREBASE_PROJECT_ID secrets.
 # ─────────────────────────────────────────────────────────────────────────────
-  publish-firebase:
-    name: "Stage 6 — Publish to Firebase Hosting"
+  deploy-preview:
+    name: "Stage 6a — Deploy Firebase Preview"
     runs-on: ubuntu-latest
     needs: [notify-start, build, quality-gate]
     if: always() && needs.quality-gate.outputs.passed == 'true' && needs.build.result == 'success'
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
+      channel: ${{ steps.deploy.outputs.channel }}
 
     steps:
       - uses: actions/checkout@v4
@@ -422,25 +423,42 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Deploy to Firebase Hosting
-        id: firebase
+      - name: Deploy to preview channel
+        id: deploy
         if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
         run: |
-          firebase deploy --only hosting \
+          CHANNEL="build-${{ github.run_number }}"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
+          OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
+            --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --message "Build #${{ github.run_number }} — ${{ github.ref_name }} @ ${{ github.sha }}"
+            --json 2>/dev/null || echo '{}')
+
+          echo "Firebase output: $OUTPUT"
+
+          URL=$(echo "$OUTPUT" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          vals = list(d.get('result', {}).values())
+          print(vals[0].get('url', '') if vals else '')
+          " 2>/dev/null || echo '')
+
+          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "✅ Preview deployed: $URL"
         working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Post Firebase publish result to Slack thread
+      - name: Post preview deploy result to Slack thread
         if: always()
         env:
           MODULE_NAME: WEB
-          STAGE_NAME: Firebase Hosting
-          STAGE_RESULT: ${{ steps.firebase.outcome || 'skipped' }}
+          STAGE_NAME: Firebase Preview Deploy
+          STAGE_RESULT: ${{ steps.deploy.outcome || 'skipped' }}
+          REPORT_URL: ${{ steps.deploy.outputs.preview_url }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -448,7 +466,191 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: python3 .github/scripts/stage_result_to_slack.py
 
-      - name: Send Firebase Slack reply
+      - name: Send preview deploy Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 6b — Run E2E tests against the preview URL
+# Uses the same Playwright suite but pointed at the live preview channel.
+# If PLAYWRIGHT_BASE_URL is set, playwright.config.ts skips the local server.
+# ─────────────────────────────────────────────────────────────────────────────
+  test-on-preview:
+    name: "Stage 6b — E2E on Preview URL"
+    runs-on: ubuntu-latest
+    needs: [notify-start, deploy-preview]
+    if: always() && needs.deploy-preview.result == 'success' && needs.deploy-preview.outputs.preview_url != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web-player/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: web-player
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: web-player
+
+      - name: Run E2E tests against preview URL
+        id: e2e_preview
+        run: npm run e2e
+        working-directory: web-player
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+          CI: 'true'
+
+      - name: Upload Playwright preview report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-preview-playwright-report
+          path: web-player/playwright-report/
+          retention-days: 7
+
+      - name: Post preview E2E result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: E2E on Preview (Firebase)
+          PLAYWRIGHT_JSON: web-player/playwright-results.json
+          STAGE_RESULT: ${{ steps.e2e_preview.outcome }}
+          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send preview E2E Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Fail if E2E on preview failed
+        if: steps.e2e_preview.outcome == 'failure'
+        run: exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 6c — Promote preview to LIVE  (only if preview E2E passed)
+# Clones the preview channel to the live channel, then removes the preview.
+# ─────────────────────────────────────────────────────────────────────────────
+  promote-live:
+    name: "Stage 6c — Promote to Live ✅"
+    runs-on: ubuntu-latest
+    needs: [notify-start, deploy-preview, test-on-preview]
+    if: always() && needs.test-on-preview.result == 'success' && needs.deploy-preview.result == 'success'
+
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Promote preview to live channel
+        id: promote
+        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
+        run: |
+          PROJECT="${{ secrets.FIREBASE_PROJECT_ID }}"
+          CHANNEL="${{ needs.deploy-preview.outputs.channel }}"
+
+          firebase hosting:clone "$PROJECT:$CHANNEL" "$PROJECT:live" \
+            --project "$PROJECT" \
+            --token "${{ secrets.FIREBASE_TOKEN }}"
+
+          firebase hosting:channel:delete "$CHANNEL" --force \
+            --project "$PROJECT" \
+            --token "${{ secrets.FIREBASE_TOKEN }}" || true
+
+          echo "🚀 Promoted build-${{ github.run_number }} to live"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Post promote result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: Firebase Live Promotion
+          STAGE_RESULT: ${{ steps.promote.outcome || 'skipped' }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send promote Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 6c (alt) — Delete preview on failure  (live channel is untouched)
+# ─────────────────────────────────────────────────────────────────────────────
+  rollback-preview:
+    name: "Stage 6c — Rollback Preview ❌"
+    runs-on: ubuntu-latest
+    needs: [notify-start, deploy-preview, test-on-preview]
+    if: always() && needs.deploy-preview.result == 'success' && needs.test-on-preview.result != 'success'
+
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Delete failed preview channel
+        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
+        run: |
+          CHANNEL="${{ needs.deploy-preview.outputs.channel }}"
+          firebase hosting:channel:delete "$CHANNEL" --force \
+            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
+            --token "${{ secrets.FIREBASE_TOKEN }}" || true
+          echo "🔄 Preview channel deleted — live channel is unchanged"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Post rollback to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: WEB
+          STAGE_NAME: "Preview Rolled Back (live unchanged)"
+          STAGE_RESULT: failure
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send rollback Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
@@ -463,7 +665,7 @@ jobs:
   report:
     name: "Stage 7 — Report & Slack Summary"
     runs-on: ubuntu-latest
-    needs: [notify-start, build, unit-tests, e2e-tests, automation-e2e, quality-gate, publish-firebase]
+    needs: [notify-start, build, unit-tests, e2e-tests, automation-e2e, quality-gate, deploy-preview, test-on-preview, promote-live, rollback-preview]
     if: always()
 
     steps:
@@ -494,8 +696,8 @@ jobs:
           STAGE2_RESULT: ${{ needs.unit-tests.result }}
           STAGE3_NAME: E2E Tests (Playwright)
           STAGE3_RESULT: ${{ needs.e2e-tests.result }}
-          STAGE4_NAME: Firebase Hosting
-          STAGE4_RESULT: ${{ needs.publish-firebase.result }}
+          STAGE4_NAME: Firebase Live
+          STAGE4_RESULT: ${{ needs.promote-live.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}

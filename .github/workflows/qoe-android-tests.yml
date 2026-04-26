@@ -377,13 +377,13 @@ jobs:
           fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 5 — Publish to Firebase App Distribution
-# Runs only when quality gate passes. Requires secrets:
-#   FIREBASE_APP_ID_ANDROID       — Firebase Android app ID (1:xxx:android:yyy)
-#   FIREBASE_CREDENTIAL_FILE_CONTENT — Service account JSON content
+# STAGE 5a — Publish to Firebase App Distribution — INTERNAL testers group
+# Runs when quality gate passes. Internal testers receive the build for
+# manual smoke testing before it reaches the public group.
+# Requires: FIREBASE_APP_ID_ANDROID, FIREBASE_CREDENTIAL_FILE_CONTENT secrets.
 # ─────────────────────────────────────────────────────────────────────────────
-  publish-firebase:
-    name: "Stage 5 — Publish to Firebase"
+  publish-internal:
+    name: "Stage 5a — Publish to Internal Testers"
     runs-on: ubuntu-latest
     needs: [notify-start, build, quality-gate]
     if: always() && needs.quality-gate.outputs.passed == 'true' && needs.build.result == 'success'
@@ -397,29 +397,29 @@ jobs:
           name: android-debug-apk
           path: ./apk
 
-      - name: Distribute to Firebase App Distribution
-        id: firebase
+      - name: Distribute to Firebase — internal-testers
+        id: firebase_internal
         if: env.FIREBASE_APP_ID_ANDROID != '' && env.FIREBASE_CREDENTIAL_FILE_CONTENT != ''
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
-          groups: testers
+          groups: internal-testers
           file: apk/app-debug.apk
           releaseNotes: |
-            Build #${{ github.run_number }} — ${{ github.ref_name }}
+            [INTERNAL] Build #${{ github.run_number }} — ${{ github.ref_name }}
             Commit: ${{ github.sha }}
-            ${{ inputs.skip_tests == true && 'Mode: force-publish (tests skipped)' || 'Mode: full pipeline (tests passed)' }}
+            Status: Pending public release approval — smoke test before approving.
         env:
           FIREBASE_APP_ID_ANDROID: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           FIREBASE_CREDENTIAL_FILE_CONTENT: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
 
-      - name: Post Firebase publish result to Slack thread
+      - name: Post internal publish result to Slack thread
         if: always()
         env:
           MODULE_NAME: ANDROID
-          STAGE_NAME: Firebase App Distribution
-          STAGE_RESULT: ${{ steps.firebase.outcome || 'skipped' }}
+          STAGE_NAME: "Firebase Internal Testers"
+          STAGE_RESULT: ${{ steps.firebase_internal.outcome || 'skipped' }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -427,7 +427,69 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: python3 .github/scripts/stage_result_to_slack.py
 
-      - name: Send Firebase Slack reply
+      - name: Send internal publish Slack reply
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          payload-file-path: ./stage-slack-payload.json
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 5b — Publish to Firebase App Distribution — PUBLIC testers group
+# Gated by the "firebase-production" GitHub Environment (requires manual
+# approval from a designated reviewer in GitHub Actions UI).
+# Reviewers install the build from internal-testers, smoke test it, then
+# approve or reject in GitHub → Actions → this run → Review deployments.
+# ─────────────────────────────────────────────────────────────────────────────
+  publish-public:
+    name: "Stage 5b — Publish to Public Testers"
+    runs-on: ubuntu-latest
+    environment: firebase-production   # ← approval gate; configure in repo Settings → Environments
+    needs: [notify-start, build, quality-gate, publish-internal]
+    if: always() && needs.quality-gate.outputs.passed == 'true' && needs.publish-internal.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-debug-apk
+          path: ./apk
+
+      - name: Distribute to Firebase — public-testers
+        id: firebase_public
+        if: env.FIREBASE_APP_ID_ANDROID != '' && env.FIREBASE_CREDENTIAL_FILE_CONTENT != ''
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          groups: public-testers
+          file: apk/app-debug.apk
+          releaseNotes: |
+            Build #${{ github.run_number }} — ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            ✅ Approved after internal smoke testing.
+        env:
+          FIREBASE_APP_ID_ANDROID: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
+          FIREBASE_CREDENTIAL_FILE_CONTENT: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+
+      - name: Post public publish result to Slack thread
+        if: always()
+        env:
+          MODULE_NAME: ANDROID
+          STAGE_NAME: "Firebase Public Testers"
+          STAGE_RESULT: ${{ steps.firebase_public.outcome || 'skipped' }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/stage_result_to_slack.py
+
+      - name: Send public publish Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v1.27.0
         with:
@@ -442,7 +504,7 @@ jobs:
   report:
     name: "Stage 6 — Report & Slack Summary"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, lint, build, automation-e2e, quality-gate, publish-firebase]
+    needs: [notify-start, unit-tests, lint, build, automation-e2e, quality-gate, publish-internal, publish-public]
     if: always()
 
     steps:
@@ -473,8 +535,8 @@ jobs:
           STAGE2_RESULT: ${{ needs.build.result }}
           STAGE3_NAME: Acceptance Tests
           STAGE3_RESULT: ${{ needs.automation-e2e.result }}
-          STAGE4_NAME: Firebase Publish
-          STAGE4_RESULT: ${{ needs.publish-firebase.result }}
+          STAGE4_NAME: Firebase Public
+          STAGE4_RESULT: ${{ needs.publish-public.result }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
