@@ -75,7 +75,7 @@ jobs:
           blocks = [
             {
               "type": "header",
-              "text": {"type": "plain_text", "text": "[API] Build — Started", "emoji": True}
+              "text": {"type": "plain_text", "text": "[API] Build — Started  |  Build #${{ github.run_number }}", "emoji": True}
             },
             {
               "type": "section",
@@ -105,7 +105,7 @@ jobs:
               ]
             }
           ]
-          print(json.dumps({"channel": "$SLACK_CHANNEL_ID", "blocks": blocks}))
+          print(json.dumps({"channel": "$SLACK_CHANNEL_ID", "unfurl_links": False, "unfurl_media": False, "blocks": blocks}))
           EOF
           )
 

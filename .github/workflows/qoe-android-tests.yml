@@ -64,7 +64,7 @@ jobs:
           PAYLOAD=$(python3 - <<EOF
           import json
           blocks = [
-            {"type": "header", "text": {"type": "plain_text", "text": "[ANDROID] Build — Started", "emoji": True}},
+            {"type": "header", "text": {"type": "plain_text", "text": "[ANDROID] Build — Started  |  Build #${{ github.run_number }}", "emoji": True}},
             {"type": "section", "fields": [
               {"type": "mrkdwn", "text": "*Branch:*\n\`${{ github.ref_name }}\`"},
               {"type": "mrkdwn", "text": "*Commit:*\n<$COMMIT_URL|${SHORT_SHA}>"},
@@ -74,7 +74,7 @@ jobs:
             {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests & lint running… Build result will follow in this thread."}]},
             {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
           ]
-          print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "blocks": blocks}))
+          print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "unfurl_links": False, "unfurl_media": False, "blocks": blocks}))
           EOF
           )
 
