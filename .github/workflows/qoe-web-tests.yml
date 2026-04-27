@@ -315,23 +315,17 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Download build artifact (local serve fallback)
-        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist
-
-      - name: Serve dist/ locally (fallback when no Firebase preview URL)
-        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
+      - name: Confirm BAT target URL (must be Firebase Preview)
         run: |
-          npm install -g serve
-          serve web-player/dist -l 3000 &
-          echo "SERVE_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "✅ Local server ready" && break
-            echo "Waiting ($i/15)…"; sleep 2
-          done
+          URL="${{ needs.deploy-preview.outputs.preview_url }}"
+          echo "🔍 BAT target URL: ${URL:-<not set>}"
+          if [[ "$URL" != https://* ]]; then
+            echo "❌ ERROR: Firebase Preview URL is required for BAT tests."
+            echo "   Got: '${URL:-<empty>}'"
+            echo "   BAT tests validate the preview deployment — they must NOT run on localhost."
+            exit 1
+          fi
+          echo "✅ BAT will run against Firebase Preview: $URL"
 
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
@@ -339,11 +333,7 @@ jobs:
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
-
-      - name: Stop local server (if started)
-        if: always() && env.SERVE_PID != ''
-        run: kill "$SERVE_PID" 2>/dev/null || true
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
 
       - name: Calculate BAT duration
         if: always()
@@ -585,23 +575,17 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Download dist artifact (local server fallback)
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist
-
-      - name: Install static file server
-        run: npm install -g serve
-
-      - name: Serve dist/ on port 3000 (fallback when Firebase URL unavailable)
+      - name: Confirm Smoke target URL (must be Firebase Live)
         run: |
-          serve -s dist -l 3000 &
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:3000/ > /dev/null && echo "Local server ready" && break
-            echo "Waiting for local server… ($i/15)"; sleep 2
-          done
-        working-directory: web-player
+          URL="${{ needs.promote-live.outputs.live_url }}"
+          echo "🔍 Smoke target URL: ${URL:-<not set>}"
+          if [[ "$URL" != https://* ]]; then
+            echo "❌ ERROR: Firebase Live URL is required for Smoke tests."
+            echo "   Got: '${URL:-<empty>}'"
+            echo "   Smoke tests validate the live deployment — they must NOT run on preview/localhost."
+            exit 1
+          fi
+          echo "✅ Smoke will run against Firebase Live: $URL"
 
       - name: Run Smoke tests (@Smoke, 3 workers)
         id: smoke
@@ -610,7 +594,7 @@ jobs:
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.promote-live.outputs.live_url || needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
+          PLAYWRIGHT_BASE_URL: ${{ needs.promote-live.outputs.live_url }}
 
       - name: Calculate Smoke duration
         if: always()
