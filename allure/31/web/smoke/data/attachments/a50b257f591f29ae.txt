@@ -1,0 +1,22 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T14:52:24.511Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     23ms  other           GET     200       3ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1   
++     34ms  app-asset       GET     200       7ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++     75ms  app-asset       GET     200      48ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    292ms  hls-manifest    GET     200     100ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    315ms  hls-manifest    GET     200      14ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    327ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    431ms  hls-manifest    GET     200       0ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    443ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++    499ms  hls-segment     GET     ERR      68ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts ❌
+              └─ net::ERR_ABORTED
++    526ms  hls-segment     GET     200      25ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++    811ms  hls-segment     GET     200       1ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   1087ms  hls-segment     GET     200       0ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   1230ms  hls-segment     GET     200       1ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   1419ms  hls-segment     GET     200       1ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   1604ms  hls-segment     GET     200       4ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   1789ms  hls-segment     GET     200      20ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   1947ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_8/url_598/193039199_mp4_h264_aac_fhd_7.ts   
