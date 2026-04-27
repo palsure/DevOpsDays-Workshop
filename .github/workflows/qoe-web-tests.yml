@@ -508,33 +508,19 @@ jobs:
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          # Capture both stdout and stderr so progress lines don't corrupt JSON parse
+          # Capture both stdout+stderr so Firebase progress lines are available for fallback
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
             --json 2>&1 || echo '{}')
           echo "Firebase raw output: $OUTPUT"
-          URL=$(echo "$OUTPUT" | python3 -c "
-import sys, json, re
-text = sys.stdin.read()
-# Try to find the last JSON object in the output (Firebase may emit progress lines first)
-for candidate in reversed(re.findall(r'\{[^{}]*\"result\"[^{}]*\}|\{[\s\S]*\}', text)):
-    try:
-        d = json.loads(candidate)
-        vals = list(d.get('result', {}).values())
-        if vals:
-            url = vals[0].get('url', '') or vals[0].get('siteUrl', '')
-            if url:
-                print(url)
-                sys.exit(0)
-    except Exception:
-        pass
-# Regex fallback — match any Firebase hosting URL in the output
-m = re.search(r'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app', text)
-if m:
-    print(m.group())
-" 2>/dev/null || echo '')
+          # Primary: parse JSON with jq (pre-installed on all GitHub Actions runners)
+          URL=$(echo "$OUTPUT" | jq -r '(.result // {}) | to_entries[0].value.url // ""' 2>/dev/null || true)
+          # Fallback: grep for any *.web.app URL in the raw output
+          if [ -z "$URL" ]; then
+            URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app' | head -1 || true)
+          fi
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "✅ Preview URL: ${URL:-<not extracted>}"
         working-directory: web-player
