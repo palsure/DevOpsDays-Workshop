@@ -1,0 +1,4 @@
+"BROKEN","EPIC","FAILED","FEATURE","PASSED","SKIPPED","STORY","UNKNOWN"
+"0","","6","","0","0","","0"
+"0","","1","Rebuffering Detection","0","0","Mid-play stall (HLS stop/start)","0"
+"0","","1","Startup Latency","0","0","Startup delay (late manifest attach)","0"
