@@ -1,0 +1,33 @@
+<div>POST to http://localhost:33481/api/v1/pipeline-runs/53cc8ee1-c2f4-444b-b4dc-233a8ccf2ab0/platforms</div>
+
+    <h4>Body</h4>
+    <div>
+    <pre class="preformated-text">
+{
+    &quot;total&quot;: 5,
+    &quot;passed&quot;: 5,
+    &quot;failed&quot;: 0,
+    &quot;skipped&quot;: 0,
+    &quot;platform&quot;: &quot;tvos&quot;
+}    </pre>
+    </div>
+
+    <h4>Headers</h4>
+    <div>
+            <div>Accept: */*</div>
+            <div>Content-Type: application/json</div>
+    </div>
+
+
+
+    <h4>Curl</h4>
+    <div>
+        curl -v -X POST &#39;http://localhost:33481/api/v1/pipeline-runs/53cc8ee1-c2f4-444b-b4dc-233a8ccf2ab0/platforms&#39; -H &#39;Accept: */*&#39; -H &#39;Content-Type: application/json&#39; -d &#39;{
+    &quot;total&quot;: 5,
+    &quot;passed&quot;: 5,
+    &quot;failed&quot;: 0,
+    &quot;skipped&quot;: 0,
+    &quot;platform&quot;: &quot;tvos&quot;
+}&#39;
+    </div>
+
