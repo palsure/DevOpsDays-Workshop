@@ -509,16 +509,17 @@ jobs:
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          # Capture both stdout+stderr so Firebase progress lines are available for fallback
+          # Capture stdout only — Firebase --json writes clean JSON to stdout,
+          # progress/warnings go to stderr; merging (2>&1) corrupts the JSON.
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --json 2>&1 || echo '{}')
-          echo "Firebase raw output: $OUTPUT"
+            --json 2>/dev/null || echo '{}')
+          echo "Firebase JSON output: $OUTPUT"
           # Primary: parse JSON with jq (pre-installed on all GitHub Actions runners)
           URL=$(echo "$OUTPUT" | jq -r '(.result // {}) | to_entries[0].value.url // ""' 2>/dev/null || true)
-          # Fallback: grep for any *.web.app URL in the raw output
+          # Fallback: grep for any *.web.app URL in the stdout output
           if [ -z "$URL" ]; then
             URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app' | head -1 || true)
           fi
