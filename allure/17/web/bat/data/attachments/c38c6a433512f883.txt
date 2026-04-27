@@ -1,0 +1,5 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T03:05:25.643Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     28ms  other           GET     200       3ms  http://localhost:3000/?scenario=black_screen_pulse&e2e_autoplay=1   

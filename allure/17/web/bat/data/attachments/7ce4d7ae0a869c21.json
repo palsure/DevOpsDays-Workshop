@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/?scenario=baseline&e2e_autoplay=1",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 4,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 23
+  }
+]

@@ -1,0 +1,4 @@
+"BROKEN","EPIC","FAILED","FEATURE","PASSED","SKIPPED","STORY","UNKNOWN"
+"3","","0","","0","0","","0"
+"0","","1","Visual Fault Detection","0","0","Black screen pulse (decoder freeze simulation)","0"
+"1","","0","Time to First Frame","0","0","Baseline (reference stream)","0"
