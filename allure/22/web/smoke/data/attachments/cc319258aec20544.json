@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/?scenario=forced_mid_play_rebuffer&e2e_autoplay=1",
+    "method": "GET",
+    "status": null,
+    "durationMs": 3,
+    "category": "other",
+    "failed": true,
+    "slow": false,
+    "errorText": "net::ERR_CONNECTION_REFUSED",
+    "startedAt": 31
+  }
+]
