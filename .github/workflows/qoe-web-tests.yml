@@ -763,7 +763,7 @@ jobs:
           echo "| BAT Gate | ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Live Promotion | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Smoke Tests | 🔄 In Progress (async) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | ${{ needs.promote-live.result == 'success' && '🔄 In Progress (async)' || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -790,7 +790,7 @@ jobs:
           STAGE7_NAME: Firebase Live Promotion
           STAGE7_RESULT: ${{ needs.promote-live.result }}
           STAGE8_NAME: Smoke Tests
-          STAGE8_RESULT: in-progress
+          STAGE8_RESULT: ${{ needs.promote-live.result == 'success' && 'in-progress' || 'skipped' }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
