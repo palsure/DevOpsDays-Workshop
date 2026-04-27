@@ -141,7 +141,9 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: !IS_LAB,
   forbidOnly: !!process.env.CI,
-  retries:  process.env.CI ? 1 : 0,
+  // BAT keeps 1 retry in CI for resilience; Smoke has 0 retries so Allure
+  // counts match Playwright JSON stats (retries create duplicate Allure entries).
+  retries: process.env.CI ? (STAGE === 'bat' ? 1 : 0) : 0,
   workers:  stageWorkers,
   timeout:  stageTimeout,
 

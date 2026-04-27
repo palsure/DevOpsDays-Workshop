@@ -1,25 +1,20 @@
 # Stream-QoE-App-Web
 #
-# Pipeline flow (mirrors qoe-api-tests.yml):
+# Pipeline flow:
 #   0. notify-start    — Post "build started" to Slack; capture thread_ts + start_epoch.
 #   1. build           — tsc + vite build; produces deployable dist/ artifact.
-#   2. unit-tests      — Vitest + lint. Fast pre-deploy gate; no browser required.
+#   2. unit-tests      — Vitest + lint. Gate (≥80%) inlined; PASS → unblocks bat-tests.
 #                        Allure results → allure-results/unit → GitHub Pages.
-#   3. unit-gate       — Evaluate pass rate (≥80% required).
-#                        PASS → trigger BAT. FAIL → BAT + downstream blocked.
-#   4. bat-tests       — @BAT Playwright tests (4 workers, ~45 s timeout).
-#                        Core sanity checks — if ANY BAT test fails the gate blocks.
-#                        Allure results → allure-results/bat → GitHub Pages.
-#   5. bat-gate        — Evaluate BAT outcome.
-#                        PASS → deploy preview + run Smoke.
-#                        FAIL → build blocked, Smoke skipped.
-#   6. deploy-preview  — Deploy dist/ to Firebase Hosting preview channel.
-#   7. smoke-tests     — @Smoke Playwright tests (runs against preview URL).
-#                        Broader coverage; smoke fails → rollback preview.
+#   3. bat-tests  ┐    — @BAT Playwright tests (4 workers, ~45 s timeout). Gate inlined.
+#   4. deploy     ┘    — Both run IN PARALLEL after unit-tests gate passes.
+#                        bat-tests: allure-results/bat → GitHub Pages.
+#                        deploy: Firebase Hosting preview channel.
+#   5. smoke-tests     — @Smoke Playwright tests (runs against Firebase preview URL).
+#                        Waits for BOTH bat-tests AND deploy-preview to complete.
 #                        Allure results → allure-results/smoke → GitHub Pages.
-#   8. promote-live    — Promote Firebase preview to live channel when Smoke passes.
-#   9. rollback-preview— Delete preview channel when Smoke fails (live unchanged).
-#  10. report          — Final pipeline summary to GitHub Step Summary + Slack.
+#   6. promote-live    — Promote Firebase preview to live channel when Smoke passes.
+#   7. rollback-preview— Delete preview channel when Smoke fails (live unchanged).
+#   8. report          — Final pipeline summary to GitHub Step Summary + Slack.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN       — Slack bot OAuth token
@@ -82,7 +77,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       WEB
-      pipeline-steps:    "Unit → BAT → Smoke"
+      pipeline-steps:    "Unit → BAT ∥ Deploy → Smoke"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -133,7 +128,8 @@ jobs:
     needs: [notify-start, build]
     if: inputs.skip_tests != true && needs.build.result == 'success'
     outputs:
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+      thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
+      gate_passed: ${{ steps.unit-gate.outputs.gate_passed }}
 
     steps:
       - uses: actions/checkout@v4
@@ -207,49 +203,28 @@ jobs:
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3. UNIT GATE — enforce ≥80% pass rate before BAT
-# ─────────────────────────────────────────────────────────────────────────────
-  unit-gate:
-    name: "Unit Quality Gate (≥80%)"
-    runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests]
-    if: always()
-    outputs:
-      passed:    ${{ steps.gate.outputs.passed }}
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download unit JUnit results
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: web-unit-junit
-          path: unit-test-results
-
-      - name: Evaluate unit quality gate
-        id: gate
+      - name: Evaluate unit quality gate (inline)
+        id: unit-gate
+        if: always()
         env:
           QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
         run: |
+          UNIT="${{ steps.unit.outcome }}"
           SKIP="${{ inputs.skip_tests }}"
-          UNIT="${{ needs.unit-tests.result }}"
 
           if [ "$SKIP" = "true" ]; then
             echo "⚡ Hotfix mode — unit gate bypassed"
-            echo "passed=true" >> "$GITHUB_OUTPUT"; exit 0
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
 
           if [ "$UNIT" != "success" ]; then
             echo "❌ Unit tests did not succeed (result=$UNIT) — gate FAILED"
-            echo "passed=false" >> "$GITHUB_OUTPUT"; exit 0
+            echo "gate_passed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
 
           python3 - <<'EOF'
-          import glob, xml.etree.ElementTree as ET, os, sys
-          files = glob.glob("unit-test-results/**/*.xml", recursive=True)
+          import glob, xml.etree.ElementTree as ET, os
+          files = glob.glob("web-player/test-results/**/*.xml", recursive=True)
           total = passed = failed = skipped = 0
           for f in files:
               root = ET.parse(f).getroot()
@@ -266,21 +241,21 @@ jobs:
 
           print(f"Unit gate: {passed}/{total} passed ({rate:.1f}%) — threshold {threshold}%")
           with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
-              gh.write(f"passed={'true' if gate_ok else 'false'}\n")
+              gh.write(f"gate_passed={'true' if gate_ok else 'false'}\n")
           if not gate_ok:
               print(f"❌ FAILED — {rate:.1f}% < {threshold}% or {failed} test(s) failed")
           else:
-              print(f"✅ PASSED — running BAT tests")
+              print(f"✅ PASSED — running BAT tests in parallel with Firebase deploy")
           EOF
 
       - name: Post unit gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
-          PASSED="${{ steps.gate.outputs.passed }}"
+          PASSED="${{ steps.unit-gate.outputs.gate_passed }}"
           TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="Unit gate *PASSED* — running BAT tests…"
+            ICON="✅"; MSG="Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
           else
             ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
           fi
@@ -300,13 +275,16 @@ jobs:
             -d @unit-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
+# 3. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
+#    Runs IN PARALLEL with deploy-preview (both unblocked by unit-tests gate)
 # ─────────────────────────────────────────────────────────────────────────────
   bat-tests:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate]
-    if: inputs.skip_tests != true && needs.unit-gate.outputs.passed == 'true'
+    needs: [notify-start, unit-tests]
+    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true'
+    outputs:
+      gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
     steps:
       - uses: actions/checkout@v4
@@ -417,44 +395,32 @@ jobs:
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5. BAT GATE — block Smoke & downstream on any BAT failure
-# ─────────────────────────────────────────────────────────────────────────────
-  bat-gate:
-    name: "BAT Quality Gate"
-    runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate, bat-tests]
-    if: always()
-    outputs:
-      passed:    ${{ steps.evaluate.outputs.passed }}
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-
-    steps:
-      - id: evaluate
-        name: Evaluate BAT gate
+      - name: Evaluate BAT quality gate (inline)
+        id: bat-gate
+        if: always()
         run: |
+          BAT="${{ steps.bat.outcome }}"
           SKIP="${{ inputs.skip_tests }}"
-          BAT="${{ needs.bat-tests.result }}"
 
           if [ "$SKIP" = "true" ]; then
             echo "⚡ Hotfix mode — BAT gate bypassed"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"
           elif [ "$BAT" = "success" ]; then
-            echo "✅ BAT gate PASSED — deploying preview and running Smoke tests"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ BAT gate PASSED — Smoke tests can start"
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ BAT gate FAILED (bat=$BAT) — blocking downstream"
-            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "❌ BAT gate FAILED (bat=$BAT) — blocking Smoke tests"
+            echo "gate_passed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Post BAT gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
-          PASSED="${{ steps.evaluate.outputs.passed }}"
+          PASSED="${{ steps.bat-gate.outputs.gate_passed }}"
           TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="BAT gate *PASSED* — deploying preview, running Smoke tests…"
+            ICON="✅"; MSG="BAT gate *PASSED* — running Smoke tests…"
           else
             ICON="🚫"; MSG="BAT gate *FAILED* — Smoke tests *BLOCKED*."
           fi
@@ -474,13 +440,14 @@ jobs:
             -d @bat-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. DEPLOY PREVIEW — Firebase Hosting preview channel
+# 4. DEPLOY PREVIEW — Firebase Hosting preview channel
+#    Runs IN PARALLEL with bat-tests (both unblocked by unit-tests gate)
 # ─────────────────────────────────────────────────────────────────────────────
   deploy-preview:
     name: "Deploy Firebase Preview"
     runs-on: ubuntu-latest
-    needs: [notify-start, build, bat-gate]
-    if: always() && needs.bat-gate.outputs.passed == 'true' && needs.build.result == 'success'
+    needs: [notify-start, build, unit-tests]
+    if: always() && needs.unit-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
     outputs:
       preview_url: ${{ steps.resolve-url.outputs.preview_url }}
       channel:     ${{ steps.resolve-url.outputs.channel }}
@@ -519,9 +486,12 @@ jobs:
           echo "=== Firebase deploy output ==="
           echo "$OUTPUT"
           echo "=============================="
-          # Firebase always prints the preview URL somewhere in its output.
-          # Pattern: https://PROJECT--CHANNEL-HASH.web.app
-          URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app' | head -1 || true)
+          # Firebase preview URLs can end with .web.app or .firebaseapp.com
+          URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+          # Second-pass grep: try without the double-dash pattern (some Firebase projects vary)
+          if [ -z "$URL" ]; then
+            URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+          fi
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "✅ Preview URL: ${URL:-<not extracted>}"
         working-directory: web-player
@@ -569,13 +539,14 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. SMOKE TESTS — @Smoke Playwright tests; 3 workers; runs after BAT gate
+# 5. SMOKE TESTS — @Smoke Playwright tests; 3 workers; runs against Firebase URL
+#    Waits for BOTH bat-tests AND deploy-preview to complete
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-tests:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, bat-gate, deploy-preview]
-    if: needs.bat-gate.outputs.passed == 'true'
+    needs: [notify-start, bat-tests, deploy-preview]
+    if: needs.bat-tests.outputs.gate_passed == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -784,9 +755,7 @@ jobs:
       - notify-start
       - build
       - unit-tests
-      - unit-gate
       - bat-tests
-      - bat-gate
       - deploy-preview
       - smoke-tests
       - promote-live
@@ -813,9 +782,9 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests (Vitest) | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Gate (≥80%) | ${{ needs.unit-gate.outputs.passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Tests | ${{ needs.bat-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Gate | ${{ needs.bat-gate.outputs.passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Gate | ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Live | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
@@ -835,11 +804,11 @@ jobs:
           STAGE2_NAME: Unit Tests (Vitest)
           STAGE2_RESULT: ${{ needs.unit-tests.result }}
           STAGE3_NAME: "Unit Gate (≥80%)"
-          STAGE3_RESULT: ${{ needs.unit-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE4_NAME: BAT Tests
           STAGE4_RESULT: ${{ needs.bat-tests.result }}
           STAGE5_NAME: BAT Gate
-          STAGE5_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: Smoke Tests
           STAGE6_RESULT: ${{ needs.smoke-tests.result }}
           STAGE7_NAME: Firebase Live
@@ -894,8 +863,8 @@ jobs:
           BUILD_VERDICT: >-
             ${{ (needs.build.result == 'success' &&
                  needs.unit-tests.result != 'failure' &&
-                 needs.unit-gate.outputs.passed == 'true' &&
-                 needs.bat-gate.outputs.passed == 'true' &&
+                 needs.unit-tests.outputs.gate_passed == 'true' &&
+                 needs.bat-tests.outputs.gate_passed == 'true' &&
                  needs.smoke-tests.result != 'failure') && 'success' || 'failure' }}
         run: python3 .github/scripts/update_build_message.py
 
@@ -977,7 +946,7 @@ jobs:
         if: |
           needs.build.result == 'failure' ||
           needs.unit-tests.result == 'failure' ||
-          needs.unit-gate.outputs.passed == 'false' ||
+          needs.unit-tests.outputs.gate_passed == 'false' ||
           needs.bat-tests.result == 'failure' ||
           needs.smoke-tests.result == 'failure'
         run: exit 1

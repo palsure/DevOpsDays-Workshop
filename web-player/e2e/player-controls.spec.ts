@@ -74,6 +74,9 @@ async function waitForPlayhead(
 test.describe('Player Controls (pause / play / seek)', () => {
 
   test.beforeEach(async ({ page }) => {
+    // Navigate to home page first — visible in video recording as full navigation flow
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
     await page.goto('/?scenario=baseline&e2e_autoplay=1');
     await waitForFirstFrame(page);
   });
@@ -230,6 +233,9 @@ the player correctly handles backward seeking in an HLS VOD stream.
 test.describe('ABR & Bitrate (HLS.js level management)', () => {
 
   test.beforeEach(async ({ page }) => {
+    // Navigate to home page first — visible in video recording as full navigation flow
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
     await page.goto('/?scenario=baseline&e2e_autoplay=1');
     await waitForManifest(page);
   });
