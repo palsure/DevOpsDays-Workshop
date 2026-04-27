@@ -180,8 +180,8 @@ def main() -> None:
 <!-- qoe-web-results -->
 ## {overall_icon} \\[WEB\\] Test Results — {title_suffix}
 
-| | Stage | Passed | Failed | Skipped | Total | Pass Rate | Verdict | Report |
-|---|---|---|---|---|---|---|---|---|
+| Stage | Passed | Failed | Skipped | Total | Pass Rate | Verdict | Report |
+|---|---|---|---|---|---|---|---|
 {table}
 
 **Branch:** `{branch}` &nbsp;·&nbsp; **Commit:** {commit_link} &nbsp;·&nbsp; {run_link}{pr_link}
