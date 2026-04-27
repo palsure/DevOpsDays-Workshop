@@ -1,0 +1,89 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T16:50:54.790Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     54ms  other           GET     200      14ms  http://localhost:3000/   
++     74ms  app-asset       GET     200      12ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    174ms  app-asset       GET     200     111ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    282ms  other           GET     200      20ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1   
++    388ms  app-asset       GET     304       0ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    390ms  app-asset       GET     304       2ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    794ms  hls-manifest    GET     200     158ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    878ms  hls-manifest    GET     200      68ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    931ms  hls-segment     GET     200      26ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++   1360ms  hls-manifest    GET     200      47ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   1428ms  hls-segment     GET     200      67ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   2458ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   2945ms  hls-segment     GET     200      30ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   3319ms  hls-segment     GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   3509ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   3825ms  hls-segment     GET     200      43ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   3939ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   5639ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++   5640ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++   5641ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  10636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  10637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  10638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  15637ms  qoe-api         POST    404       2ms  http://localhost:3000/api/v1/metrics ❌
++  15637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  15638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  20636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  20637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  20638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  25636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  25637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  25638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  30638ms  qoe-api         POST    404       3ms  http://localhost:3000/api/v1/metrics ❌
++  30638ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  30640ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  35636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  35636ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  35638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  40637ms  qoe-api         POST    404       2ms  http://localhost:3000/api/v1/metrics ❌
++  40637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  40638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  45637ms  qoe-api         POST    404       2ms  http://localhost:3000/api/v1/metrics ❌
++  45637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  45638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  50636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  50637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  50638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  55636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  55637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  55638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  60637ms  qoe-api         POST    404       2ms  http://localhost:3000/api/v1/metrics ❌
++  60637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  60638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  65636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  65636ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  65638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  70636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  70636ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  70638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  75637ms  qoe-api         POST    404       2ms  http://localhost:3000/api/v1/metrics ❌
++  75637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  75638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  80636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  80637ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  80638ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
++  85636ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++  85636ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++  85637ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…
