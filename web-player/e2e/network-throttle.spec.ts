@@ -24,23 +24,28 @@ const bridge = {
     page.evaluate(() => window.__QOE_DEMO__?.getSnapshot() ?? null),
 };
 
+/** Wait functions use page.waitForFunction() — polls silently in the browser
+ *  without creating intermediate failed assertion steps in Allure. */
+
 async function waitForFirstFrame(page: import('@playwright/test').Page, timeout = 90_000) {
-  await expect
-    .poll(() => bridge.snapshot(page).then(s => s?.timeToFirstFrameMs), { timeout })
-    .not.toBeNull();
+  await page.waitForFunction(
+    () => (window as any).__QOE_DEMO__?.getSnapshot()?.timeToFirstFrameMs != null,
+    { timeout },
+  );
 }
 
 async function waitForBandwidthEstimate(page: import('@playwright/test').Page, timeout = 60_000) {
-  await expect
-    .poll(() => bridge.snapshot(page).then(s => s?.bandwidthEstimate ?? 0), { timeout })
-    .toBeGreaterThan(0);
+  await page.waitForFunction(
+    () => ((window as any).__QOE_DEMO__?.getSnapshot()?.bandwidthEstimate ?? 0) > 0,
+    { timeout },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Suite 1 — Time to First Frame under throttled conditions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('TTFF under network throttling', () => {
+test.describe('TTFF under network throttling', { tag: ['@Regression'] }, () => {
 
   test('4G throttle: first frame within 10 s', async ({ page, throttle }) => {
     await allure.feature('Network Throttling');
@@ -150,7 +155,7 @@ HLS errors. The test validates resilience, not performance.
 // Suite 2 — Bandwidth estimation accuracy
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('Bandwidth estimation under throttling', () => {
+test.describe('Bandwidth estimation under throttling', { tag: ['@Regression'] }, () => {
 
   test('3G throttle: bandwidth estimate reflects constrained network', async ({ page, throttle }) => {
     await allure.feature('Network Throttling');
@@ -227,7 +232,7 @@ frame + 3 s to allow the moving average to stabilise.
 // Suite 3 — ABR quality adaptation under throttling
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('ABR quality adaptation under throttling', () => {
+test.describe('ABR quality adaptation under throttling', { tag: ['@Regression'] }, () => {
 
   test('3G throttle: player selects a quality level within bandwidth budget', async ({ page, throttle }) => {
     await allure.feature('Network Throttling');

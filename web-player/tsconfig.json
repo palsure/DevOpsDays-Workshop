@@ -16,6 +16,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../shared/schema/qoe-metrics.types.ts"],
+  "include": ["src", "../ops/shared/schema/qoe-metrics.types.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

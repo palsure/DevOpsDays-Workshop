@@ -66,13 +66,29 @@ def parse_junit(junit_dir: str) -> tuple[int, int, int, int]:
 
 
 def parse_playwright(json_path: str) -> tuple[int, int, int, int]:
-    """Return (passed, failed, skipped, total) from Playwright JSON report."""
+    """Return (passed, failed, skipped, total) from Playwright JSON report.
+
+    Playwright's built-in JSON reporter wraps counts under a "stats" object:
+      stats.expected   → tests that passed as expected
+      stats.unexpected → tests that failed unexpectedly
+      stats.flaky      → tests that passed on retry (count as failures for gate)
+      stats.skipped    → tests that were skipped
+    Falls back to a flat { passed, failed, skipped, total } shape if needed.
+    """
     try:
         data = json.loads(Path(json_path).read_text(encoding="utf-8"))
-        passed = data.get("passed",  0)
-        failed = data.get("failed",  0)
+        stats = data.get("stats", {})
+        if stats:
+            passed  = stats.get("expected",   0)
+            failed  = stats.get("unexpected", 0) + stats.get("flaky", 0)
+            skipped = stats.get("skipped",    0)
+            total   = passed + failed + skipped
+            return passed, failed, skipped, total
+        # Fallback: flat format
+        passed  = data.get("passed",  0)
+        failed  = data.get("failed",  0)
         skipped = data.get("skipped", 0)
-        total  = data.get("total",   passed + failed + skipped)
+        total   = data.get("total",   passed + failed + skipped)
         return passed, failed, skipped, total
     except Exception:
         return 0, 0, 0, 0

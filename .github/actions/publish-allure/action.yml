@@ -1,0 +1,51 @@
+name: 'Allure Report — Generate & Publish'
+description: >
+  Install Allure CLI, generate an HTML report from a raw results directory,
+  and push it to GitHub Pages. A placeholder page is written first so the
+  deployment never fails with an empty directory.
+
+inputs:
+  stage-title:
+    description: 'Label shown in the placeholder page (e.g. "Unit Tests")'
+    required: true
+  results-src:
+    description: 'Path to the directory containing raw Allure result files'
+    required: true
+  pages-destination:
+    description: 'Destination sub-path on GitHub Pages (e.g. allure/42/web/unit)'
+    required: true
+  github-token:
+    description: 'GitHub token used to push the gh-pages branch'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install Allure CLI
+      shell: bash
+      run: npm install -g allure-commandline
+
+    - name: Generate Allure report
+      shell: bash
+      run: |
+        mkdir -p stage-allure-report
+        printf '<html><head><title>%s</title></head><body><h2>No results for %s — run #%s.</h2></body></html>\n' \
+          "${{ inputs.stage-title }}" "${{ inputs.stage-title }}" "${{ github.run_number }}" \
+          > stage-allure-report/index.html
+        SRC="${{ inputs.results-src }}"
+        if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
+          allure generate "$SRC" -o stage-allure-report --clean \
+            && echo "✅ Allure report generated" \
+            || echo "⚠️ allure generate failed — placeholder kept"
+        else
+          echo "⚠️ No results found in $SRC — placeholder kept"
+        fi
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      continue-on-error: true
+      with:
+        github_token: ${{ inputs.github-token }}
+        publish_dir: ./stage-allure-report
+        destination_dir: ${{ inputs.pages-destination }}
+        keep_files: true

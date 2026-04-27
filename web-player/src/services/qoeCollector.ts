@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { QoEMetricPayload } from '../../../shared/schema/qoe-metrics.types';
+import type { QoEMetricPayload } from '../../../ops/shared/schema/qoe-metrics.types';
 
 /** Same-origin `/api/v1`: Vite dev server proxies `/api` to Spring; Docker web-player nginx does the same. Override with `VITE_API_URL` if needed. */
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';

@@ -35,29 +35,36 @@ const bridge = {
     page.evaluate((l) => window.__QOE_DEMO__?.setLevel(l), level),
 };
 
-/** Wait until the bridge is registered and the manifest is parsed. */
+/** Wait until the bridge is registered and the manifest is parsed.
+ *  Uses page.waitForFunction() so intermediate retries are silent in Allure. */
 async function waitForManifest(page: import('@playwright/test').Page, timeout = 30_000) {
-  await expect
-    .poll(() => bridge.snapshot(page).then(s => (s?.hlsLevels.length ?? 0) > 0), { timeout })
-    .toBe(true);
+  await page.waitForFunction(
+    () => ((window as any).__QOE_DEMO__?.getSnapshot()?.hlsLevels?.length ?? 0) > 0,
+    { timeout },
+  );
 }
 
-/** Wait until the QoE collector records the first decoded frame. */
+/** Wait until the QoE collector records the first decoded frame.
+ *  Uses page.waitForFunction() so intermediate retries are silent in Allure. */
 async function waitForFirstFrame(page: import('@playwright/test').Page, timeout = 60_000) {
-  await expect
-    .poll(() => bridge.snapshot(page).then(s => s?.timeToFirstFrameMs), { timeout })
-    .not.toBeNull();
+  await page.waitForFunction(
+    () => (window as any).__QOE_DEMO__?.getSnapshot()?.timeToFirstFrameMs != null,
+    { timeout },
+  );
 }
 
-/** Wait until the video's currentTime passes the given threshold. */
+/** Wait until the video's currentTime passes the given threshold.
+ *  Uses page.waitForFunction() so intermediate retries are silent in Allure. */
 async function waitForPlayhead(
   page: import('@playwright/test').Page,
   minSeconds: number,
   timeout = 30_000,
 ) {
-  await expect
-    .poll(() => bridge.snapshot(page).then(s => s?.currentTime ?? 0), { timeout })
-    .toBeGreaterThanOrEqual(minSeconds);
+  await page.waitForFunction(
+    (min: number) => ((window as any).__QOE_DEMO__?.getSnapshot()?.currentTime ?? 0) >= min,
+    minSeconds,
+    { timeout },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +80,7 @@ test.describe('Player Controls (pause / play / seek)', () => {
 
   // ── Pause ──────────────────────────────────────────────────────────────────
 
-  test('pause stops playback and isPaused is true', async ({ page }) => {
+  test('pause stops playback and isPaused is true', { tag: ['@BAT'] }, async ({ page }) => {
     await allure.feature('Player Controls');
     await allure.story('Pause');
     await allure.severity('critical');
@@ -102,7 +109,7 @@ Verifies that calling pause() via the QoE bridge halts playback.
 
   // ── Resume ─────────────────────────────────────────────────────────────────
 
-  test('resume after pause restarts playback', async ({ page }) => {
+  test('resume after pause restarts playback', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('Player Controls');
     await allure.story('Resume');
     await allure.severity('critical');
@@ -135,7 +142,7 @@ Verifies that calling play() after pause() resumes advancement of currentTime.
 
   // ── Seek forward ──────────────────────────────────────────────────────────
 
-  test('seek forward: currentTime jumps to target position', async ({ page }) => {
+  test('seek forward: currentTime jumps to target position', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('Player Controls');
     await allure.story('Seek Forward');
     await allure.severity('normal');
@@ -164,7 +171,7 @@ the new position within ±2 s.
 
   // ── Seek backward ─────────────────────────────────────────────────────────
 
-  test('seek backward: currentTime rewinds to earlier position', async ({ page }) => {
+  test('seek backward: currentTime rewinds to earlier position', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('Player Controls');
     await allure.story('Seek Backward');
     await allure.severity('normal');
@@ -195,7 +202,7 @@ the player correctly handles backward seeking in an HLS VOD stream.
 
   // ── Seek boundary ─────────────────────────────────────────────────────────
 
-  test('seek to 0 resets playhead to beginning', async ({ page }) => {
+  test('seek to 0 resets playhead to beginning', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('Player Controls');
     await allure.story('Seek Boundary');
     await allure.severity('minor');
@@ -229,7 +236,7 @@ test.describe('ABR & Bitrate (HLS.js level management)', () => {
 
   // ── Quality levels ─────────────────────────────────────────────────────────
 
-  test('multiple quality levels are available after manifest parse', async ({ page }) => {
+  test('multiple quality levels are available after manifest parse', { tag: ['@BAT'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Quality Levels');
     await allure.severity('critical');
@@ -253,7 +260,7 @@ ABR requires at least 2 levels to be meaningful.
 
   // ── Bandwidth estimate ─────────────────────────────────────────────────────
 
-  test('bandwidth estimate is non-zero after first segment download', async ({ page }) => {
+  test('bandwidth estimate is non-zero after first segment download', { tag: ['@BAT'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Bandwidth Estimation');
     await allure.severity('normal');
@@ -284,7 +291,7 @@ This is the foundation of adaptive bitrate selection.
 
   // ── ABR current level ─────────────────────────────────────────────────────
 
-  test('ABR selects a valid quality level after first frame', async ({ page }) => {
+  test('ABR selects a valid quality level after first frame', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Automatic Level Selection');
     await allure.severity('normal');
@@ -311,7 +318,7 @@ quality level (currentLevelIndex ≥ 0).
 
   // ── Manual level override ──────────────────────────────────────────────────
 
-  test('manual level override forces lowest quality', async ({ page }) => {
+  test('manual level override forces lowest quality', { tag: ['@Smoke'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Manual Level Override');
     await allure.severity('normal');
@@ -349,7 +356,7 @@ network conditions without actual throttling.
 
   // ── Restore auto ABR ──────────────────────────────────────────────────────
 
-  test('setLevel(-1) restores auto ABR after manual override', async ({ page }) => {
+  test('setLevel(-1) restores auto ABR after manual override', { tag: ['@Regression'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Restore Auto ABR');
     await allure.severity('normal');
@@ -392,7 +399,7 @@ bandwidth permits.
 
 test.describe('ABR — Forced Bitrate Step-Down Scenario', () => {
 
-  test('bitrate_step_down: records ≥ 2 bitrate switches', async ({ page }) => {
+  test('bitrate_step_down: records ≥ 2 bitrate switches', { tag: ['@Regression'] }, async ({ page }) => {
     await allure.feature('ABR');
     await allure.story('Forced Bitrate Step-Down');
     await allure.severity('critical');

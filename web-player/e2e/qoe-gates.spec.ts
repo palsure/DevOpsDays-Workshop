@@ -7,11 +7,13 @@ async function snapshot(page: import('@playwright/test').Page) {
   return page.evaluate(() => window.__QOE_DEMO__?.getSnapshot() ?? null);
 }
 
-/** Wait until the QoE probe bridge has recorded a first frame. */
+/** Wait until the QoE probe bridge has recorded a first frame.
+ *  Uses page.waitForFunction() so intermediate retries are silent in Allure. */
 async function waitForFirstFrame(page: import('@playwright/test').Page, timeout = 60_000) {
-  await expect
-    .poll(() => snapshot(page).then(s => s?.timeToFirstFrameMs), { timeout })
-    .not.toBeNull();
+  await page.waitForFunction(
+    () => (window as any).__QOE_DEMO__?.getSnapshot()?.timeToFirstFrameMs != null,
+    { timeout },
+  );
 }
 
 /**
@@ -34,7 +36,7 @@ async function assertNoNetworkIssues(
 
 test.describe('QoE quality gates (workshop demos)', () => {
 
-  test('baseline: first frame within generous budget', async ({ page, networkCapture }) => {
+  test('baseline: first frame within generous budget', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
     await allure.feature('Time to First Frame');
     await allure.story('Baseline (reference stream)');
     await allure.severity('critical');
@@ -72,7 +74,7 @@ generous 45-second budget (cloud CI networks can be slow).
 
   // ──────────────────────────────────────────────────────────────────────────
 
-  test('startup_delay: time-to-first-frame reflects injected delay', async ({ page, networkCapture }) => {
+  test('startup_delay: time-to-first-frame reflects injected delay', { tag: ['@Smoke'] }, async ({ page, networkCapture }) => {
     await allure.feature('Startup Latency');
     await allure.story('Startup delay (late manifest attach)');
     await allure.severity('normal');
@@ -109,7 +111,7 @@ in CI prevents regressions landing in production.
 
   // ──────────────────────────────────────────────────────────────────────────
 
-  test('black_screen_pulse: blackout overlay appears for CV-style probes', async ({ page, networkCapture }) => {
+  test('black_screen_pulse: blackout overlay appears for CV-style probes', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
     await allure.feature('Visual Fault Detection');
     await allure.story('Black screen pulse (decoder freeze simulation)');
     await allure.severity('critical');
@@ -148,7 +150,7 @@ probe (or computer-vision CI check) can catch it. The test asserts that the
 
   // ──────────────────────────────────────────────────────────────────────────
 
-  test('forced_mid_play_rebuffer: records at least one buffering span', async ({ page, networkCapture }) => {
+  test('forced_mid_play_rebuffer: records at least one buffering span', { tag: ['@Smoke'] }, async ({ page, networkCapture }) => {
     await allure.feature('Rebuffering Detection');
     await allure.story('Mid-play stall (HLS stop/start)');
     await allure.severity('critical');

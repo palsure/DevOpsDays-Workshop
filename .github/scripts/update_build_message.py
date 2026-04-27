@@ -10,15 +10,18 @@ Required env vars:
   SLACK_CHANNEL_ID         — Target channel ID
   THREAD_TS                — ts of the initial message to update
   BUILD_VERDICT            — "success" | "failure"
-  GITHUB_RUN_NUMBER, GITHUB_REPOSITORY, GITHUB_SHA, GITHUB_REF_NAME,
-  GITHUB_ACTOR, GITHUB_EVENT_NAME, GITHUB_RUN_ID, ENV_LABEL
+  MODULE_NAME              — e.g. "API" or "WEB"  (shown in header as [MODULE_NAME])
+  GITHUB_RUN_NUMBER, GITHUB_REPOSITORY, GITHUB_SHA,
+  GITHUB_HEAD_REF,         — real source branch on PR events (may be empty)
+  GITHUB_REF_NAME,         — fallback branch / tag name
+  GITHUB_ACTOR, GITHUB_EVENT_NAME, GITHUB_PR_NUMBER,
+  GITHUB_RUN_ID, ENV_LABEL
 """
 from __future__ import annotations
 
 import json
 import os
 import urllib.request
-from pathlib import Path
 
 
 def main() -> int:
@@ -26,12 +29,16 @@ def main() -> int:
     channel    = os.environ.get("SLACK_CHANNEL_ID", "")
     ts         = os.environ.get("THREAD_TS", "")
     verdict    = os.environ.get("BUILD_VERDICT", "failure")
+    module     = os.environ.get("MODULE_NAME", "API")
     run_number = os.environ.get("GITHUB_RUN_NUMBER", "")
     repo       = os.environ.get("GITHUB_REPOSITORY", "")
     sha_full   = os.environ.get("GITHUB_SHA", "unknown")
-    branch     = os.environ.get("GITHUB_REF_NAME", "unknown")
+    head_ref   = os.environ.get("GITHUB_HEAD_REF", "")
+    ref_name   = os.environ.get("GITHUB_REF_NAME", "unknown")
+    branch     = head_ref or ref_name
     actor      = os.environ.get("GITHUB_ACTOR", "")
     event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    pr_number  = os.environ.get("GITHUB_PR_NUMBER", "")
     env_label  = os.environ.get("ENV_LABEL", "STAGE")
     run_id     = os.environ.get("GITHUB_RUN_ID", "")
 
@@ -43,9 +50,15 @@ def main() -> int:
     commit_url = f"https://github.com/{repo}/commit/{sha_full}"
     run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
 
-    outcome    = "Success" if verdict == "success" else "Failed"
-    icon       = "\u2705" if verdict == "success" else "\u274c"   # ✅ / ❌
-    header     = f"[API] Stream-QoE-App  |  Build #{run_number}  \u2014  {icon} {outcome}"
+    if pr_number:
+        pr_url      = f"https://github.com/{repo}/pull/{pr_number}"
+        triggered   = f"{actor} (<{pr_url}|PR #{pr_number}>)"
+    else:
+        triggered   = f"{actor} ({event_name})"
+
+    outcome = "Success" if verdict == "success" else "Failed"
+    icon    = "\u2705" if verdict == "success" else "\u274c"   # ✅ / ❌
+    header  = f"[{module}] Stream-QoE-App  |  Build #{run_number}  \u2014  {icon} {outcome}"
 
     payload = json.dumps({
         "channel": channel,
@@ -55,12 +68,8 @@ def main() -> int:
         "unfurl_media": False,
         "blocks": [
             {"type": "header", "text": {"type": "plain_text", "text": header, "emoji": True}},
-            {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
-                {"type": "mrkdwn", "text": f"*Environment:*\n{env_label}"},
-                {"type": "mrkdwn", "text": f"*Commit:*\n<{commit_url}|{sha}>"},
-                {"type": "mrkdwn", "text": f"*Triggered by:*\n{actor} ({event_name})"},
-            ]},
+            {"type": "section", "text": {"type": "mrkdwn",
+                "text": f"*Branch:* `{branch}`  |  *Environment:* {env_label}  |  *Commit:* <{commit_url}|{sha}>  |  *Triggered by:* {triggered}"}},
             {"type": "divider"},
             {"type": "context", "elements": [
                 {"type": "mrkdwn", "text": "Results are in this thread."},

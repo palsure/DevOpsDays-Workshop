@@ -1,4 +1,4 @@
-import type { QoEMetricPayload, Platform, PlaybackState, PlaybackQuality } from '../../../shared/schema/qoe-metrics.types';
+import type { QoEMetricPayload, Platform, PlaybackState, PlaybackQuality } from '../../../ops/shared/schema/qoe-metrics.types';
 
 export type { QoEMetricPayload, Platform, PlaybackState, PlaybackQuality };
 
