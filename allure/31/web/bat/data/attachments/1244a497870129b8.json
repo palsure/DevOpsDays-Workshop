@@ -1,0 +1,178 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/?scenario=black_screen_pulse&e2e_autoplay=1",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 4,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 12
+  },
+  {
+    "id": 2,
+    "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 2,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 20
+  },
+  {
+    "id": 3,
+    "url": "http://localhost:3000/assets/index-2K0fXo0K.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 45,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 63
+  },
+  {
+    "id": 4,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 57,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 177
+  },
+  {
+    "id": 5,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 24,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 201
+  },
+  {
+    "id": 6,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 24,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 225
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 16,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 394
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 38,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 434
+  },
+  {
+    "id": 9,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 26,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 653
+  },
+  {
+    "id": 10,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 42,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 815
+  },
+  {
+    "id": 11,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 30,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1009
+  },
+  {
+    "id": 12,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 30,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1121
+  },
+  {
+    "id": 13,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 18,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1239
+  },
+  {
+    "id": 14,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 18,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1322
+  },
+  {
+    "id": 15,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_598/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 19,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3294
+  },
+  {
+    "id": 16,
+    "url": "http://localhost:3000/api/v1/metrics",
+    "method": "POST",
+    "status": 404,
+    "durationMs": 3,
+    "category": "qoe-api",
+    "failed": true,
+    "slow": false,
+    "startedAt": 5128
+  }
+]
