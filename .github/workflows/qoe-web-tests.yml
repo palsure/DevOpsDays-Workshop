@@ -473,25 +473,40 @@ jobs:
         run: |
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
+          PROJECT="${{ secrets.FIREBASE_PROJECT_ID }}"
+          TOKEN="${{ secrets.FIREBASE_TOKEN }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
+
+          # Separate stdout (JSON) from stderr (progress messages) so jq sees clean JSON
+          firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
-            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --json 2>&1 || true)
-          echo "=== Firebase deploy output ==="
-          echo "$OUTPUT"
-          echo "=============================="
-          # 1st pass: jq — parse the JSON result field for the channel URL (most reliable)
-          URL=$(echo "$OUTPUT" | jq -r '.result | to_entries[0].value.url // empty' 2>/dev/null || true)
-          # 2nd pass: grep for https://...--....web.app pattern
-          if [ -z "$URL" ]; then
-            URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+            --project "$PROJECT" \
+            --token "$TOKEN" \
+            --json \
+            > /tmp/firebase-json.txt \
+            2>/tmp/firebase-log.txt || DEPLOY_FAILED=1
+
+          echo "=== Firebase progress ===" && cat /tmp/firebase-log.txt || true
+          echo "=== Firebase JSON ===" && cat /tmp/firebase-json.txt || true
+
+          if [ "${DEPLOY_FAILED:-0}" = "1" ]; then
+            echo "❌ Firebase deploy command failed — see logs above"
+            exit 1
           fi
-          # 3rd pass: any https firebase URL
+
+          # 1st pass: jq on clean JSON stdout
+          URL=$(jq -r '.result | to_entries[0].value.url // empty' /tmp/firebase-json.txt 2>/dev/null || true)
+          # 2nd pass: grep both outputs for the preview channel URL pattern
           if [ -z "$URL" ]; then
-            URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+            URL=$(grep -oE 'https://[a-zA-Z0-9-]+--[a-zA-Z0-9-]+\.(web\.app|firebaseapp\.com)' \
+              /tmp/firebase-json.txt /tmp/firebase-log.txt 2>/dev/null | head -1 || true)
           fi
+          # 3rd pass: any Firebase HTTPS URL
+          if [ -z "$URL" ]; then
+            URL=$(grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' \
+              /tmp/firebase-json.txt /tmp/firebase-log.txt 2>/dev/null | head -1 || true)
+          fi
+
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "✅ Preview URL: ${URL:-<not extracted>}"
         working-directory: web-player
@@ -505,15 +520,19 @@ jobs:
         run: |
           URL="${{ steps.deploy.outputs.preview_url }}"
           CHANNEL="${{ steps.deploy.outputs.channel }}"
-          if [ -z "$URL" ]; then
+          if [ -z "$URL" ] && [ "${{ steps.deploy.outcome }}" = "skipped" ]; then
+            # Firebase not configured — local dev scenario only
             URL="http://localhost:3000"
             CHANNEL="local-${{ github.run_number }}"
-            echo "⚠️  Firebase URL not extracted — BAT/Smoke will use localhost fallback"
+            echo "⚠️  Firebase not configured — using localhost (local dev only)"
+          elif [ -z "$URL" ]; then
+            echo "❌ Firebase deploy ran but preview URL could not be extracted."
+            echo "   Check the 'Firebase JSON' output above for the raw CLI response."
+            exit 1
           fi
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "✅ Resolved preview URL: $URL"
-          # Also expose as env var so it's visible in the job summary
           echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
 
       - name: Calculate deploy duration
