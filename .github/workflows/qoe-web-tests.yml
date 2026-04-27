@@ -309,6 +309,24 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
+      - name: Download build artifact (local serve fallback)
+        if: startsWith(needs.deploy-preview.outputs.preview_url, 'http://localhost')
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-player/dist
+
+      - name: Serve dist/ locally (fallback when no Firebase preview URL)
+        if: startsWith(needs.deploy-preview.outputs.preview_url, 'http://localhost')
+        run: |
+          npm install -g serve
+          serve web-player/dist -l 3000 &
+          echo "SERVE_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "✅ Local server ready" && break
+            echo "Waiting ($i/15)…"; sleep 2
+          done
+
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
         run: npm run e2e:bat
@@ -316,6 +334,10 @@ jobs:
         env:
           CI: 'true'
           PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+
+      - name: Stop local server (if started)
+        if: always() && env.SERVE_PID != ''
+        run: kill "$SERVE_PID" 2>/dev/null || true
 
       - name: Calculate BAT duration
         if: always()
@@ -759,9 +781,9 @@ jobs:
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests (Vitest) | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Tests | ${{ needs.bat-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Gate | ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Live Promotion | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.promote-live.result == 'success' && '🔄 In Progress (async)' || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -781,12 +803,12 @@ jobs:
           STAGE2_RESULT: ${{ needs.unit-tests.result }}
           STAGE3_NAME: "Unit Gate (≥80%)"
           STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
-          STAGE4_NAME: BAT Tests
-          STAGE4_RESULT: ${{ needs.bat-tests.result }}
-          STAGE5_NAME: BAT Gate
-          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
-          STAGE6_NAME: Firebase Preview
-          STAGE6_RESULT: ${{ needs.deploy-preview.result }}
+          STAGE4_NAME: Firebase Preview
+          STAGE4_RESULT: ${{ needs.deploy-preview.result }}
+          STAGE5_NAME: BAT Tests
+          STAGE5_RESULT: ${{ needs.bat-tests.result }}
+          STAGE6_NAME: BAT Gate
+          STAGE6_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE7_NAME: Firebase Live Promotion
           STAGE7_RESULT: ${{ needs.promote-live.result }}
           STAGE8_NAME: Smoke Tests

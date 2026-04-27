@@ -701,6 +701,8 @@ jobs:
           STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: API Live Promotion
           STAGE6_RESULT: ${{ needs.promote-live.result }}
+          STAGE7_NAME: Smoke Tests
+          STAGE7_RESULT: ${{ needs.promote-live.result == 'success' && 'in-progress' || 'skipped' }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
         run: python3 .github/scripts/module_result_to_slack.py
 
