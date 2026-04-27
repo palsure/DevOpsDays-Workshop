@@ -563,6 +563,7 @@ jobs:
           stage-result:    ${{ steps.deploy.outcome || 'skipped' }}
           duration:        ${{ env.DEPLOY_DURATION }}
           report-url:      ${{ steps.resolve-url.outputs.preview_url }}
+          link-label:      ":globe_with_meridians: Preview URL"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -694,6 +695,8 @@ jobs:
     if: always() && needs.smoke-tests.result == 'success' && needs.deploy-preview.result == 'success'
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -712,6 +715,8 @@ jobs:
           firebase hosting:channel:delete "$CHANNEL" --force \
             --project "$PROJECT" --token "${{ secrets.FIREBASE_TOKEN }}" || true
           echo "🚀 Promoted build-${{ github.run_number }} to live"
+          echo "live_url=https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app" >> "$GITHUB_OUTPUT"
+        working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -723,6 +728,8 @@ jobs:
           module-name:     WEB
           stage-name:      Firebase Live Promotion
           stage-result:    ${{ steps.promote.outcome || 'skipped' }}
+          report-url:      ${{ steps.promote.outputs.live_url }}
+          link-label:      ":rocket: Live URL"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}

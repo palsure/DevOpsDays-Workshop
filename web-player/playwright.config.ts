@@ -70,7 +70,8 @@ const STAGE_TIMEOUT: Record<string, number> = {
   e2e:   90_000,
 };
 
-const stageWorkers  = IS_LAB ? 1 : (process.env.CI ? 1 : STAGE_WORKERS[STAGE]);
+// In CI, respect stage-specific parallelism; fall back to 1 only when no stage value is set.
+const stageWorkers  = IS_LAB ? 1 : (STAGE_WORKERS[STAGE] ?? (process.env.CI ? 1 : undefined));
 const stageTimeout  = STAGE_TIMEOUT[STAGE] ?? 90_000;
 const allureFolder  = `allure-results/${STAGE}`;
 

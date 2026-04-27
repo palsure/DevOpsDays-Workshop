@@ -17,8 +17,11 @@ inputs:
     description: 'Human-readable elapsed time (e.g. "1m 23s")'
     default: ''
   report-url:
-    description: 'Link to the Allure report for this stage'
+    description: 'Link to the Allure report or deployment URL for this stage'
     default: ''
+  link-label:
+    description: 'Text label for the report/URL link (default: ":bar_chart: View Report")'
+    default: ':bar_chart: View Report'
   thread-ts:
     description: 'Slack thread timestamp — replies are posted into this thread'
     required: true
@@ -47,6 +50,7 @@ runs:
         STAGE_RESULT:     ${{ inputs.stage-result }}
         DURATION:         ${{ inputs.duration }}
         REPORT_URL:       ${{ inputs.report-url }}
+        LINK_LABEL:       ${{ inputs.link-label }}
         THREAD_TS:        ${{ inputs.thread-ts }}
         JUNIT_DIR:        ${{ inputs.junit-dir }}
         PLAYWRIGHT_JSON:  ${{ inputs.playwright-json }}

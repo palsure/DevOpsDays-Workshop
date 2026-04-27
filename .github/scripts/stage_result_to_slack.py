@@ -124,6 +124,7 @@ def main() -> int:
     junit_dir    = os.environ.get("JUNIT_DIR", "")
     pw_json      = os.environ.get("PLAYWRIGHT_JSON", "")
     report_url   = os.environ.get("REPORT_URL", "")
+    link_label   = os.environ.get("LINK_LABEL", ":bar_chart: View Report")
     stage_result = os.environ.get("STAGE_RESULT", "unknown")
     thread_ts    = os.environ.get("THREAD_TS", "")
     duration_raw = os.environ.get("DURATION", "")
@@ -197,7 +198,7 @@ def main() -> int:
     # ── Footer ────────────────────────────────────────────────────────────────
     footer_parts = [f"<{commit_url}|{sha}>  •  {build_label}"]
     if report_url:
-        footer_parts.append(f"<{report_url}|:bar_chart: View Report>")
+        footer_parts.append(f"<{report_url}|{link_label}>")
     footer_parts.append(f"<{run_url}|:arrow_forward: View Run>")
     footer_text = "    ".join(footer_parts)
 
