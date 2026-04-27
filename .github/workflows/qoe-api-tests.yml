@@ -10,10 +10,11 @@
 #                       PASS → run BAT.
 #                       FAIL → stop pipeline, Smoke skipped.
 #   4. bat-tests      — @Tag("BAT") Build Acceptance Tests (Testcontainers, own DB).
-#   4. smoke-tests    — @Tag("Smoke") tests (postgres service). Runs in PARALLEL with bat-tests.
-#                       Both start after deploy succeeds; api-report waits for both.
-#   6. api-report     — Generate per-stage Allure reports (unit/bat/smoke),
-#                       deploy to GitHub Pages, post full Slack summary.
+#                       Gate inlined. FAIL → pipeline blocked; Smoke skipped.
+#   5. api-report     — Fires RIGHT AFTER bat-tests (pipeline marks complete here).
+#                       Smoke continues asynchronously; results via Slack only.
+#   6. smoke-tests    — @Tag("Smoke") tests (postgres service). Async / non-blocking.
+#                       Runs after BAT gate passes; continue-on-error so report fires first.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -465,14 +466,16 @@ jobs:
             -d @bat-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. SMOKE TESTS  — only run when BAT gate passes
+# 6. SMOKE TESTS  — runs after BAT gate; async (non-blocking, results via Slack)
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-tests:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, deploy]
+    needs: [notify-start, bat-tests, deploy]
+    continue-on-error: true
     if: |
       inputs.skip_tests != true &&
+      needs.bat-tests.outputs.gate_passed == 'true' &&
       needs.deploy.result == 'success'
 
     services:
@@ -575,7 +578,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, deploy, bat-tests, smoke-tests]
+    needs: [notify-start, unit-tests, deploy, bat-tests]
     runs-on: ubuntu-latest
     if: always()
 
@@ -616,7 +619,7 @@ jobs:
           STAGE5_NAME: BAT Gate
           STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: Smoke Tests
-          STAGE6_RESULT: ${{ needs.smoke-tests.result }}
+          STAGE6_RESULT: in-progress
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
         run: python3 .github/scripts/module_result_to_slack.py
 
