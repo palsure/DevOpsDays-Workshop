@@ -1,0 +1,68 @@
+[+5434ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+5435ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+10429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+10429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+15429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+15429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+20429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+20429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+25429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+25430ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+30429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+30429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+35429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+35429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+40429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+40429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+45429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+45429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+50429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+50429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+55429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+55429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+60429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+60429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+65429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+65429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+70429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+70429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+75429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+75429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+80429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+80430ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)
+[+85429ms] Failed to load resource: the server responded with a status of 404 (Not Found)
+[+85429ms] Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-BfDhOn_j.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/index-BfDhOn_j.js:81:5927)

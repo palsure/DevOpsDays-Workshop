@@ -1,0 +1,7 @@
+[
+  {
+    "severity": "critical",
+    "type": "QOE_API_UNREACHABLE",
+    "message": "All 17 QoE API request(s) failed — backend may be down or CORS misconfigured"
+  }
+]

@@ -1,0 +1,1454 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "playwright-qoe-capture",
+      "version": "1.0.0"
+    },
+    "browser": {
+      "name": "Chromium (headless)",
+      "version": "unknown"
+    },
+    "pages": [
+      {
+        "startedDateTime": "2026-04-27T20:37:07.175Z",
+        "id": "page_1",
+        "title": "pause stops playback and isPaused is true",
+        "pageTimings": {
+          "onContentLoad": -1,
+          "onLoad": -1
+        }
+      }
+    ],
+    "entries": [
+      {
+        "startedDateTime": "2026-04-27T20:37:07.240Z",
+        "time": 21,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 20,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.282Z",
+        "time": 25,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 24,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.378Z",
+        "time": 121,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 120,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.463Z",
+        "time": 15,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/?scenario=baseline&e2e_autoplay=1",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 14,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.559Z",
+        "time": 12,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 304,
+          "statusText": "Not Modified",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 11,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.566Z",
+        "time": 19,
+        "request": {
+          "method": "GET",
+          "url": "http://localhost:3000/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 304,
+          "statusText": "Not Modified",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 18,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.811Z",
+        "time": 181,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 180,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.901Z",
+        "time": 90,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 89,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:07.939Z",
+        "time": 22,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 21,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:08.341Z",
+        "time": 31,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 30,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:08.391Z",
+        "time": 42,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 41,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:09.129Z",
+        "time": 27,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 26,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:09.738Z",
+        "time": 40,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 39,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:10.488Z",
+        "time": 36,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 35,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:10.785Z",
+        "time": 31,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 30,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:11.014Z",
+        "time": 29,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 28,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:11.177Z",
+        "time": 24,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 23,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:12.608Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:17.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:22.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:27.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:32.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:37.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:42.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:47.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:52.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:37:57.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:02.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:07.604Z",
+        "time": 1,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 0,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:12.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:17.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:22.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:27.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-27T20:38:32.604Z",
+        "time": 2,
+        "request": {
+          "method": "POST",
+          "url": "http://localhost:3000/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 404,
+          "statusText": "Not Found",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 1,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Apr 27 20:37:05 UTC 2026","Mon Apr 27 20:37:12 UTC 2026","7122","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","black_screen_pulse: blackout overlay appears for CV-style probes","**Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+
+This fault is *invisible to server-side logs* — only a client-side visual
+probe (or computer-vision CI check) can catch it. The test asserts that the
+`data-testid=""visual-blackout-overlay""` element appears and then clears.
+
+**Pass conditions:**
+- Overlay becomes visible within 15 s
+- Overlay clears within 15 s of appearing"
+"passed","Mon Apr 27 20:37:00 UTC 2026","Mon Apr 27 20:37:03 UTC 2026","3151","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","multiple quality levels are available after manifest parse","Verifies that the HLS manifest exposes more than one quality rendition.
+ABR requires at least 2 levels to be meaningful.
+
+**Pass condition:** `hlsLevels.length > 1`"
+"passed","Mon Apr 27 20:38:38 UTC 2026","Mon Apr 27 20:38:41 UTC 2026","3058","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","pause stops playback and isPaused is true","Verifies that calling pause() via the QoE bridge halts playback.
+
+**Steps:**
+1. Autoplay baseline stream, wait for first frame.
+2. Call bridge.pause() — equivalent to video.pause().
+3. Assert isPaused = true and currentTime is frozen.
+
+**Pass condition:** `isPaused === true`"
+"broken","Mon Apr 27 20:37:00 UTC 2026","Mon Apr 27 20:38:35 UTC 2026","95387","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","pause stops playback and isPaused is true",""
+"passed","Mon Apr 27 20:37:00 UTC 2026","Mon Apr 27 20:37:03 UTC 2026","3243","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","bandwidth estimate is non-zero after first segment download","HLS.js estimates the available bandwidth after downloading the first segment.
+This is the foundation of adaptive bitrate selection.
+
+**Pass condition:** `bandwidthEstimate > 0` within 30 s."
+"passed","Mon Apr 27 20:37:00 UTC 2026","Mon Apr 27 20:37:04 UTC 2026","4053","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","baseline: first frame within generous budget","**Scenario:** Baseline — no faults injected.
+
+The player loads the HLS manifest immediately and begins buffering segments.
+This test asserts that the first decoded video frame is delivered within a
+generous 60-second budget (cloud CI networks serving external HLS streams
+can be slow; the budget is intentionally wide to distinguish real regressions
+from transient network latency).
+
+**Pass condition:** `timeToFirstFrameMs < 60 000`"
