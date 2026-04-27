@@ -300,6 +300,14 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
+      - name: Debug — dump deploy-preview outputs
+        run: |
+          echo "=== needs.deploy-preview ==="
+          echo '${{ toJson(needs.deploy-preview) }}'
+          echo "==========================="
+          echo "preview_url raw: '${{ needs.deploy-preview.outputs.preview_url }}'"
+          echo "channel raw:     '${{ needs.deploy-preview.outputs.channel }}'"
+
       - name: Confirm BAT target URL (must be Firebase Preview)
         run: |
           URL="${{ needs.deploy-preview.outputs.preview_url }}"
@@ -440,66 +448,69 @@ jobs:
       - name: Deploy and resolve preview URL
         id: resolve-url
         run: |
-          set +e
+          set -euo pipefail
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$FIREBASE_TOKEN" ] || [ -z "$FIREBASE_PROJECT_ID" ]; then
-            echo "⚠️  Firebase credentials not configured — using localhost (dev only)."
-            echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
-            echo "channel=local-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-            echo "PREVIEW_URL=http://localhost:3000" >> "$GITHUB_ENV"
-            exit 0
+          if [ -z "${FIREBASE_TOKEN:-}" ] || [ -z "${FIREBASE_PROJECT_ID:-}" ]; then
+            echo "❌ FIREBASE_TOKEN or FIREBASE_PROJECT_ID secret is missing."
+            echo "   Add both secrets in repo Settings → Secrets and variables → Actions."
+            exit 1
           fi
+          echo "✅ Firebase credentials present — deploying channel $CHANNEL"
 
-          echo "::group::🚀 Firebase deploy: channel $CHANNEL"
+          set +e
           firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "$FIREBASE_PROJECT_ID" \
             --token "$FIREBASE_TOKEN" \
             > /tmp/fb-deploy-stdout.log 2> /tmp/fb-deploy-stderr.log
           DEPLOY_RC=$?
-          echo "--- stdout ---"; cat /tmp/fb-deploy-stdout.log
-          echo "--- stderr ---"; cat /tmp/fb-deploy-stderr.log
-          echo "--- exit code: $DEPLOY_RC ---"
-          echo "::endgroup::"
+          set -e
+
+          echo "::group::🚀 Firebase deploy stdout"; cat /tmp/fb-deploy-stdout.log; echo "::endgroup::"
+          echo "::group::🚀 Firebase deploy stderr"; cat /tmp/fb-deploy-stderr.log; echo "::endgroup::"
+          echo "::group::Exit code: $DEPLOY_RC ::endgroup::"
 
           if [ "$DEPLOY_RC" -ne 0 ]; then
-            echo "❌ Firebase deploy failed (exit $DEPLOY_RC)"
+            echo "❌ Firebase deploy failed (exit $DEPLOY_RC). See logs above."
             exit 1
           fi
 
-          # Try multiple extraction strategies. The deploy output normally contains
-          # a line like: "Channel URL (project): https://project--channel-hash.web.app"
-          DEPLOY_ALL=$(cat /tmp/fb-deploy-stdout.log /tmp/fb-deploy-stderr.log)
-
-          URL=$(echo "$DEPLOY_ALL" | grep -oE 'https://[a-zA-Z0-9.-]+--[a-zA-Z0-9.-]+\.web\.app' | head -1)
-          [ -z "$URL" ] && URL=$(echo "$DEPLOY_ALL" | grep -oE 'https://[a-zA-Z0-9.-]+\.(web\.app|firebaseapp\.com)' | head -1)
-
-          # Fallback: query channel list and grep the JSON for the matching URL
+          # Combine both streams and extract URL with grep
+          ALL_OUTPUT=$(cat /tmp/fb-deploy-stdout.log /tmp/fb-deploy-stderr.log)
+          URL=$(echo "$ALL_OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+--[a-zA-Z0-9.-]+\.web\.app' | head -1 || true)
           if [ -z "$URL" ]; then
-            echo "::group::🔍 URL not in deploy output — querying channel list"
+            URL=$(echo "$ALL_OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+          fi
+
+          # Fallback: channel:list query
+          if [ -z "$URL" ]; then
+            echo "::group::🔍 URL not in deploy output — querying channel:list"
             CHANNEL_JSON=$(firebase hosting:channel:list \
               --project "$FIREBASE_PROJECT_ID" \
               --token "$FIREBASE_TOKEN" \
-              --json 2>&1)
+              --json 2>&1 || true)
             echo "$CHANNEL_JSON"
             echo "::endgroup::"
-            URL=$(echo "$CHANNEL_JSON" | grep -oE 'https://[a-zA-Z0-9.-]+--[a-zA-Z0-9.-]+\.web\.app' | head -1)
-            [ -z "$URL" ] && URL=$(echo "$CHANNEL_JSON" | grep -oE 'https://[a-zA-Z0-9.-]+\.web\.app' | head -1)
+            URL=$(echo "$CHANNEL_JSON" | grep -oE 'https://[a-zA-Z0-9.-]+--[a-zA-Z0-9.-]+\.web\.app' | head -1 || true)
+            [ -z "$URL" ] && URL=$(echo "$CHANNEL_JSON" | grep -oE 'https://[a-zA-Z0-9.-]+\.web\.app' | head -1 || true)
           fi
 
           if [ -z "$URL" ]; then
-            echo "❌ Could not extract preview URL. Deploy succeeded but URL not found."
-            echo "   Deploy stdout: $(wc -l < /tmp/fb-deploy-stdout.log) lines"
-            echo "   Deploy stderr: $(wc -l < /tmp/fb-deploy-stderr.log) lines"
+            echo "❌ Could not extract preview URL — deploy succeeded but no URL found in output."
             exit 1
           fi
 
-          echo "✅ Preview URL: $URL"
+          # Write outputs IMMEDIATELY so any later failure doesn't lose the URL
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "✅ PREVIEW URL: $URL"
+          echo "════════════════════════════════════════════════════════════"
         working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
