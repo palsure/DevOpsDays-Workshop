@@ -254,30 +254,15 @@ jobs:
           EOF
 
       - name: Post unit gate decision to Slack
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          PASSED="${{ steps.unit-gate.outputs.gate_passed }}"
-          TS="${{ needs.notify-start.outputs.thread_ts }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
-          else
-            ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
-          fi
-          python3 - <<EOF
-          import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
-          ]
-          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
-                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
-          pathlib.Path("unit-gate-payload.json").write_text(json.dumps(payload))
-          EOF
-          curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d @unit-gate-payload.json
+        if: always()
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      ${{ steps.unit-gate.outputs.gate_passed }}
+          proceed-message:  "Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
+          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
@@ -412,30 +397,15 @@ jobs:
           fi
 
       - name: Post BAT gate decision to Slack
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          PASSED="${{ steps.bat-gate.outputs.gate_passed }}"
-          TS="${{ needs.notify-start.outputs.thread_ts }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="BAT gate *PASSED* — running Smoke tests…"
-          else
-            ICON="🚫"; MSG="BAT gate *FAILED* — Smoke tests *BLOCKED*."
-          fi
-          python3 - <<EOF
-          import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
-          ]
-          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
-                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
-          pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
-          EOF
-          curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d @bat-gate-payload.json
+        if: always()
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      ${{ steps.bat-gate.outputs.gate_passed }}
+          proceed-message:  "BAT gate *PASSED* — running Smoke tests…"
+          blocked-message:  "BAT gate *FAILED* — Smoke tests *BLOCKED*."
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. DEPLOY PREVIEW — Firebase Hosting preview channel (after BAT gate)
@@ -850,51 +820,21 @@ PYEOF
           WORKFLOW_START_EPOCH: ${{ needs.notify-start.outputs.start_epoch }}
         run: python3 .github/scripts/module_result_to_slack.py
 
-      - name: Inject thread_ts into summary payload
-        if: always() && needs.notify-start.outputs.thread_ts != ''
-        run: |
-          python3 - <<'EOF'
-          import json, pathlib
-          ts = "${{ needs.notify-start.outputs.thread_ts }}"
-          p = json.loads(pathlib.Path("module-slack-payload.json").read_text())
-          p["thread_ts"] = ts
-          pathlib.Path("module-slack-payload.json").write_text(json.dumps(p))
-          EOF
-
-      - name: Send overall summary Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+      - name: Finalize Slack pipeline report
+        if: always()
+        uses: ./.github/actions/slack-pipeline-report
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./module-slack-payload.json
-
-      - name: Update initial Slack message with build outcome
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        continue-on-error: true
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          MODULE_NAME: WEB
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ENV_LABEL: ${{ env.ENV_LABEL }}
-          BUILD_VERDICT: >-
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          module-name:      WEB
+          build-verdict: >-
             ${{ (needs.build.result == 'success' &&
                  needs.unit-tests.result != 'failure' &&
                  needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.bat-tests.outputs.gate_passed == 'true' &&
                  needs.deploy-preview.result == 'success') && 'success' || 'failure' }}
-        run: python3 .github/scripts/update_build_message.py
+          env-label:        ${{ env.ENV_LABEL }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       # ── PR comment with per-stage results + Allure links ──────────────────
       - name: Download unit JUnit results
