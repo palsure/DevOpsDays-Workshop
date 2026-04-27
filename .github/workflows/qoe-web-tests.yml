@@ -128,6 +128,9 @@ jobs:
     timeout-minutes: 10
     needs: [notify-start]
     if: inputs.skip_tests != true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
     outputs:
       thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
       gate_passed: ${{ steps.unit-gate.outputs.gate_passed }}
@@ -286,6 +289,9 @@ jobs:
     timeout-minutes: 20
     needs: [notify-start, deploy-preview, unit-tests]
     if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.deploy-preview.result == 'success'
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
     outputs:
       gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
@@ -555,6 +561,9 @@ jobs:
     needs: [notify-start, promote-live, deploy-preview]
     if: needs.promote-live.result == 'success'
     continue-on-error: true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
 
     steps:
       - name: Record job start time
