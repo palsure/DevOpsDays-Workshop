@@ -14,7 +14,7 @@
 #   5. api-report  ──────  — Fires RIGHT AFTER promote-live. Pipeline marks complete here.
 #   6. smoke-tests         — @Tag("Smoke") tests against promoted build. Async / non-blocking.
 #                            Validates the promoted production state end-to-end.
-#   7. rollback            — Smoke FAILED → triggers rollback alert for promoted build.
+#   7. rollback            — BAT GATE FAILED → blocks promotion and alerts team.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -620,34 +620,34 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. ROLLBACK — trigger rollback alert when Smoke fails after production promote
+# 8. ROLLBACK — BAT gate failed; block promotion and alert team
 # ─────────────────────────────────────────────────────────────────────────────
   rollback:
-    name: "Rollback — Smoke Failed Post-Promote"
+    name: "Rollback — BAT Gate Failed"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, promote-live, smoke-tests]
-    if: always() && needs.promote-live.result == 'success' && needs.smoke-tests.result != 'success'
+    needs: [notify-start, bat-tests]
+    if: always() && needs.bat-tests.result != 'skipped' && needs.bat-tests.outputs.gate_passed != 'true'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trigger production rollback
+      - name: Block production promotion
         run: |
-          echo "❌ Smoke tests failed on promoted build #${{ github.run_number }} — initiating rollback"
-          echo "Commit: ${{ github.sha }} needs to be reverted in production"
+          echo "❌ BAT gate failed — build #${{ github.run_number }} blocked from production"
+          echo "Commit: ${{ github.sha }} will NOT be promoted"
+          echo "Branch: ${{ github.head_ref || github.ref_name }}"
+          echo "Fix failing BAT tests before this branch can be promoted."
           # In a real pipeline this step would:
-          # - Re-tag previous stable Docker image back to :latest
-          # - Trigger Kubernetes rollout undo / ECS service rollback
           # - Trigger PagerDuty / on-call alert
           # - Open automatic incident ticket
 
-      - name: Notify Slack — production rollback
+      - name: Notify Slack — deployment blocked
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     API
-          stage-name:      "Production Rollback (Smoke Failed Post-Promote)"
+          stage-name:      "Deployment Blocked (BAT Gate Failed)"
           stage-result:    failure
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}

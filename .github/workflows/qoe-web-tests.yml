@@ -12,7 +12,7 @@
 #   6. report  ──────  — Fires after promote-live. Pipeline marks complete here.
 #   7. smoke-tests     — @Smoke tests against the LIVE URL. Async / non-blocking.
 #                        Validates the promoted live deployment end-to-end.
-#   8. rollback-live   — Runs when Smoke fails; notifies team to review live deploy.
+#   8. rollback        — Runs when BAT GATE FAILS; blocks promotion + alerts team.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN       — Slack bot OAuth token
@@ -716,46 +716,32 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 10. ROLLBACK LIVE — notify + attempt rollback when Smoke fails on live
+# 10. ROLLBACK — BAT gate failed; block deployment and alert team
 # ─────────────────────────────────────────────────────────────────────────────
-  rollback-live:
-    name: "Rollback Live"
+  rollback:
+    name: "Rollback — BAT Gate Failed"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, promote-live, smoke-tests]
-    if: always() && needs.promote-live.result == 'success' && needs.smoke-tests.result != 'success'
+    needs: [notify-start, bat-tests]
+    if: always() && needs.bat-tests.result != 'skipped' && needs.bat-tests.outputs.gate_passed != 'true'
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Rollback live channel to previous deployment
-        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
+      - name: Block deployment
         run: |
-          echo "⚠️  Smoke tests failed on live — rolling back live channel"
-          # Re-deploy previous stable artifact if available, otherwise alert team
-          # Firebase preserves deployment history; the console can be used for manual rollback
-          # In a full setup: restore artifact from previous run and re-deploy to live
-          echo "🔄 Live rollback triggered — notify team to review https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          echo "❌ BAT gate failed — build #${{ github.run_number }} blocked from deployment"
+          echo "Commit: ${{ github.sha }} will NOT be promoted to live"
+          echo "Branch: ${{ github.head_ref || github.ref_name }}"
+          echo "Fix failing BAT tests before this branch can be promoted."
 
-      - name: Notify Slack — live rollback
+      - name: Notify Slack — deployment blocked
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     WEB
-          stage-name:      "Live Rollback (Smoke failed post-promote)"
+          stage-name:      "Deployment Blocked (BAT Gate Failed)"
           stage-result:    failure
-          report-url:      ${{ needs.promote-live.outputs.live_url }}
-          link-label:      ":rotating_light: Review Live"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
