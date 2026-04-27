@@ -1,0 +1,13 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T15:33:02.542Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     45ms  other           GET     200      14ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1   
++     71ms  app-asset       GET     200      13ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    161ms  app-asset       GET     200     103ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    548ms  hls-manifest    GET     200     201ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    639ms  hls-manifest    GET     200      91ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    654ms  hls-segment     GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    998ms  hls-manifest    GET     200      35ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   1046ms  hls-segment     GET     200      45ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   1813ms  hls-segment     GET     200      26ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
