@@ -92,16 +92,24 @@ jobs:
           SHORT_SHA="${SHORT_SHA:0:7}"
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+          if [ -n "$PR_NUM" ]; then
+            PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUM"
+            TRIGGERED_BY="${{ github.actor }} (<$PR_URL|PR #$PR_NUM>)"
+          else
+            TRIGGERED_BY="${{ github.actor }} (${{ github.event_name }})"
+          fi
 
           PAYLOAD=$(python3 - <<EOF
           import json
           blocks = [
             {"type": "header", "text": {"type": "plain_text", "text": "[WEB] Stream-QoE-App  |  Build #${{ github.run_number }}", "emoji": True}},
             {"type": "section", "fields": [
-              {"type": "mrkdwn", "text": "*Branch:*\n\`${{ github.ref_name }}\`"},
+              {"type": "mrkdwn", "text": "*Branch:*\n\`$BRANCH\`"},
               {"type": "mrkdwn", "text": "*Environment:*\n${{ env.ENV_LABEL }}"},
               {"type": "mrkdwn", "text": "*Commit:*\n<$COMMIT_URL|${SHORT_SHA}>"},
-              {"type": "mrkdwn", "text": "*Triggered by:*\n${{ github.actor }} (${{ github.event_name }})"},
+              {"type": "mrkdwn", "text": "*Triggered by:*\n$TRIGGERED_BY"},
             ]},
             {"type": "divider"},
             {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit → BAT → Smoke → Regression. Results will follow in this thread."}]},
