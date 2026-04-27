@@ -1,0 +1,6 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T13:55:56.930Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     11ms  other           GET     ERR       1ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1 ❌
+              └─ net::ERR_CONNECTION_REFUSED
