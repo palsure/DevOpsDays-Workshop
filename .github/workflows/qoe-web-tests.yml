@@ -509,20 +509,19 @@ jobs:
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          # Capture stdout only — Firebase --json writes clean JSON to stdout,
-          # progress/warnings go to stderr; merging (2>&1) corrupts the JSON.
+          # Capture stdout+stderr — Firebase prints the URL in human-readable lines
+          # even with --json, so merging streams guarantees we can grep for it.
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --json 2>/dev/null || echo '{}')
-          echo "Firebase JSON output: $OUTPUT"
-          # Primary: parse JSON with jq (pre-installed on all GitHub Actions runners)
-          URL=$(echo "$OUTPUT" | jq -r '(.result // {}) | to_entries[0].value.url // ""' 2>/dev/null || true)
-          # Fallback: grep for any *.web.app URL in the stdout output
-          if [ -z "$URL" ]; then
-            URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app' | head -1 || true)
-          fi
+            --json 2>&1 || true)
+          echo "=== Firebase deploy output ==="
+          echo "$OUTPUT"
+          echo "=============================="
+          # Firebase always prints the preview URL somewhere in its output.
+          # Pattern: https://PROJECT--CHANNEL-HASH.web.app
+          URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app' | head -1 || true)
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "✅ Preview URL: ${URL:-<not extracted>}"
         working-directory: web-player
@@ -592,6 +591,24 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+        working-directory: web-player
+
+      - name: Download dist artifact (local server fallback)
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-player/dist
+
+      - name: Install static file server
+        run: npm install -g serve
+
+      - name: Serve dist/ on port 3000 (fallback when Firebase URL unavailable)
+        run: |
+          serve -s dist -l 3000 &
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3000/ > /dev/null && echo "Local server ready" && break
+            echo "Waiting for local server… ($i/15)"; sleep 2
+          done
         working-directory: web-player
 
       - name: Run Smoke tests (@Smoke, 3 workers)
