@@ -1,0 +1,51 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"**Scenario:** Baseline — no faults injected.
+
+The player loads the HLS manifest immediately and begins buffering segments.
+This test asserts that the first decoded video frame is delivered within a
+generous 45-second budget (cloud CI networks can be slow).
+
+**Pass condition:** `timeToFirstFrameMs < 45 000`","2485","baseline: first frame within generous budget","chromium","2026-04-27","passed","2026-04-27","QoE quality gates (workshop demos)","qoe-gates.spec.ts","",""
+"HLS.js estimates the available bandwidth after downloading the first segment.
+This is the foundation of adaptive bitrate selection.
+
+**Pass condition:** `bandwidthEstimate > 0` within 30 s.","628","bandwidth estimate is non-zero after first segment download","chromium","2026-04-27","passed","2026-04-27","ABR & Bitrate (HLS.js level management)","player-controls.spec.ts","",""
+"**Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+
+This fault is *invisible to server-side logs* — only a client-side visual
+probe (or computer-vision CI check) can catch it. The test asserts that the
+`data-testid=""visual-blackout-overlay""` element appears and then clears.
+
+**Pass conditions:**
+- Overlay becomes visible within 15 s
+- Overlay clears within 15 s of appearing","9767","black_screen_pulse: blackout overlay appears for CV-style probes","chromium","2026-04-27","failed","2026-04-27","QoE quality gates (workshop demos)","qoe-gates.spec.ts","",""
+"**Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+
+This fault is *invisible to server-side logs* — only a client-side visual
+probe (or computer-vision CI check) can catch it. The test asserts that the
+`data-testid=""visual-blackout-overlay""` element appears and then clears.
+
+**Pass conditions:**
+- Overlay becomes visible within 15 s
+- Overlay clears within 15 s of appearing","6245","black_screen_pulse: blackout overlay appears for CV-style probes","chromium","2026-04-27","failed","2026-04-27","QoE quality gates (workshop demos)","qoe-gates.spec.ts","",""
+"**Scenario:** Baseline — no faults injected.
+
+The player loads the HLS manifest immediately and begins buffering segments.
+This test asserts that the first decoded video frame is delivered within a
+generous 45-second budget (cloud CI networks can be slow).
+
+**Pass condition:** `timeToFirstFrameMs < 45 000`","47846","baseline: first frame within generous budget","chromium","2026-04-27","broken","2026-04-27","QoE quality gates (workshop demos)","qoe-gates.spec.ts","",""
+"Verifies that calling pause() via the QoE bridge halts playback.
+
+**Steps:**
+1. Autoplay baseline stream, wait for first frame.
+2. Call bridge.pause() — equivalent to video.pause().
+3. Assert isPaused = true and currentTime is frozen.
+
+**Pass condition:** `isPaused === true`","1093","pause stops playback and isPaused is true","chromium","2026-04-27","passed","2026-04-27","Player Controls (pause / play / seek)","player-controls.spec.ts","",""
+"Verifies that the HLS manifest exposes more than one quality rendition.
+ABR requires at least 2 levels to be meaningful.
+
+**Pass condition:** `hlsLevels.length > 1`","551","multiple quality levels are available after manifest parse","chromium","2026-04-27","passed","2026-04-27","ABR & Bitrate (HLS.js level management)","player-controls.spec.ts","",""

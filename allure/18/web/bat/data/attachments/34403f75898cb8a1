@@ -1,0 +1,39 @@
+## Network Analysis Report
+
+### Summary
+
+| Metric | Value |
+|--------|-------|
+| Overall health | 🔴 **CRITICAL** |
+| Total requests | 15 |
+| Failed requests | 1 |
+| Slow requests | 0 |
+| Issues found | 1 (1 critical, 0 warnings) |
+
+### Issues Found
+
+🔴 **QOE_API_UNREACHABLE** — All 1 QoE API request(s) failed — backend may be down or CORS misconfigured
+
+### HLS Stream Analysis
+
+| | Requests | Errors | Error Rate | Avg | P95 | Max |
+|--|----------|--------|-----------|-----|-----|-----|
+| Manifests | 3 | 0 | 0% | 16ms | 26ms | 26ms |
+| Segments  | 8 | 0 | 0% | 14ms | 24ms | 24ms |
+
+### QoE API
+
+| Metric | Value |
+|--------|-------|
+| Requests | 1 |
+| Failures | 1 |
+| Avg response | 2ms |
+| P95 response | 2ms |
+| Max response | 2ms |
+
+### Browser Console Errors
+
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
