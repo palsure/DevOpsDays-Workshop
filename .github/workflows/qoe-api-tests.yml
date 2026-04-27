@@ -103,12 +103,7 @@ jobs:
           import json
           blocks = [
             {"type": "header", "text": {"type": "plain_text", "text": "[API] Stream-QoE-App  |  Build #${{ github.run_number }}", "emoji": True}},
-            {"type": "section", "fields": [
-              {"type": "mrkdwn", "text": "*Branch:*\n\`$BRANCH\`"},
-              {"type": "mrkdwn", "text": "*Environment:*\n${{ env.ENV_LABEL }}"},
-              {"type": "mrkdwn", "text": "*Commit:*\n<$COMMIT_URL|${SHORT_SHA}>"},
-              {"type": "mrkdwn", "text": "*Triggered by:*\n$TRIGGERED_BY"},
-            ]},
+            {"type": "section", "text": {"type": "mrkdwn", "text": "*Branch:* \`$BRANCH\`  |  *Environment:* ${{ env.ENV_LABEL }}  |  *Commit:* <$COMMIT_URL|${SHORT_SHA}>  |  *Triggered by:* $TRIGGERED_BY"}},
             {"type": "divider"},
             {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests → BAT → Smoke. Results will follow in this thread."}]},
             {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
@@ -220,6 +215,7 @@ jobs:
       - name: Deploy unit Allure report to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
+        continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./stage-allure-report
@@ -246,6 +242,7 @@ jobs:
       - name: Send unit test result to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -459,6 +456,7 @@ jobs:
       - name: Send deploy result to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -543,6 +541,7 @@ jobs:
       - name: Deploy BAT Allure report to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
+        continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./stage-allure-report
@@ -569,6 +568,7 @@ jobs:
       - name: Send BAT Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -752,6 +752,7 @@ jobs:
       - name: Deploy Smoke Allure report to GitHub Pages
         if: always()
         uses: peaceiris/actions-gh-pages@v4
+        continue-on-error: true
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./stage-allure-report
@@ -778,6 +779,7 @@ jobs:
       - name: Send Smoke Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -817,7 +819,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_NAME: ${{ github.head_ref || github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
@@ -840,6 +842,7 @@ jobs:
       - name: Send final summary to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -851,12 +854,15 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          MODULE_NAME: API
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
           BUILD_VERDICT: >-
