@@ -1,22 +1,20 @@
 # Stream-QoE-App-API
 #
 # Pipeline flow:
-#   0. notify-start   — Post "build started" to Slack; capture message ts for threading.
-#   1. unit-tests     — @Tag("unit") tests (Mockito, no DB). Fast pre-deploy safety check.
-#   2. unit-gate      — Evaluate unit pass rate (≥80% required).
-#                       PASS → trigger deploy stage.
-#                       FAIL → deploy and all downstream blocked.
-#   3. deploy         — Build JAR, start app (postgres + Spring Boot), health-check.
-#                       PASS → run BAT.
-#                       FAIL → stop pipeline, Smoke skipped.
-#   4. bat-tests      — @Tag("BAT") Build Acceptance Tests (Testcontainers, own DB).
-#                       Gate inlined. FAIL → pipeline blocked; Smoke skipped.
-#   5. api-report     — Fires RIGHT AFTER bat-tests (pipeline marks complete here).
-#                       Smoke, promote, and rollback continue asynchronously.
-#   6. smoke-tests    — @Tag("Smoke") tests (postgres service). Async / non-blocking.
-#                       continue-on-error; results via Slack only; never blocks report.
-#   7. promote-live   — Runs when Smoke passes: marks build as production-ready.
-#   8. rollback       — Runs when Smoke fails: blocks production promotion.
+#   0. notify-start        — Post "build started" to Slack; capture thread_ts + start_epoch.
+#   1. unit-tests          — @Tag("unit") tests (Mockito, no DB). Fast pre-deploy safety check.
+#                            Unit gate (≥80%) inlined. FAIL → all downstream blocked.
+#   2. build-and-verify    — Build JAR, start Spring Boot + Postgres, health-check, stop.
+#                            Validates the artifact is deployable before running test suites.
+#                            FAIL → BAT + Smoke blocked.
+#   3. bat-tests           — @Tag("BAT") Build Acceptance Tests (Testcontainers, own DB).
+#                            Gate inlined. FAIL → pipeline blocked; Smoke skipped.
+#   4. api-report  ──────  — Fires RIGHT AFTER bat-tests. Pipeline marks complete here.
+#                            Smoke, promote, and rollback continue asynchronously.
+#   5. smoke-tests         — @Tag("Smoke") tests (postgres service). Async / non-blocking.
+#                            continue-on-error; results via Slack only; never blocks report.
+#   6. promote-live        — Smoke PASSED → marks build as production-ready.
+#   7. rollback            — Smoke FAILED → blocks production promotion.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -68,6 +66,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   QUALITY_GATE_THRESHOLD: '80'
   ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
@@ -94,6 +96,7 @@ jobs:
   unit-tests:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: notify-start
     if: inputs.skip_tests != true && inputs.skip_unit_tests != true
     outputs:
@@ -242,11 +245,13 @@ jobs:
             -d @unit-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. DEPLOY — Build JAR, start app, health-check. Fail fast if app won't start.
+# 2. BUILD & VERIFY — Compile JAR, boot app, health-check, tear down.
+#    Confirms the artifact is deployable before running any test suite.
 # ─────────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: "App Deployment & Health Check"
+  build-and-verify:
+    name: "Build & Verify (JAR + Health Check)"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [notify-start, unit-tests]
     if: |
       inputs.skip_tests != true &&
@@ -324,7 +329,7 @@ jobs:
         if: always()
         run: kill "$APP_PID" 2>/dev/null || true
 
-      - name: Calculate deploy duration
+      - name: Calculate build-and-verify duration
         if: always()
         run: |
           ELAPSED=$(( $(date +%s) - ${DEPLOY_START:-0} ))
@@ -337,7 +342,7 @@ jobs:
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     API
-          stage-name:      App Deployment
+          stage-name:      "Build & Verify"
           stage-result:    ${{ steps.healthcheck.outcome }}
           duration:        ${{ env.DEPLOY_DURATION }}
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
@@ -350,8 +355,9 @@ jobs:
   bat-tests:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, deploy]
-    if: inputs.skip_tests != true && inputs.skip_bat != true && needs.deploy.result == 'success'
+    timeout-minutes: 20
+    needs: [notify-start, unit-tests, build-and-verify]
+    if: inputs.skip_tests != true && inputs.skip_bat != true && needs.build-and-verify.result == 'success'
     outputs:
       gate_passed: ${{ steps.bat-gate.outputs.passed }}
 
@@ -448,7 +454,7 @@ jobs:
           if [ "$PASSED" = "true" ]; then
             ICON="✅"; MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"; DETAIL=""
           else
-            ICON="🚫"; MSG="BAT gate *FAILED* — deployment *REVERTED*. Build blocked, Smoke tests will not run."; DETAIL="🔄 Deployment has been rolled back to the previous stable state."
+            ICON="🚫"; MSG="BAT gate *FAILED* — build is blocked. Smoke tests will not run."; DETAIL="❌ BAT failures must be resolved before this build can proceed to Smoke."
           fi
           python3 - <<EOF
           import json, pathlib
@@ -473,12 +479,13 @@ jobs:
   smoke-tests:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, bat-tests, deploy]
+    timeout-minutes: 25
+    needs: [notify-start, bat-tests, build-and-verify]
     continue-on-error: true
     if: |
       inputs.skip_tests != true &&
       needs.bat-tests.outputs.gate_passed == 'true' &&
-      needs.deploy.result == 'success'
+      needs.build-and-verify.result == 'success'
 
     services:
       postgres:
@@ -581,8 +588,9 @@ jobs:
   promote-live:
     name: "Promote API to Production"
     runs-on: ubuntu-latest
-    needs: [notify-start, deploy, smoke-tests]
-    if: always() && needs.smoke-tests.result == 'success' && needs.deploy.result == 'success'
+    timeout-minutes: 10
+    needs: [notify-start, build-and-verify, smoke-tests]
+    if: always() && needs.smoke-tests.result == 'success' && needs.build-and-verify.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -617,8 +625,9 @@ jobs:
   rollback:
     name: "Rollback — Smoke Failed"
     runs-on: ubuntu-latest
-    needs: [notify-start, deploy, smoke-tests]
-    if: always() && needs.deploy.result == 'success' && needs.smoke-tests.result != 'success'
+    timeout-minutes: 10
+    needs: [notify-start, build-and-verify, smoke-tests]
+    if: always() && needs.build-and-verify.result == 'success' && needs.smoke-tests.result != 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -648,8 +657,9 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, deploy, bat-tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [notify-start, unit-tests, build-and-verify, bat-tests]
     if: always()
 
     steps:
@@ -682,8 +692,8 @@ jobs:
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
           STAGE2_NAME: Unit Gate (≥80%)
           STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
-          STAGE3_NAME: App Deployment
-          STAGE3_RESULT: ${{ needs.deploy.result }}
+          STAGE3_NAME: Build & Verify
+          STAGE3_RESULT: ${{ needs.build-and-verify.result }}
           STAGE4_NAME: BAT
           STAGE4_RESULT: ${{ needs.bat-tests.result }}
           STAGE5_NAME: BAT Gate
@@ -722,7 +732,7 @@ jobs:
           ENV_LABEL: ${{ env.ENV_LABEL }}
           BUILD_VERDICT: >-
             ${{ (needs.unit-tests.outputs.gate_passed == 'true' &&
-                 needs.deploy.result == 'success' &&
+                 needs.build-and-verify.result == 'success' &&
                  needs.bat-tests.outputs.gate_passed == 'true' &&
                  needs.smoke-tests.result != 'failure') && 'success' || 'failure' }}
         run: python3 .github/scripts/update_build_message.py
