@@ -13,6 +13,19 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Instrumented test stage filter: -PtestStage=bat|smoke|regression|all
+        val testStage = (project.findProperty("testStage") as? String) ?: "all"
+        when (testStage) {
+            "bat"        -> testInstrumentationRunnerArguments["annotation"] =
+                "com.devopsdays.qoe.player.categories.BAT"
+            "smoke"      -> testInstrumentationRunnerArguments["annotation"] =
+                "com.devopsdays.qoe.player.categories.Smoke"
+            "regression" -> testInstrumentationRunnerArguments["annotation"] =
+                "com.devopsdays.qoe.player.categories.Regression"
+        }
     }
 
     buildTypes {
@@ -20,7 +33,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -32,6 +45,16 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    testOptions {
+        unitTests.all {
+            // Write Allure results alongside the test outputs
+            it.systemProperty(
+                "allure.results.directory",
+                "${layout.buildDirectory.get()}/allure-results/unit",
+            )
+        }
     }
 }
 
@@ -55,7 +78,76 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // ── JVM Unit Tests ────────────────────────────────────────────────────────
     testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Allure JUnit4 adapter — generates results in build/allure-results/unit/
+    testImplementation("io.qameta.allure:allure-junit4:2.27.0")
+
+    // ── Instrumented Tests (androidTest) ─────────────────────────────────────
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test.espresso:espresso-idling-resource:3.5.1")
+}
+
+// ── Custom Gradle tasks (mirrors backend-api convention) ──────────────────────
+
+tasks.register("unitTest") {
+    group = "verification"
+    description = "Run JVM unit tests and write Allure results to build/allure-results/unit"
+    dependsOn("testDebugUnitTest")
+}
+
+tasks.register("batTest") {
+    group = "verification"
+    description = "Run BAT instrumented tests on a connected device/emulator"
+    dependsOn("connectedDebugAndroidTest")
+    doFirst {
+        android.defaultConfig.testInstrumentationRunnerArguments["annotation"] =
+            "com.devopsdays.qoe.player.categories.BAT"
+    }
+}
+
+tasks.register("smokeTest") {
+    group = "verification"
+    description = "Run Smoke instrumented tests on a connected device/emulator"
+    dependsOn("connectedDebugAndroidTest")
+    doFirst {
+        android.defaultConfig.testInstrumentationRunnerArguments["annotation"] =
+            "com.devopsdays.qoe.player.categories.Smoke"
+    }
+}
+
+tasks.register("regressionTest") {
+    group = "verification"
+    description = "Run Regression instrumented tests on a connected device/emulator"
+    dependsOn("connectedDebugAndroidTest")
+    doFirst {
+        android.defaultConfig.testInstrumentationRunnerArguments["annotation"] =
+            "com.devopsdays.qoe.player.categories.Regression"
+    }
+}
+
+tasks.register("e2eTest") {
+    group = "verification"
+    description = "Run all instrumented E2E tests (BAT + Smoke + Regression)"
+    dependsOn("connectedDebugAndroidTest")
+}
+
+tasks.register("cleanAllure") {
+    group = "build"
+    description = "Delete Allure results and reports (keeps compiled classes)"
+    doLast {
+        delete("${layout.buildDirectory.get()}/allure-results")
+        delete("${layout.buildDirectory.get()}/reports/allure-report")
+    }
+}
+
+tasks.register("cleanAll") {
+    group = "build"
+    description = "Full clean: compiled classes + Allure results + reports"
+    dependsOn("clean", "cleanAllure")
 }

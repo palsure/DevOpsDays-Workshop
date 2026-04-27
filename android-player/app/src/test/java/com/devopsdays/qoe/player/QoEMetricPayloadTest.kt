@@ -1,12 +1,16 @@
 package com.devopsdays.qoe.player
 
 import com.devopsdays.qoe.player.models.QoEMetricPayload
+import io.qameta.allure.Feature
+import io.qameta.allure.Story
 import org.junit.Assert.*
 import org.junit.Test
 
+@Feature("QoE Metric Payload")
 class QoEMetricPayloadTest {
 
     @Test
+    @Story("Platform field")
     fun `payload stores platform correctly`() {
         val payload = QoEMetricPayload(
             platform = "android",
@@ -20,6 +24,7 @@ class QoEMetricPayloadTest {
     }
 
     @Test
+    @Story("VideoId field")
     fun `payload stores videoId correctly`() {
         val payload = QoEMetricPayload(
             platform = "android",
@@ -33,6 +38,7 @@ class QoEMetricPayloadTest {
     }
 
     @Test
+    @Story("Metrics map")
     fun `payload stores metrics map correctly`() {
         val metrics = mapOf("bufferingRatio" to 0.02, "startupTime" to 1500)
         val payload = QoEMetricPayload(
@@ -48,6 +54,7 @@ class QoEMetricPayloadTest {
     }
 
     @Test
+    @Story("Device info map")
     fun `device info map is preserved`() {
         val deviceInfo = mapOf("model" to "Pixel 8 Pro", "osVersion" to "14")
         val payload = QoEMetricPayload(
@@ -63,6 +70,7 @@ class QoEMetricPayloadTest {
     }
 
     @Test
+    @Story("Data class equality")
     fun `data class equality works`() {
         val p1 = QoEMetricPayload("android", "v1", "s1", "t1", emptyMap(), emptyMap())
         val p2 = QoEMetricPayload("android", "v1", "s1", "t1", emptyMap(), emptyMap())
