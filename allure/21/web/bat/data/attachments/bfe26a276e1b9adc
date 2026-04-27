@@ -1,0 +1,56 @@
+## Network Analysis Report
+
+### Summary
+
+| Metric | Value |
+|--------|-------|
+| Overall health | 🔴 **CRITICAL** |
+| Total requests | 22 |
+| Failed requests | 8 |
+| Slow requests | 0 |
+| Issues found | 1 (1 critical, 0 warnings) |
+
+### Issues Found
+
+🔴 **QOE_API_UNREACHABLE** — All 8 QoE API request(s) failed — backend may be down or CORS misconfigured
+
+### HLS Stream Analysis
+
+| | Requests | Errors | Error Rate | Avg | P95 | Max |
+|--|----------|--------|-----------|-----|-----|-----|
+| Manifests | 3 | 0 | 0% | 20ms | 27ms | 27ms |
+| Segments  | 8 | 0 | 0% | 16ms | 26ms | 26ms |
+
+### QoE API
+
+| Metric | Value |
+|--------|-------|
+| Requests | 8 |
+| Failures | 8 |
+| Avg response | 2ms |
+| P95 response | 5ms |
+| Max response | 5ms |
+
+### Browser Console Errors
+
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
+- `Failed to load resource: the server responded with a status of 404 (Not Found)`
+- `Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/assets/index-2K0fXo0K.js:81:1087)
+    at XMLHttpRequest.y (http://localhost:3000/assets/ind…`
+- *(6 more errors omitted)*
