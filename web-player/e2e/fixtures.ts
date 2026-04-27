@@ -1,7 +1,7 @@
 /**
  * fixtures.ts
  *
- * Extends the base Playwright test with three fixtures:
+ * Extends the base Playwright test with four fixtures:
  *
  *   networkCapture  – intercepts every request/response/failure + console
  *                     messages + uncaught JS errors for the entire test.
@@ -15,14 +15,38 @@
  *                     throttle.apply('3G') to simulate throttled networks
  *                     and throttle.reset() to restore full speed.
  *
+ *   labContext      – read-only fixture that surfaces run-mode and device-lab
+ *                     information as Allure parameters and test annotations,
+ *                     so every test report shows where it ran.
+ *
  * Usage:
  *   import { test, expect, NETWORK_PRESETS } from './fixtures';
  *   // same API as @playwright/test but with automatic network analysis
  *   // and optional network throttling.
+ *
+ * ── Lab-mode environment variables ──────────────────────────────────────────
+ *   PLAYWRIGHT_RUN_MODE          local (default) | lab
+ *   PLAYWRIGHT_LAB_PROVIDER      browserstack | local_grid
+ *   BROWSERSTACK_USERNAME        BrowserStack credentials
+ *   BROWSERSTACK_ACCESS_KEY
+ *   BROWSERSTACK_BUILD_NAME      build label surfaced in the dashboard
  */
 
 import { test as base, expect } from '@playwright/test';
 import { allure }               from 'allure-playwright';
+
+// ── Lab context helpers ───────────────────────────────────────────────────────
+
+const RUN_MODE     = (process.env['PLAYWRIGHT_RUN_MODE']     ?? 'local').toLowerCase();
+const LAB_PROVIDER = (process.env['PLAYWRIGHT_LAB_PROVIDER'] ?? '').toLowerCase();
+const IS_LAB       = RUN_MODE === 'lab';
+
+export type LabContext = {
+  runMode:     string;
+  labProvider: string;
+  isLab:       boolean;
+  buildName:   string;
+};
 
 // ── Network throttle types & presets ──────────────────────────────────────────
 
@@ -81,6 +105,8 @@ export type NetworkFixtures = {
   networkReport: NetworkReport | null;
   /** CDP network throttle control. Always available; starts at unlimited speed. */
   throttle: ThrottleControl;
+  /** Read-only lab context — run.mode, provider, build name. */
+  labContext: LabContext;
 };
 
 // ── Extended test ─────────────────────────────────────────────────────────────
@@ -92,6 +118,38 @@ export const test = base.extend<NetworkFixtures>({
     // placeholder; populated by networkCapture fixture via closure
     await use(null);
   }, { scope: 'test' }],
+
+  // ── Lab context fixture ────────────────────────────────────────────────────
+  // Surfaces run-mode and provider as Allure parameters so every test report
+  // shows clearly whether it ran locally or in a cloud device lab.
+  labContext: [async ({}, use, testInfo) => {
+    const buildName = process.env['BROWSERSTACK_BUILD_NAME']
+        ?? process.env['GITHUB_RUN_NUMBER']
+        ?? 'local';
+
+    const ctx: LabContext = {
+      runMode:     RUN_MODE,
+      labProvider: IS_LAB ? (LAB_PROVIDER || 'unknown') : 'local',
+      isLab:       IS_LAB,
+      buildName,
+    };
+
+    // Annotate in the TestNG-style Allure test detail header
+    await allure.parameter('run:mode',     ctx.runMode);
+    await allure.parameter('run:provider', ctx.labProvider);
+    await allure.parameter('run:build',    ctx.buildName);
+    await allure.label('run_mode', ctx.runMode);
+
+    if (IS_LAB) {
+      testInfo.annotations.push({
+        type:        '☁️ Lab Run',
+        description: `${ctx.labProvider}  build=${ctx.buildName}`,
+      });
+      await allure.label('lab_provider', ctx.labProvider);
+    }
+
+    await use(ctx);
+  }, { scope: 'test', auto: true }],
 
   // ── Network throttle fixture ───────────────────────────────────────────────
   throttle: [async ({ page }, use, testInfo) => {
