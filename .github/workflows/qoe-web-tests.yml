@@ -481,8 +481,8 @@ jobs:
     needs: [notify-start, build, bat-gate]
     if: always() && needs.bat-gate.outputs.passed == 'true' && needs.build.result == 'success'
     outputs:
-      preview_url: ${{ steps.deploy.outputs.preview_url }}
-      channel:     ${{ steps.deploy.outputs.channel }}
+      preview_url: ${{ steps.resolve-url.outputs.preview_url }}
+      channel:     ${{ steps.resolve-url.outputs.channel }}
       thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
 
     steps:
@@ -508,30 +508,54 @@ jobs:
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          # Capture both stdout and stderr so progress lines don't corrupt JSON parse
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --json 2>/dev/null || echo '{}')
-          echo "Firebase output: $OUTPUT"
+            --json 2>&1 || echo '{}')
+          echo "Firebase raw output: $OUTPUT"
           URL=$(echo "$OUTPUT" | python3 -c "
-          import sys, json
-          d = json.load(sys.stdin)
-          vals = list(d.get('result', {}).values())
-          print(vals[0].get('url', '') if vals else '')
-          " 2>/dev/null || echo '')
+import sys, json, re
+text = sys.stdin.read()
+# Try to find the last JSON object in the output (Firebase may emit progress lines first)
+for candidate in reversed(re.findall(r'\{[^{}]*\"result\"[^{}]*\}|\{[\s\S]*\}', text)):
+    try:
+        d = json.loads(candidate)
+        vals = list(d.get('result', {}).values())
+        if vals:
+            url = vals[0].get('url', '') or vals[0].get('siteUrl', '')
+            if url:
+                print(url)
+                sys.exit(0)
+    except Exception:
+        pass
+# Regex fallback — match any Firebase hosting URL in the output
+m = re.search(r'https://[a-z0-9-]+--[a-z0-9-]+\.web\.app', text)
+if m:
+    print(m.group())
+" 2>/dev/null || echo '')
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "✅ Preview deployed: $URL"
+          echo "✅ Preview URL: ${URL:-<not extracted>}"
         working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Set placeholder URL when Firebase not configured
-        if: env.FIREBASE_TOKEN == '' || env.FIREBASE_PROJECT_ID == ''
+      - name: Resolve preview URL
+        id: resolve-url
+        if: always()
         run: |
-          echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
-          echo "channel=local" >> "$GITHUB_OUTPUT"
+          URL="${{ steps.deploy.outputs.preview_url }}"
+          CHANNEL="${{ steps.deploy.outputs.channel }}"
+          if [ -z "$URL" ]; then
+            URL="http://localhost:3000"
+            CHANNEL="local-${{ github.run_number }}"
+            echo "⚠️  Firebase URL not available — smoke tests will use localhost fallback"
+          fi
+          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Resolved preview URL: $URL"
 
       - name: Calculate deploy duration
         if: always()
@@ -551,7 +575,7 @@ jobs:
           stage-name:      Firebase Preview Deploy
           stage-result:    ${{ steps.deploy.outcome || 'skipped' }}
           duration:        ${{ env.DEPLOY_DURATION }}
-          report-url:      ${{ steps.deploy.outputs.preview_url }}
+          report-url:      ${{ steps.resolve-url.outputs.preview_url }}
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
