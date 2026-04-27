@@ -1,0 +1,25 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T16:39:38.210Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     47ms  other           GET     200      10ms  http://localhost:3000/   
++     85ms  app-asset       GET     200      10ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    199ms  app-asset       GET     200     124ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    267ms  other           GET     200      11ms  http://localhost:3000/?scenario=black_screen_pulse&e2e_autoplay=1   
++    330ms  app-asset       GET     304       0ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    332ms  app-asset       GET     304       2ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    409ms  hls-manifest    GET     200      35ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    425ms  hls-manifest    GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    515ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    593ms  hls-manifest    GET     200       6ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    629ms  hls-segment     GET     200      31ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++    813ms  hls-segment     GET     200      14ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++    910ms  hls-segment     GET     200      22ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   1044ms  hls-segment     GET     200      16ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   1137ms  hls-segment     GET     200      16ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   1244ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   1310ms  hls-segment     GET     200      14ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   5378ms  qoe-api         POST    404       1ms  http://localhost:3000/api/v1/metrics ❌
++   5379ms  🖥️ ❌  [console.error]  Failed to load resource: the server responded with a status of 404 (Not Found)
++   5380ms  🖥️ ❌  [console.error]  Failed to send QoE metrics: AxiosError: Request failed with status code 404
+    at Ty (http://localhost:3000/a…

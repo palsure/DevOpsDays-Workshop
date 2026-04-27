@@ -1,0 +1,134 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 16,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 47
+  },
+  {
+    "id": 2,
+    "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 15,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 73
+  },
+  {
+    "id": 3,
+    "url": "http://localhost:3000/assets/index-2K0fXo0K.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 111,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 169
+  },
+  {
+    "id": 4,
+    "url": "http://localhost:3000/?scenario=baseline&e2e_autoplay=1",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 11,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 245
+  },
+  {
+    "id": 5,
+    "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 304,
+    "durationMs": 6,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 282
+  },
+  {
+    "id": 6,
+    "url": "http://localhost:3000/assets/index-2K0fXo0K.js",
+    "method": "GET",
+    "status": 304,
+    "durationMs": 7,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 283
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 163,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 510
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 18,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 538
+  },
+  {
+    "id": 9,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 113,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 652
+  },
+  {
+    "id": 10,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 62,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 848
+  },
+  {
+    "id": 11,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 15,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 863
+  },
+  {
+    "id": 12,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 26,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1622
+  }
+]
