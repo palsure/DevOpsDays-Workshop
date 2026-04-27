@@ -184,11 +184,12 @@ def main() -> int:
 
     # ── Stats text ────────────────────────────────────────────────────────────
     if has_stats:
+        # Inline pass rate next to the passed count: "Passed: 58 (100%)"
+        passed_str = f"{passed} ({pct(passed, total)})"
         stats_text = (
             f"{icon}  "
-            f"*Passed:* {passed}  |  *Failed:* {failed}  |  "
-            f"*Skipped:* {skipped}  |  *Total:* {total}  |  "
-            f"*Pass Rate:* {pct(passed, total)}"
+            f"*Passed:* {passed_str}  |  *Failed:* {failed}  |  "
+            f"*Skipped:* {skipped}  |  *Total:* {total}"
         )
     else:
         stats_text = f"{icon}  *Result:* {verdict}"
@@ -203,17 +204,11 @@ def main() -> int:
     # ── Payload ───────────────────────────────────────────────────────────────
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
-    stage_icon = {
-        "PASSED":    "✅",
-        "FAILED":    "❌",
-        "SKIPPED":   "⏭",
-        "CANCELLED": "⏭",
-    }.get(verdict, "⏭")
-
+    # No tick/cross prefix — the colored circle in stats_text is sufficient signal
     header_text = (
-        f"{stage_icon} [{module}] {stage} — {verdict}  |  Duration: {duration_str}"
+        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
         if duration_str
-        else f"{stage_icon} [{module}] {stage} — {verdict}  |  {build_label}"
+        else f"[{module}] {stage} — {verdict}  |  {build_label}"
     )
 
     payload: dict = {
