@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "url": "http://127.0.0.1:4173/",
+    "method": "GET",
+    "status": null,
+    "durationMs": 3,
+    "category": "other",
+    "failed": true,
+    "slow": false,
+    "errorText": "net::ERR_CONNECTION_REFUSED",
+    "startedAt": 53
+  }
+]
