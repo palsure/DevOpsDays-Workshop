@@ -1,0 +1,38 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T20:10:45.719Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     31ms  other           GET     200      12ms  http://localhost:3000/   
++     79ms  app-asset       GET     200      26ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    155ms  app-asset       GET     200     102ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    229ms  other           GET     200      13ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1   
++    244ms  app-asset       GET     304       8ms  http://localhost:3000/assets/index-BQ-6yWm3.css   
++    244ms  app-asset       GET     304       8ms  http://localhost:3000/assets/index-2K0fXo0K.js   
++    518ms  hls-manifest    GET     200      83ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    575ms  hls-manifest    GET     200      57ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    606ms  hls-segment     GET     200      31ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    899ms  hls-manifest    GET     200      20ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    956ms  hls-segment     GET     200      52ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   1448ms  hls-segment     GET     200      54ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   1785ms  hls-segment     GET     200      59ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   2197ms  hls-segment     GET     200      40ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   2356ms  hls-segment     GET     200      38ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   2487ms  hls-segment     GET     200      34ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   2589ms  hls-segment     GET     200      30ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   5443ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  10434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  15434ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  20433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  25434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  30434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  35434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  40433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  45433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  50434ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  55433ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  60433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  65433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  70434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  75434ms  qoe-api         POST    200       2ms  http://localhost:3000/api/v1/metrics   
++  80433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
++  85433ms  qoe-api         POST    200       1ms  http://localhost:3000/api/v1/metrics   
