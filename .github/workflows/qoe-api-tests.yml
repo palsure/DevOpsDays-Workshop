@@ -69,6 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ steps.post.outputs.thread_ts }}
+      start_epoch: ${{ steps.epoch.outputs.start_epoch }}
 
     steps:
       - name: Post "build started" to Slack
@@ -110,6 +111,10 @@ jobs:
       - name: Set empty thread_ts when Slack not configured
         if: env.SLACK_BOT_TOKEN == '' || env.SLACK_CHANNEL_ID == ''
         run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
+
+      - name: Record pipeline start epoch
+        id: epoch
+        run: echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. UNIT TESTS  — fast pre-deploy gate, no DB required
@@ -785,9 +790,8 @@ jobs:
       - name: Calculate total build duration
         if: always()
         run: |
-          START="${{ github.run_started_at }}"
-          NOW=$(date -u +%s)
-          START_EPOCH=$(date -u -d "$START" +%s 2>/dev/null || echo "$NOW")
+          START_EPOCH="${{ needs.notify-start.outputs.start_epoch }}"
+          NOW=$(date +%s)
           ELAPSED=$(( NOW - START_EPOCH ))
           MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
           [ $MINS -gt 0 ] && DUR="${MINS}m ${SECS}s" || DUR="${SECS}s"
