@@ -1,0 +1,6 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"failed","Mon Apr 27 18:37:07 UTC 2026","Mon Apr 27 18:37:08 UTC 2026","651","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","black_screen_pulse: blackout overlay appears for CV-style probes",""
+"failed","Mon Apr 27 18:37:04 UTC 2026","Mon Apr 27 18:37:05 UTC 2026","822","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","multiple quality levels are available after manifest parse",""
+"failed","Mon Apr 27 18:37:04 UTC 2026","Mon Apr 27 18:37:05 UTC 2026","869","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","bandwidth estimate is non-zero after first segment download",""
+"failed","Mon Apr 27 18:37:04 UTC 2026","Mon Apr 27 18:37:05 UTC 2026","880","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","baseline: first frame within generous budget",""
+"failed","Mon Apr 27 18:37:04 UTC 2026","Mon Apr 27 18:37:05 UTC 2026","885","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","pause stops playback and isPaused is true",""
