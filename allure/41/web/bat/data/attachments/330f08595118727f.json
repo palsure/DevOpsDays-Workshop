@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/",
+    "method": "GET",
+    "status": null,
+    "durationMs": 10,
+    "category": "other",
+    "failed": true,
+    "slow": false,
+    "errorText": "net::ERR_CONNECTION_REFUSED",
+    "startedAt": 41
+  }
+]

@@ -1,0 +1,6 @@
+# Network & Console Timeline
+# Generated: 2026-04-27T17:31:27.793Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     41ms  other           GET     ERR       0ms  http://localhost:3000/ ❌
+              └─ net::ERR_CONNECTION_REFUSED
