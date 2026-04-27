@@ -38,6 +38,8 @@ on:
     paths:
       - 'web-player/**'
       - '.github/workflows/qoe-web-tests.yml'
+      - '.github/workflows/shared-notify-start.yml'
+      - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
   push:
@@ -45,6 +47,8 @@ on:
     paths:
       - 'web-player/**'
       - '.github/workflows/qoe-web-tests.yml'
+      - '.github/workflows/shared-notify-start.yml'
+      - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
   workflow_dispatch:
@@ -73,62 +77,18 @@ concurrency:
   cancel-in-progress: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 0. NOTIFY START
+# 0. NOTIFY START  (reusable workflow)
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    name: Notify — build started
-    runs-on: ubuntu-latest
-    outputs:
-      thread_ts:   ${{ steps.post.outputs.thread_ts }}
-      start_epoch: ${{ steps.epoch.outputs.start_epoch }}
-
-    steps:
-      - name: Post "build started" to Slack
-        id: post
-        if: env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          SHORT_SHA="${{ github.sha }}"
-          SHORT_SHA="${SHORT_SHA:0:7}"
-          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          PR_NUM="${{ github.event.pull_request.number }}"
-          if [ -n "$PR_NUM" ]; then
-            PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUM"
-            TRIGGERED_BY="${{ github.actor }} (<$PR_URL|PR #$PR_NUM>)"
-          else
-            TRIGGERED_BY="${{ github.actor }} (${{ github.event_name }})"
-          fi
-
-          PAYLOAD=$(python3 - <<EOF
-          import json
-          blocks = [
-            {"type": "header", "text": {"type": "plain_text", "text": "[WEB] Stream-QoE-App  |  Build #${{ github.run_number }}", "emoji": True}},
-            {"type": "section", "text": {"type": "mrkdwn", "text": "*Branch:* \`$BRANCH\`  |  *Environment:* ${{ env.ENV_LABEL }}  |  *Commit:* <$COMMIT_URL|${SHORT_SHA}>  |  *Triggered by:* $TRIGGERED_BY"}},
-            {"type": "divider"},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit → BAT → Smoke → Regression. Results will follow in this thread."}]},
-            {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
-          ]
-          print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "unfurl_links": False, "unfurl_media": False, "blocks": blocks}))
-          EOF
-          )
-
-          RESPONSE=$(curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-          echo "Slack response: $RESPONSE"
-          TS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ts',''))")
-          echo "thread_ts=$TS" >> "$GITHUB_OUTPUT"
-
-      - name: Set empty thread_ts when Slack not configured
-        if: env.SLACK_BOT_TOKEN == '' || env.SLACK_CHANNEL_ID == ''
-        run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
-
-      - name: Record pipeline start epoch
-        id: epoch
-        run: echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/shared-notify-start.yml
+    with:
+      module-name:       WEB
+      pipeline-steps:    "Unit → BAT → Smoke → Regression"
+      environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. BUILD — tsc + vite build; produces deployable dist/ artifact
@@ -190,12 +150,11 @@ jobs:
         run: npm ci
         working-directory: web-player
 
-      - name: Record unit start time
-        run: echo "UNIT_START=$(date +%s)" >> "$GITHUB_ENV"
-
       - name: Run unit tests (Vitest)
         id: unit
-        run: npm test
+        run: |
+          echo "UNIT_START=$(date +%s)" >> "$GITHUB_ENV"
+          npm test
         working-directory: web-player
 
       - name: Calculate unit duration
@@ -229,58 +188,28 @@ jobs:
           path: web-player/allure-results/unit
           retention-days: 14
 
-      - name: Install Allure CLI
+      - name: Generate & deploy unit Allure report
         if: always()
-        run: npm install -g allure-commandline
-
-      - name: Generate unit Allure report
-        if: always()
-        run: |
-          mkdir -p stage-allure-report
-          echo "<html><head><title>Web Unit Tests</title></head><body><h2>No unit results for run ${{ github.run_number }}.</h2></body></html>" \
-            > stage-allure-report/index.html
-          SRC="web-player/allure-results/unit"
-          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
-            allure generate "$SRC" -o stage-allure-report --clean \
-              && echo "✅ Unit Allure report generated" \
-              || echo "⚠️ Generation failed — placeholder kept"
-          fi
-
-      - name: Deploy unit Allure report to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v4
-        continue-on-error: true
+        uses: ./.github/actions/publish-allure
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./stage-allure-report
-          destination_dir: allure/${{ github.run_number }}/web/unit
-          keep_files: true
+          stage-title:        "Web Unit Tests"
+          results-src:        web-player/allure-results/unit
+          pages-destination:  allure/${{ github.run_number }}/web/unit
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post unit test result to Slack thread
+      - name: Notify Slack — unit test result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: Unit Tests (Vitest)
-          JUNIT_DIR: web-player/test-results
-          STAGE_RESULT: ${{ steps.unit.outcome }}
-          DURATION: ${{ env.UNIT_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/unit
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send unit Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      "Unit Tests (Vitest)"
+          stage-result:    ${{ steps.unit.outcome }}
+          duration:        ${{ env.UNIT_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/unit
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:       web-player/test-results
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. UNIT GATE — enforce ≥80% pass rate before BAT
@@ -328,7 +257,6 @@ jobs:
           total = passed = failed = skipped = 0
           for f in files:
               root = ET.parse(f).getroot()
-              # Handle both <testsuites> and <testsuite> root elements
               suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
               for s in suites:
                   t  = int(s.attrib.get("tests",    0))
@@ -384,12 +312,6 @@ jobs:
     needs: [notify-start, unit-tests, unit-gate]
     if: inputs.skip_tests != true && needs.unit-gate.outputs.passed == 'true'
 
-    services:
-      web-player:
-        image: nginx:alpine
-        ports:
-          - 3000:80
-
     steps:
       - uses: actions/checkout@v4
 
@@ -420,12 +342,11 @@ jobs:
           sleep 3
           curl -sf http://localhost:3000 > /dev/null && echo "✅ Dev server ready" || (echo "❌ Server not ready"; exit 1)
 
-      - name: Record BAT start time
-        run: echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
-
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
-        run: npm run e2e:bat
+        run: |
+          echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
+          npm run e2e:bat
         working-directory: web-player
         env:
           CI: 'true'
@@ -458,58 +379,28 @@ jobs:
           path: web-player/allure-results/bat
           retention-days: 14
 
-      - name: Install Allure CLI
+      - name: Generate & deploy BAT Allure report
         if: always()
-        run: npm install -g allure-commandline
-
-      - name: Generate BAT Allure report
-        if: always()
-        run: |
-          mkdir -p stage-allure-report
-          echo "<html><head><title>Web BAT</title></head><body><h2>No BAT results for run ${{ github.run_number }}.</h2></body></html>" \
-            > stage-allure-report/index.html
-          SRC="web-player/allure-results/bat"
-          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
-            allure generate "$SRC" -o stage-allure-report --clean \
-              && echo "✅ BAT Allure report generated" \
-              || echo "⚠️ Generation failed — placeholder kept"
-          fi
-
-      - name: Deploy BAT Allure report to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v4
-        continue-on-error: true
+        uses: ./.github/actions/publish-allure
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./stage-allure-report
-          destination_dir: allure/${{ github.run_number }}/web/bat
-          keep_files: true
+          stage-title:        "Web BAT"
+          results-src:        web-player/allure-results/bat
+          pages-destination:  allure/${{ github.run_number }}/web/bat
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post BAT result to Slack thread
+      - name: Notify Slack — BAT result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: BAT (Build Acceptance Tests)
-          PLAYWRIGHT_JSON: web-player/playwright-results-bat.json
-          STAGE_RESULT: ${{ steps.bat.outcome }}
-          DURATION: ${{ env.BAT_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/bat
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send BAT Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      "BAT (Build Acceptance Tests)"
+          stage-result:    ${{ steps.bat.outcome }}
+          duration:        ${{ env.BAT_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/bat
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          playwright-json: web-player/playwright-results-bat.json
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. BAT GATE — block Smoke & downstream on any BAT failure
@@ -627,28 +518,17 @@ jobs:
           echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
           echo "channel=local" >> "$GITHUB_OUTPUT"
 
-      - name: Post preview deploy result to Slack thread
+      - name: Notify Slack — preview deploy result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: Firebase Preview Deploy
-          STAGE_RESULT: ${{ steps.deploy.outcome || 'skipped' }}
-          REPORT_URL: ${{ steps.deploy.outputs.preview_url }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send preview deploy Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      Firebase Preview Deploy
+          stage-result:    ${{ steps.deploy.outcome || 'skipped' }}
+          report-url:      ${{ steps.deploy.outputs.preview_url }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. SMOKE TESTS — @Smoke Playwright tests; 3 workers; runs after BAT gate
@@ -676,13 +556,12 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Record Smoke start time
-        run: echo "SMOKE_START=$(date +%s)" >> "$GITHUB_ENV"
-
       - name: Run Smoke tests (@Smoke, 3 workers)
         id: smoke
         continue-on-error: true
-        run: npm run e2e:smoke
+        run: |
+          echo "SMOKE_START=$(date +%s)" >> "$GITHUB_ENV"
+          npm run e2e:smoke
         working-directory: web-player
         env:
           CI: 'true'
@@ -712,58 +591,28 @@ jobs:
           path: web-player/allure-results/smoke
           retention-days: 14
 
-      - name: Install Allure CLI
+      - name: Generate & deploy Smoke Allure report
         if: always()
-        run: npm install -g allure-commandline
-
-      - name: Generate Smoke Allure report
-        if: always()
-        run: |
-          mkdir -p stage-allure-report
-          echo "<html><head><title>Web Smoke</title></head><body><h2>No Smoke results for run ${{ github.run_number }}.</h2></body></html>" \
-            > stage-allure-report/index.html
-          SRC="web-player/allure-results/smoke"
-          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
-            allure generate "$SRC" -o stage-allure-report --clean \
-              && echo "✅ Smoke Allure report generated" \
-              || echo "⚠️ Generation failed — placeholder kept"
-          fi
-
-      - name: Deploy Smoke Allure report to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v4
-        continue-on-error: true
+        uses: ./.github/actions/publish-allure
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./stage-allure-report
-          destination_dir: allure/${{ github.run_number }}/web/smoke
-          keep_files: true
+          stage-title:        "Web Smoke"
+          results-src:        web-player/allure-results/smoke
+          pages-destination:  allure/${{ github.run_number }}/web/smoke
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post Smoke result to Slack thread
+      - name: Notify Slack — Smoke result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: Smoke Tests
-          PLAYWRIGHT_JSON: web-player/playwright-results-smoke.json
-          STAGE_RESULT: ${{ steps.smoke.outcome }}
-          DURATION: ${{ env.SMOKE_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/smoke
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send Smoke Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      Smoke Tests
+          stage-result:    ${{ steps.smoke.outcome }}
+          duration:        ${{ env.SMOKE_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/smoke
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          playwright-json: web-player/playwright-results-smoke.json
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail if Smoke tests failed
         if: steps.smoke.outcome == 'failure'
@@ -795,13 +644,12 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Record Regression start time
-        run: echo "REG_START=$(date +%s)" >> "$GITHUB_ENV"
-
       - name: Run Regression tests (@Regression, 2 workers)
         id: regression
         continue-on-error: true
-        run: npm run e2e:regression
+        run: |
+          echo "REG_START=$(date +%s)" >> "$GITHUB_ENV"
+          npm run e2e:regression
         working-directory: web-player
         env:
           CI: 'true'
@@ -831,58 +679,28 @@ jobs:
           path: web-player/allure-results/regression
           retention-days: 14
 
-      - name: Install Allure CLI
+      - name: Generate & deploy Regression Allure report
         if: always()
-        run: npm install -g allure-commandline
-
-      - name: Generate Regression Allure report
-        if: always()
-        run: |
-          mkdir -p stage-allure-report
-          echo "<html><head><title>Web Regression</title></head><body><h2>No Regression results for run ${{ github.run_number }}.</h2></body></html>" \
-            > stage-allure-report/index.html
-          SRC="web-player/allure-results/regression"
-          if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
-            allure generate "$SRC" -o stage-allure-report --clean \
-              && echo "✅ Regression Allure report generated" \
-              || echo "⚠️ Generation failed — placeholder kept"
-          fi
-
-      - name: Deploy Regression Allure report to GitHub Pages
-        if: always()
-        uses: peaceiris/actions-gh-pages@v4
-        continue-on-error: true
+        uses: ./.github/actions/publish-allure
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./stage-allure-report
-          destination_dir: allure/${{ github.run_number }}/web/regression
-          keep_files: true
+          stage-title:        "Web Regression"
+          results-src:        web-player/allure-results/regression
+          pages-destination:  allure/${{ github.run_number }}/web/regression
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post Regression result to Slack thread
+      - name: Notify Slack — Regression result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: Regression Tests
-          PLAYWRIGHT_JSON: web-player/playwright-results-regression.json
-          STAGE_RESULT: ${{ steps.regression.outcome }}
-          DURATION: ${{ env.REG_DURATION }}
-          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/regression
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send Regression Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      Regression Tests
+          stage-result:    ${{ steps.regression.outcome }}
+          duration:        ${{ env.REG_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/regression
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          playwright-json: web-player/playwright-results-regression.json
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 9. PROMOTE LIVE — only when Smoke passes
@@ -916,27 +734,16 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Post promote result to Slack thread
+      - name: Notify Slack — promote result
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: Firebase Live Promotion
-          STAGE_RESULT: ${{ steps.promote.outcome || 'skipped' }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send promote Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      Firebase Live Promotion
+          stage-result:    ${{ steps.promote.outcome || 'skipped' }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 10. ROLLBACK PREVIEW — delete preview when Smoke fails; live is untouched
@@ -967,27 +774,16 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Post rollback to Slack thread
+      - name: Notify Slack — rollback
         if: always()
-        env:
-          MODULE_NAME: WEB
-          STAGE_NAME: "Preview Rolled Back (live unchanged)"
-          STAGE_RESULT: failure
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send rollback Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     WEB
+          stage-name:      "Preview Rolled Back (live unchanged)"
+          stage-result:    failure
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 11. REPORT — final pipeline summary + Slack overall result
