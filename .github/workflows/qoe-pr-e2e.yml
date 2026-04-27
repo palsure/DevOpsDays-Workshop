@@ -181,13 +181,11 @@ jobs:
       # ── Slack notification ───────────────────────────────────────
       - name: Send Slack notification
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
-          channel-id:       ${{ secrets.SLACK_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: ./slack-payload.json
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
       # ── Teardown ─────────────────────────────────────────────────
       - name: Stop Docker stack

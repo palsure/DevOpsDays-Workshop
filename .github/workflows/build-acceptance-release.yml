@@ -83,7 +83,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -179,7 +179,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v2
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -253,7 +253,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-acc-${{ hashFiles('qoe-automation-tests/pom.xml') }}
@@ -347,12 +347,11 @@ jobs:
         run: python3 .github/scripts/acceptance_gate_to_slack.py acceptance-gate-manifest.json
       - name: Send Slack notification
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: ./acceptance-slack-payload.json
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
   release:
     name: Create GitHub Release

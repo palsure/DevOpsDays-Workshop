@@ -56,7 +56,7 @@ jobs:
           java-version: '21'
       
       - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -133,7 +133,7 @@ jobs:
         uses: android-actions/setup-android@v2
       
       - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -160,7 +160,7 @@ jobs:
           java-version: '21'
       
       - name: Cache Maven dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('qoe-automation-tests/pom.xml') }}
