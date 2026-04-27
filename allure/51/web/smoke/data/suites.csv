@@ -1,0 +1,34 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Apr 27 20:23:09 UTC 2026","Mon Apr 27 20:23:13 UTC 2026","3525","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","resume after pause restarts playback","Verifies that calling play() after pause() resumes advancement of currentTime.
+
+**Pass condition:** currentTime advances > 0.5 s within 5 s of resume."
+"broken","Mon Apr 27 20:23:09 UTC 2026","Mon Apr 27 20:24:47 UTC 2026","97395","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","seek backward: currentTime rewinds to earlier position",""
+"passed","Mon Apr 27 20:23:13 UTC 2026","Mon Apr 27 20:23:15 UTC 2026","1998","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","ABR selects a valid quality level after first frame","After the first frame is rendered, HLS.js should have locked into a specific
+quality level (currentLevelIndex ≥ 0).
+
+**Pass condition:** `currentLevelIndex ≥ 0`"
+"broken","Mon Apr 27 20:23:15 UTC 2026","Mon Apr 27 20:24:55 UTC 2026","99548","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","manual level override forces lowest quality","Calling setLevel(0) forces HLS.js to lock to the lowest quality rendition
+regardless of available bandwidth. This is useful for testing degraded
+network conditions without actual throttling.
+
+**Pass condition:** `currentLevelIndex === 0` within 10 s."
+"passed","Mon Apr 27 20:24:52 UTC 2026","Mon Apr 27 20:24:54 UTC 2026","2475","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","forced_mid_play_rebuffer: records at least one buffering span","**Scenario:** Mid-play rebuffering — HLS segment loading is halted at 4 500 ms
+for 2 200 ms, then resumed.
+
+Rebuffering mid-play is the primary driver of viewer churn. The QoE collector
+must detect the stall via the `waiting` media event, measure its duration,
+and accumulate it in `totalBufferingTime`.
+
+**Pass condition:** `bufferingEventsCount > 0` OR `totalBufferingTime > 0.05 s`"
+"passed","Mon Apr 27 20:23:09 UTC 2026","Mon Apr 27 20:23:12 UTC 2026","2701","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","seek forward: currentTime jumps to target position","Seeks the playhead forward to 20 s and verifies the video element reports
+the new position within ±2 s.
+
+**Pass condition:** `currentTime ≥ 18 s`"
+"passed","Mon Apr 27 20:24:48 UTC 2026","Mon Apr 27 20:24:53 UTC 2026","5360","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","startup_delay: time-to-first-frame reflects injected delay","**Scenario:** Startup delay — HLS manifest attach is intentionally delayed by 2 800 ms.
+
+Validates that the QoE probe correctly measures the injected startup penalty.
+47 % of viewers abandon a stream that takes > 3 s to start; early detection
+in CI prevents regressions landing in production.
+
+**Pass condition:** `timeToFirstFrameMs > 2 000`"
+"broken","Mon Apr 27 20:23:12 UTC 2026","Mon Apr 27 20:24:51 UTC 2026","98606","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","seek to 0 resets playhead to beginning",""
