@@ -481,8 +481,6 @@ jobs:
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          # Capture stdout+stderr — Firebase prints the URL in human-readable lines
-          # even with --json, so merging streams guarantees we can grep for it.
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
@@ -491,9 +489,13 @@ jobs:
           echo "=== Firebase deploy output ==="
           echo "$OUTPUT"
           echo "=============================="
-          # Firebase preview URLs can end with .web.app or .firebaseapp.com
-          URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
-          # Second-pass grep: try without the double-dash pattern (some Firebase projects vary)
+          # 1st pass: jq — parse the JSON result field for the channel URL (most reliable)
+          URL=$(echo "$OUTPUT" | jq -r '.result | to_entries[0].value.url // empty' 2>/dev/null || true)
+          # 2nd pass: grep for https://...--....web.app pattern
+          if [ -z "$URL" ]; then
+            URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
+          fi
+          # 3rd pass: any https firebase URL
           if [ -z "$URL" ]; then
             URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
           fi
@@ -513,11 +515,13 @@ jobs:
           if [ -z "$URL" ]; then
             URL="http://localhost:3000"
             CHANNEL="local-${{ github.run_number }}"
-            echo "⚠️  Firebase URL not available — smoke tests will use localhost fallback"
+            echo "⚠️  Firebase URL not extracted — BAT/Smoke will use localhost fallback"
           fi
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "Resolved preview URL: $URL"
+          echo "✅ Resolved preview URL: $URL"
+          # Also expose as env var so it's visible in the job summary
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
 
       - name: Calculate deploy duration
         if: always()
