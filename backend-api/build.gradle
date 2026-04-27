@@ -129,6 +129,15 @@ tasks.register('unitTest', Test) {
     useJUnitPlatform {
         includeTags 'unit'
     }
+
+    // Run all 3 unit-test classes concurrently in separate JVM forks.
+    // Each fork picks up junit-platform.properties and runs its test methods
+    // in parallel threads too (mode.default = concurrent, factor = 2).
+    maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors())
+
+    // Give each fork enough heap for Mockito / byte-buddy class generation.
+    jvmArgs '-Xmx512m', '-Xms128m'
+
     // Separate Allure results directory so unit and E2E reports stay independent.
     systemProperty "allure.results.directory",
             layout.buildDirectory.dir('allure-results/unit').get().asFile.absolutePath
@@ -182,7 +191,9 @@ tasks.register('batTest', Test) {
         includeTags 'BAT'
     }
     // Run each test class in its own JVM fork — each gets an isolated Testcontainers DB.
+    // @Execution(SAME_THREAD) on each class prevents intra-fork thread parallelism.
     maxParallelForks = 2
+    jvmArgs '-Xmx768m', '-Xms256m'
     systemProperty "allure.results.directory",
             layout.buildDirectory.dir('allure-results/bat').get().asFile.absolutePath
     configureDockerHost(it)
@@ -198,7 +209,9 @@ tasks.register('smokeTest', Test) {
         includeTags 'Smoke'
     }
     // Run each test class in its own JVM fork — each gets an isolated Testcontainers DB.
+    // @Execution(SAME_THREAD) on each class prevents intra-fork thread parallelism.
     maxParallelForks = 2
+    jvmArgs '-Xmx768m', '-Xms256m'
     systemProperty "allure.results.directory",
             layout.buildDirectory.dir('allure-results/smoke').get().asFile.absolutePath
     configureDockerHost(it)

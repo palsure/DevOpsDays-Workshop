@@ -16,6 +16,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,6 +52,7 @@ import static org.hamcrest.Matchers.notNullValue;
  */
 @Tag("e2e")
 @Epic("QoE API")
+@Execution(ExecutionMode.SAME_THREAD)   // shared Testcontainers DB — keep sequential within each JVM fork
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ExtendWith(AllureJunit5.class)
 @Testcontainers(disabledWithoutDocker = true)

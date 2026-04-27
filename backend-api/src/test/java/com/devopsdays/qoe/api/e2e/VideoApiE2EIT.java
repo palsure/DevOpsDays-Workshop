@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -50,6 +52,7 @@ import static org.hamcrest.Matchers.notNullValue;
  */
 @Tag("e2e")
 @Epic("Video Catalog API")
+@Execution(ExecutionMode.SAME_THREAD)   // shared Testcontainers DB + @Order — keep sequential within each JVM fork
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ExtendWith(AllureJunit5.class)
 @Testcontainers(disabledWithoutDocker = true)
