@@ -825,7 +825,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: ./module-slack-payload.json
 
-      - name: React to initial Slack message with build outcome
+      - name: Update initial Slack message with build outcome
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
           UNIT="${{ needs.unit-tests.result }}"
@@ -837,19 +837,61 @@ jobs:
           if [ "$UNIT" = "success" ] && [ "$UNIT_GATE" = "true" ] && \
              [ "$DEPLOY" = "success" ] && [ "$BAT_GATE" = "true" ] && \
              [ "$SMOKE" != "failure" ]; then
-            EMOJI="white_check_mark"
+            VERDICT="✅ Success"
           else
-            EMOJI="red_circle"
+            VERDICT="❌ Failed"
           fi
 
-          INITIAL_TS="${{ needs.notify-start.outputs.thread_ts }}"
-          echo "Adding '$EMOJI' reaction to message ts='$INITIAL_TS'"
+          export VERDICT
+          python3 - <<'PYEOF'
+import json, os, urllib.request
 
-          RESPONSE=$(curl -X POST https://slack.com/api/reactions.add \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{\"channel\":\"${{ secrets.SLACK_CHANNEL_ID }}\",\"timestamp\":\"$INITIAL_TS\",\"name\":\"$EMOJI\"}" \
-            2>&1)
-          echo "Slack reactions.add response: $RESPONSE"
-          # Exit 0 regardless — reaction is best-effort
-          exit 0
+token      = "${{ env.SLACK_BOT_TOKEN }}"
+channel    = "${{ secrets.SLACK_CHANNEL_ID }}"
+ts         = "${{ needs.notify-start.outputs.thread_ts }}"
+verdict    = os.environ.get("VERDICT", "❌ Failed")
+run_number = "${{ github.run_number }}"
+repo       = "${{ github.repository }}"
+sha_full   = "${{ github.sha }}"
+branch     = "${{ github.ref_name }}"
+actor      = "${{ github.actor }}"
+event_name = "${{ github.event_name }}"
+env_label  = "${{ env.ENV_LABEL }}"
+run_id     = "${{ github.run_id }}"
+
+sha        = sha_full[:7]
+commit_url = f"https://github.com/{repo}/commit/{sha_full}"
+run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
+header     = f"[API] Stream-QoE-App  |  Build #{run_number}  —  {verdict}"
+
+payload = json.dumps({
+    "channel": channel,
+    "ts": ts,
+    "text": header,
+    "unfurl_links": False,
+    "unfurl_media": False,
+    "blocks": [
+        {"type": "header", "text": {"type": "plain_text", "text": header, "emoji": True}},
+        {"type": "section", "fields": [
+            {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
+            {"type": "mrkdwn", "text": f"*Environment:*\n{env_label}"},
+            {"type": "mrkdwn", "text": f"*Commit:*\n<{commit_url}|{sha}>"},
+            {"type": "mrkdwn", "text": f"*Triggered by:*\n{actor} ({event_name})"},
+        ]},
+        {"type": "divider"},
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": "Results are in this thread."}]},
+        {"type": "actions", "elements": [{"type": "button",
+            "text": {"type": "plain_text", "text": "View Run", "emoji": True},
+            "url": run_url, "style": "primary"}]},
+    ],
+}).encode()
+
+req = urllib.request.Request(
+    "https://slack.com/api/chat.update",
+    data=payload,
+    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+)
+with urllib.request.urlopen(req) as resp:
+    result = json.loads(resp.read())
+    print(f"chat.update response: ok={result.get('ok')} error={result.get('error','')}")
+PYEOF
