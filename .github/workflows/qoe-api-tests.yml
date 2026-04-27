@@ -595,6 +595,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Record promote start time
+        run: echo "PROMOTE_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Promote to production
         id: promote
         run: |
@@ -608,6 +611,16 @@ jobs:
           # - Trigger Kubernetes rollout or ECS service update
           # - Update deployment manifest in GitOps repo
 
+      - name: Calculate promote duration
+        if: always()
+        run: |
+          if [ "${PROMOTE_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - PROMOTE_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "PROMOTE_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
+
       - name: Notify Slack — API promote result
         if: always()
         uses: ./.github/actions/slack-stage-notify
@@ -615,6 +628,7 @@ jobs:
           module-name:     API
           stage-name:      "API Promoted to Live"
           stage-result:    ${{ steps.promote.outcome }}
+          duration:        ${{ env.PROMOTE_DURATION }}
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -740,9 +754,22 @@ jobs:
                  needs.promote-live.result == 'success') && 'success' || 'failure' }}
         run: python3 .github/scripts/update_build_message.py
 
-      # ── PR comment with per-stage results + Allure links ──────────────────
+      # PR comment is posted by api-pr-comment job after smoke-tests complete
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. API PR COMMENT — waits for smoke-tests to finish, then posts full results
+# ─────────────────────────────────────────────────────────────────────────────
+  api-pr-comment:
+    name: "PR Comment (with Smoke Results)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [notify-start, unit-tests, build-and-verify, bat-tests, smoke-tests]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Download unit test results
-        if: always() && github.event_name == 'pull_request'
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -750,7 +777,6 @@ jobs:
           path: artifacts/unit
 
       - name: Download BAT test results
-        if: always() && github.event_name == 'pull_request'
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -758,7 +784,6 @@ jobs:
           path: artifacts/bat
 
       - name: Download Smoke test results
-        if: always() && github.event_name == 'pull_request'
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -766,7 +791,6 @@ jobs:
           path: artifacts/smoke
 
       - name: Generate PR comment
-        if: always() && github.event_name == 'pull_request'
         env:
           GITHUB_REPOSITORY:  ${{ github.repository }}
           GITHUB_RUN_ID:      ${{ github.run_id }}
@@ -785,7 +809,6 @@ jobs:
         run: python3 .github/scripts/pr_summary_api.py
 
       - name: Post or update PR comment
-        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |

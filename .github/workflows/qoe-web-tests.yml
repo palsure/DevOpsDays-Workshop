@@ -329,11 +329,14 @@ jobs:
 
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
-        run: npm run e2e:bat
+        run: |
+          PREVIEW_URL="${{ needs.deploy-preview.outputs.preview_url }}"
+          echo "🔍 BAT target URL: ${PREVIEW_URL:-<not set — using playwright fallback>}"
+          export PLAYWRIGHT_BASE_URL="$PREVIEW_URL"
+          npm run e2e:bat
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
 
       - name: Stop local server (if started)
         if: always() && env.SERVE_PID != ''
@@ -593,11 +596,16 @@ jobs:
       - name: Run Smoke tests (@Smoke, 3 workers)
         id: smoke
         continue-on-error: true
-        run: npm run e2e:smoke
+        run: |
+          LIVE_URL="${{ needs.promote-live.outputs.live_url }}"
+          PREVIEW_URL="${{ needs.deploy-preview.outputs.preview_url }}"
+          SMOKE_URL="${LIVE_URL:-${PREVIEW_URL:-http://localhost:3000}}"
+          echo "🔍 Smoke target URL: $SMOKE_URL"
+          export PLAYWRIGHT_BASE_URL="$SMOKE_URL"
+          npm run e2e:smoke
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.promote-live.outputs.live_url || needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
 
       - name: Calculate Smoke duration
         if: always()
