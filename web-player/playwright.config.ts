@@ -66,7 +66,7 @@ const STAGE_WORKERS: Record<string, number | undefined> = {
 };
 
 const STAGE_TIMEOUT: Record<string, number> = {
-  bat:        45_000,   // 45 s — BAT tests are quick
+  bat:        90_000,   // 90 s — allows waitForFirstFrame (60 s) + assertions + CI network latency
   smoke:      90_000,   // 90 s — smoke includes stall scenarios
   regression: 120_000,  // 120 s — throttle tests can be slow
   e2e:        90_000,
