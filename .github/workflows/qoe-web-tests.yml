@@ -287,7 +287,7 @@ jobs:
     if: always()
     outputs:
       passed:    ${{ steps.gate.outputs.passed }}
-      thread_ts: ${{ needs.unit-tests.outputs.thread_ts }}
+      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
 
     steps:
       - uses: actions/checkout@v4
@@ -348,7 +348,7 @@ jobs:
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
           PASSED="${{ steps.gate.outputs.passed }}"
-          TS="${{ needs.unit-tests.outputs.thread_ts }}"
+          TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ "$PASSED" = "true" ]; then
             ICON="✅"; MSG="Unit gate *PASSED* — running BAT tests…"
@@ -514,7 +514,7 @@ jobs:
     if: always()
     outputs:
       passed:    ${{ steps.evaluate.outputs.passed }}
-      thread_ts: ${{ needs.unit-gate.outputs.thread_ts }}
+      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
 
     steps:
       - id: evaluate
@@ -538,7 +538,7 @@ jobs:
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
           PASSED="${{ steps.evaluate.outputs.passed }}"
-          TS="${{ needs.unit-gate.outputs.thread_ts }}"
+          TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ "$PASSED" = "true" ]; then
             ICON="✅"; MSG="BAT gate *PASSED* — deploying preview, running Smoke tests…"
@@ -571,7 +571,7 @@ jobs:
     outputs:
       preview_url: ${{ steps.deploy.outputs.preview_url }}
       channel:     ${{ steps.deploy.outputs.channel }}
-      thread_ts:   ${{ needs.bat-gate.outputs.thread_ts }}
+      thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
 
     steps:
       - uses: actions/checkout@v4
@@ -627,7 +627,7 @@ jobs:
           STAGE_NAME: Firebase Preview Deploy
           STAGE_RESULT: ${{ steps.deploy.outcome || 'skipped' }}
           REPORT_URL: ${{ steps.deploy.outputs.preview_url }}
-          THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -739,7 +739,7 @@ jobs:
           STAGE_RESULT: ${{ steps.smoke.outcome }}
           DURATION: ${{ env.SMOKE_DURATION }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/smoke
-          THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
@@ -856,7 +856,7 @@ jobs:
           STAGE_RESULT: ${{ steps.regression.outcome }}
           DURATION: ${{ env.REG_DURATION }}
           REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/regression
-          THREAD_TS: ${{ needs.bat-gate.outputs.thread_ts }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
