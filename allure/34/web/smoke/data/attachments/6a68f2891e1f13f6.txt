@@ -1,0 +1,32 @@
+## Network Analysis Report
+
+### Summary
+
+| Metric | Value |
+|--------|-------|
+| Overall health | ✅ **HEALTHY** |
+| Total requests | 31 |
+| Failed requests | 0 |
+| Slow requests | 0 |
+| Issues found | 0 (0 critical, 0 warnings) |
+
+### Issues
+
+✅ No network issues detected.
+
+### HLS Stream Analysis
+
+| | Requests | Errors | Error Rate | Avg | P95 | Max |
+|--|----------|--------|-----------|-----|-----|-----|
+| Manifests | 3 | 0 | 0% | 41ms | 62ms | 62ms |
+| Segments  | 8 | 0 | 0% | 29ms | 47ms | 47ms |
+
+### QoE API
+
+| Metric | Value |
+|--------|-------|
+| Requests | 17 |
+| Failures | 0 |
+| Avg response | 2ms |
+| P95 response | 4ms |
+| Max response | 4ms |
