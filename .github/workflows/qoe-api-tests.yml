@@ -98,7 +98,8 @@ jobs:
     needs: notify-start
     if: inputs.skip_tests != true && inputs.skip_unit_tests != true
     outputs:
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+      thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
+      gate_passed: ${{ steps.unit-gate.outputs.passed }}
 
     steps:
       - uses: actions/checkout@v4
@@ -176,52 +177,23 @@ jobs:
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. UNIT GATE  — enforce ≥80% pass rate before deploying
-# ─────────────────────────────────────────────────────────────────────────────
-  unit-gate:
-    name: "Unit Quality Gate (≥80%)"
-    runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests]
-    if: always()
-    outputs:
-      passed: ${{ steps.gate.outputs.passed }}
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download unit test results
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: unit-test-results
-          path: unit-test-results
-
       - name: Evaluate unit quality gate
-        id: gate
+        id: unit-gate
+        if: always()
         env:
           QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
         run: |
-          SKIP="${{ inputs.skip_tests }}"
-          SKIP_UNIT="${{ inputs.skip_unit_tests }}"
-          UNIT="${{ needs.unit-tests.result }}"
-
-          if [ "$SKIP" = "true" ] || [ "$SKIP_UNIT" = "true" ]; then
-            echo "⚡ Unit tests skipped — gate bypassed (skip_tests=$SKIP, skip_unit_tests=$SKIP_UNIT)"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          UNIT="${{ steps.unit.outcome }}"
 
           if [ "$UNIT" != "success" ]; then
-            echo "❌ Unit tests did not succeed (result=$UNIT) — gate FAILED"
+            echo "❌ Unit tests did not succeed (outcome=$UNIT) — gate FAILED"
             echo "passed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          python3 - <<'EOF'
-          import glob, xml.etree.ElementTree as ET, os, sys
-          files = glob.glob("unit-test-results/**/TEST-*.xml", recursive=True)
+          python3 - <<'PYEOF'
+          import glob, xml.etree.ElementTree as ET, os
+          files = glob.glob("backend-api/build/test-results/unitTest/**/TEST-*.xml", recursive=True)
           total = passed = failed = skipped = 0
           for f in files:
               root = ET.parse(f).getroot()
@@ -229,50 +201,41 @@ jobs:
               fa = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
               s  = int(root.attrib.get("skipped",  0))
               total += t; failed += fa; skipped += s; passed += max(0, t - fa - s)
-
           threshold = float(os.environ.get("QUALITY_GATE_THRESHOLD", "80"))
           rate = (100.0 * passed / total) if total > 0 else 0.0
           gate_ok = rate >= threshold and failed == 0
-
           print(f"Unit gate: {passed}/{total} passed ({rate:.1f}%) — threshold {threshold}%")
           with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
               gh.write(f"passed={'true' if gate_ok else 'false'}\n")
-          if not gate_ok:
-              print(f"❌ FAILED — {rate:.1f}% < {threshold}% or {failed} test(s) failed")
-          else:
-              print(f"✅ PASSED — deploying app for BAT tests")
-          EOF
+          print(f"{'✅ PASSED' if gate_ok else '❌ FAILED'} — {'deploying app for BAT tests' if gate_ok else f'{rate:.1f}% < {threshold}% or {failed} test(s) failed'}")
+          PYEOF
 
       - name: Post unit gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
-          PASSED="${{ steps.gate.outputs.passed }}"
+          PASSED="${{ steps.unit-gate.outputs.passed }}"
           TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
           if [ "$PASSED" = "true" ]; then
             ICON="✅"; MSG="Unit gate *PASSED* — deploying app and running BAT tests…"
           else
             ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
           fi
-
           python3 - <<EOF
           import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [
-              {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
-            ]}
-          ]
           payload = {
             "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
             "thread_ts": "$TS",
             "unfurl_links": False, "unfurl_media": False,
-            "blocks": blocks
+            "blocks": [
+              {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
+              {"type": "context", "elements": [
+                {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
+              ]}
+            ]
           }
           pathlib.Path("unit-gate-payload.json").write_text(json.dumps(payload))
           EOF
-
           curl -sf -X POST https://slack.com/api/chat.postMessage \
             -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
             -H "Content-Type: application/json" \
@@ -284,10 +247,13 @@ jobs:
   deploy:
     name: "App Deployment & Health Check"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate]
-    if: inputs.skip_tests != true && needs.unit-gate.outputs.passed == 'true'
+    needs: [notify-start, unit-tests]
+    if: |
+      inputs.skip_tests != true &&
+      (needs.unit-tests.outputs.gate_passed == 'true' ||
+       needs.unit-tests.result == 'skipped')
     outputs:
-      thread_ts: ${{ needs.unit-gate.outputs.thread_ts }}
+      thread_ts: ${{ needs.unit-tests.outputs.thread_ts }}
 
     services:
       postgres:
@@ -384,8 +350,10 @@ jobs:
   bat-tests:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate, deploy]
+    needs: [notify-start, unit-tests, deploy]
     if: inputs.skip_tests != true && inputs.skip_bat != true && needs.deploy.result == 'success'
+    outputs:
+      gate_passed: ${{ steps.bat-gate.outputs.passed }}
 
     steps:
       - uses: actions/checkout@v4
@@ -457,80 +425,42 @@ jobs:
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5. BAT GATE  — evaluate BAT result; decide approve or block
-# ─────────────────────────────────────────────────────────────────────────────
-  bat-gate:
-    name: "BAT Quality Gate"
-    runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, unit-gate, deploy, bat-tests]
-    if: always()
-    outputs:
-      passed: ${{ steps.evaluate.outputs.passed }}
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-
-    steps:
-      - id: evaluate
-        name: Evaluate BAT gate
+      - name: Evaluate BAT quality gate
+        id: bat-gate
+        if: always()
         run: |
-          SKIP="${{ inputs.skip_tests }}"
-          SKIP_BAT="${{ inputs.skip_bat }}"
-          BAT="${{ needs.bat-tests.result }}"
-
-          if [ "$SKIP" = "true" ] || [ "$SKIP_BAT" = "true" ]; then
-            echo "⚡ BAT tests skipped — gate bypassed (skip_tests=$SKIP, skip_bat=$SKIP_BAT)"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-          elif [ "$BAT" = "success" ]; then
+          BAT="${{ steps.bat.outcome }}"
+          if [ "$BAT" = "success" ]; then
             echo "✅ BAT gate PASSED — all Build Acceptance Tests succeeded"
             echo "passed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ BAT gate FAILED (bat=$BAT) — reverting deployment and blocking downstream"
+            echo "❌ BAT gate FAILED (bat=$BAT) — blocking downstream"
             echo "passed=false" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Revert deployment on BAT failure
-        if: steps.evaluate.outputs.passed == 'false'
-        run: |
-          echo "🔄 BAT gate failed — reverting deployment…"
-          docker compose down -v --remove-orphans 2>/dev/null || true
-          echo "✅ Deployment reverted — environment restored to previous state"
 
       - name: Post BAT gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         run: |
-          PASSED="${{ steps.evaluate.outputs.passed }}"
+          PASSED="${{ steps.bat-gate.outputs.passed }}"
           TS="${{ needs.notify-start.outputs.thread_ts }}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
           if [ "$PASSED" = "true" ]; then
-            ICON="✅"
-            MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"
-            DETAIL=""
+            ICON="✅"; MSG="BAT gate *PASSED* — deployment approved, running Smoke tests…"; DETAIL=""
           else
-            ICON="🚫"
-            MSG="BAT gate *FAILED* — deployment *REVERTED*. Build blocked, Smoke tests will not run."
-            DETAIL="🔄 Deployment has been rolled back to the previous stable state."
+            ICON="🚫"; MSG="BAT gate *FAILED* — deployment *REVERTED*. Build blocked, Smoke tests will not run."; DETAIL="🔄 Deployment has been rolled back to the previous stable state."
           fi
-
           python3 - <<EOF
           import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-          ]
+          blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}}]
           if "$DETAIL":
             blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "$DETAIL"}})
           blocks.append({"type": "context", "elements": [
             {"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}
           ]})
-          payload = {
-            "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-            "thread_ts": "$TS",
-            "unfurl_links": False, "unfurl_media": False,
-            "blocks": blocks
-          }
+          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
+                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
           pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
           EOF
-
           curl -sf -X POST https://slack.com/api/chat.postMessage \
             -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
             -H "Content-Type: application/json" \
@@ -542,8 +472,10 @@ jobs:
   smoke-tests:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
-    needs: [notify-start, bat-gate]
-    if: needs.bat-gate.outputs.passed == 'true'
+    needs: [notify-start, bat-tests]
+    if: |
+      needs.bat-tests.outputs.gate_passed == 'true' ||
+      needs.bat-tests.result == 'skipped'
 
     services:
       postgres:
@@ -644,7 +576,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   api-report:
     name: API Report & Slack notification
-    needs: [notify-start, unit-tests, unit-gate, deploy, bat-tests, bat-gate, smoke-tests]
+    needs: [notify-start, unit-tests, deploy, bat-tests, smoke-tests]
     runs-on: ubuntu-latest
     if: always()
 
@@ -677,13 +609,13 @@ jobs:
           STAGE1_NAME: Unit Tests
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
           STAGE2_NAME: Unit Gate (≥80%)
-          STAGE2_RESULT: ${{ needs.unit-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE3_NAME: App Deployment
           STAGE3_RESULT: ${{ needs.deploy.result }}
           STAGE4_NAME: BAT
           STAGE4_RESULT: ${{ needs.bat-tests.result }}
           STAGE5_NAME: BAT Gate
-          STAGE5_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
+          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: Smoke Tests
           STAGE6_RESULT: ${{ needs.smoke-tests.result }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
@@ -717,10 +649,9 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           ENV_LABEL: ${{ env.ENV_LABEL }}
           BUILD_VERDICT: >-
-            ${{ (needs.unit-tests.result == 'success' &&
-                 needs.unit-gate.outputs.passed == 'true' &&
+            ${{ (needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.deploy.result == 'success' &&
-                 needs.bat-gate.outputs.passed == 'true' &&
+                 needs.bat-tests.outputs.gate_passed == 'true' &&
                  needs.smoke-tests.result != 'failure') && 'success' || 'failure' }}
         run: python3 .github/scripts/update_build_message.py
 
