@@ -1,0 +1,179 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: qoe-gates.spec.ts >> QoE quality gates (workshop demos) >> baseline: first frame within generous budget
+- Location: e2e/qoe-gates.spec.ts:58:7
+
+# Error details
+
+```
+Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/
+Call log:
+  - navigating to "http://localhost:3000/", waiting until "load"
+
+```
+
+# Test source
+
+```ts
+  1   | import { test, expect } from './fixtures';
+  2   | import { allure }        from 'allure-playwright';
+  3   | 
+  4   | // ── Shared helpers ────────────────────────────────────────────────────────────
+  5   | 
+  6   | async function snapshot(page: import('@playwright/test').Page) {
+  7   |   return page.evaluate(() => window.__QOE_DEMO__?.getSnapshot() ?? null);
+  8   | }
+  9   | 
+  10  | /** Wait until the QoE probe bridge has recorded a first frame.
+  11  |  *  Uses page.waitForFunction() so intermediate retries are silent in Allure. */
+  12  | async function waitForFirstFrame(page: import('@playwright/test').Page, timeout = 60_000) {
+  13  |   await page.waitForFunction(
+  14  |     () => (window as any).__QOE_DEMO__?.getSnapshot()?.timeToFirstFrameMs != null,
+  15  |     { timeout },
+  16  |   );
+  17  | }
+  18  | 
+  19  | /**
+  20  |  * Snapshot the request log and assert no critical network issues exist.
+  21  |  * Called at the end of each test after the scenario has played out.
+  22  |  *
+  23  |  * HLS manifest failures are hard-blocked — they directly prevent video playback.
+  24  |  * QoE API failures are recorded as Allure parameters but do NOT fail the test:
+  25  |  * these E2E tests run against a static file server (no backend), so 404s on
+  26  |  * /api/v1/metrics are expected and do not affect visual playback behaviour.
+  27  |  */
+  28  | async function assertNoNetworkIssues(
+  29  |   entries: import('./fixtures').NetworkFixtures['networkCapture']['entries'],
+  30  | ) {
+  31  |   const failed         = entries.filter(e => e.failed);
+  32  |   const manifestErrors = failed.filter(e => e.category === 'hls-manifest');
+  33  |   const apiErrors      = failed.filter(e => e.category === 'qoe-api');
+  34  |   const apiTotal       = entries.filter(e => e.category === 'qoe-api').length;
+  35  | 
+  36  |   // HLS manifest errors block playback — always assert
+  37  |   expect.soft(manifestErrors, `HLS manifest errors: ${manifestErrors.map(e => e.url).join(', ')}`).toHaveLength(0);
+  38  | 
+  39  |   // QoE API availability is tested by the API pipeline; record here for visibility only
+  40  |   if (apiTotal > 0) {
+  41  |     await allure.parameter(
+  42  |       'qoe_api_failures',
+  43  |       `${apiErrors.length}/${apiTotal} (backend not co-deployed — informational only)`,
+  44  |     );
+  45  |   }
+  46  | }
+  47  | 
+  48  | // ── Test suite ────────────────────────────────────────────────────────────────
+  49  | 
+  50  | test.describe('QoE quality gates (workshop demos)', () => {
+  51  | 
+  52  |   test.beforeEach(async ({ page }) => {
+  53  |     // Navigate to home page first — captures full navigation flow in video recording
+> 54  |     await page.goto('/');
+      |                ^ Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/
+  55  |     await page.waitForLoadState('domcontentloaded');
+  56  |   });
+  57  | 
+  58  |   test('baseline: first frame within generous budget', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
+  59  |     await allure.feature('Time to First Frame');
+  60  |     await allure.story('Baseline (reference stream)');
+  61  |     await allure.severity('critical');
+  62  |     await allure.description(`
+  63  | **Scenario:** Baseline — no faults injected.
+  64  | 
+  65  | The player loads the HLS manifest immediately and begins buffering segments.
+  66  | This test asserts that the first decoded video frame is delivered within a
+  67  | generous 60-second budget (cloud CI networks serving external HLS streams
+  68  | can be slow; the budget is intentionally wide to distinguish real regressions
+  69  | from transient network latency).
+  70  | 
+  71  | **Pass condition:** \`timeToFirstFrameMs < 60 000\`
+  72  |     `.trim());
+  73  |     await allure.label('layer', 'e2e');
+  74  |     await allure.label('testType', 'automated');
+  75  |     await allure.tag('qoe', 'ttff', 'baseline');
+  76  |     await allure.link('https://www.w3.org/TR/media-source/', 'MSE spec', 'reference');
+  77  | 
+  78  |     await page.goto('/?scenario=baseline&e2e_autoplay=1');
+  79  | 
+  80  |     await allure.step('Wait for first frame', () => waitForFirstFrame(page));
+  81  | 
+  82  |     const snap = await snapshot(page);
+  83  |     const ttff = snap!.timeToFirstFrameMs!;
+  84  | 
+  85  |     await allure.step('Assert time-to-first-frame < 60 s', async () => {
+  86  |       await allure.parameter('timeToFirstFrameMs',  String(ttff));
+  87  |       await allure.parameter('threshold_ms',  String(60_000));
+  88  |       expect(ttff).toBeLessThan(60_000);
+  89  |     });
+  90  | 
+  91  |     await allure.step('Assert no critical network issues', async () => {
+  92  |       await assertNoNetworkIssues(networkCapture.entries);
+  93  |     });
+  94  |   });
+  95  | 
+  96  |   // ──────────────────────────────────────────────────────────────────────────
+  97  | 
+  98  |   test('startup_delay: time-to-first-frame reflects injected delay', { tag: ['@Smoke'] }, async ({ page, networkCapture }) => {
+  99  |     await allure.feature('Startup Latency');
+  100 |     await allure.story('Startup delay (late manifest attach)');
+  101 |     await allure.severity('normal');
+  102 |     await allure.description(`
+  103 | **Scenario:** Startup delay — HLS manifest attach is intentionally delayed by 2 800 ms.
+  104 | 
+  105 | Validates that the QoE probe correctly measures the injected startup penalty.
+  106 | 47 % of viewers abandon a stream that takes > 3 s to start; early detection
+  107 | in CI prevents regressions landing in production.
+  108 | 
+  109 | **Pass condition:** \`timeToFirstFrameMs > 2 000\`
+  110 |     `.trim());
+  111 |     await allure.label('layer', 'e2e');
+  112 |     await allure.label('testType', 'automated');
+  113 |     await allure.tag('qoe', 'ttff', 'startup-delay');
+  114 | 
+  115 |     await page.goto('/?scenario=startup_delay&e2e_autoplay=1');
+  116 | 
+  117 |     await allure.step('Wait for first frame (with injected delay)', () => waitForFirstFrame(page));
+  118 | 
+  119 |     const snap = await snapshot(page);
+  120 |     const ttff = snap!.timeToFirstFrameMs!;
+  121 | 
+  122 |     await allure.step('Assert startup delay was measured (ttff > 2 000 ms)', async () => {
+  123 |       await allure.parameter('timeToFirstFrameMs',  String(ttff));
+  124 |       await allure.parameter('injected_delay_ms',  String(2_800));
+  125 |       expect(ttff).toBeGreaterThan(2_000);
+  126 |     });
+  127 | 
+  128 |     await allure.step('Assert no critical network issues', async () => {
+  129 |       await assertNoNetworkIssues(networkCapture.entries);
+  130 |     });
+  131 |   });
+  132 | 
+  133 |   // ──────────────────────────────────────────────────────────────────────────
+  134 | 
+  135 |   test('black_screen_pulse: blackout overlay appears for CV-style probes', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
+  136 |     await allure.feature('Visual Fault Detection');
+  137 |     await allure.story('Black screen pulse (decoder freeze simulation)');
+  138 |     await allure.severity('critical');
+  139 |     await allure.description(`
+  140 | **Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+  141 | for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+  142 | 
+  143 | This fault is *invisible to server-side logs* — only a client-side visual
+  144 | probe (or computer-vision CI check) can catch it. The test asserts that the
+  145 | \`data-testid="visual-blackout-overlay"\` element appears and then clears.
+  146 | 
+  147 | **Pass conditions:**
+  148 | - Overlay becomes visible within 15 s
+  149 | - Overlay clears within 15 s of appearing
+  150 |     `.trim());
+  151 |     await allure.label('layer', 'e2e');
+  152 |     await allure.label('testType', 'automated');
+  153 |     await allure.tag('qoe', 'visual-fault', 'black-screen');
+  154 | 
+```
