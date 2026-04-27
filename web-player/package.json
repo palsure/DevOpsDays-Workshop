@@ -14,7 +14,7 @@
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:debug": "cross-env PLAYWRIGHT_BASE_URL=http://localhost:3000 playwright test --project=chromium --debug",
     "e2e:ui": "cross-env PLAYWRIGHT_BASE_URL=http://localhost:3000 playwright test --ui",
-    "e2e:bat": "cross-env PLAYWRIGHT_BASE_URL=http://localhost:3000 cross-env PLAYWRIGHT_STAGE=bat playwright test --project=chromium --grep @BAT",
+    "e2e:bat": "cross-env PLAYWRIGHT_STAGE=bat playwright test --project=chromium --grep @BAT",
     "e2e:smoke": "cross-env PLAYWRIGHT_STAGE=smoke playwright test --project=chromium --grep @Smoke",
     "e2e:docker": "cross-env PLAYWRIGHT_BASE_URL=http://localhost:3000 cross-env PLAYWRIGHT_STAGE=e2e playwright test --project=chromium",
     "e2e:bat:headed": "cross-env PLAYWRIGHT_BASE_URL=http://localhost:3000 cross-env PLAYWRIGHT_STAGE=bat playwright test --project=chromium --grep @BAT --headed",

@@ -25,10 +25,11 @@ from pathlib import Path
 
 def result_icon(result: str) -> str:
     return {
-        "success":   "✅",
-        "failure":   "❌",
-        "skipped":   "⏭",
-        "cancelled": "⏭",
+        "success":     "✅",
+        "failure":     "❌",
+        "skipped":     "⏭",
+        "cancelled":   "⏭",
+        "in-progress": "🔄",
     }.get(result.lower(), "⏭")
 
 
@@ -70,10 +71,10 @@ def main() -> int:
     if not stages:
         stages = [("Stage 1", "skipped"), ("Stage 2", "skipped")]
 
-    # Overall result — failure/cancelled beats success
+    # Overall result — failure/cancelled beats success; in-progress is non-blocking
     overall = "success"
     for _, r in stages:
-        if r in ("failure", "cancelled"):
+        if r.lower() in ("failure", "cancelled"):
             overall = "failure"
             break
 
@@ -90,17 +91,17 @@ def main() -> int:
         except ValueError:
             pass
 
-    # Stage rows — each on its own line
-    result_label = {
-        "success":   "success",
-        "failure":   "failure",
-        "skipped":   "skipped",
-        "cancelled": "cancelled",
-    }
-    stage_rows = [
-        f"{result_icon(r)}  *{name}:* {result_label.get(r.lower(), r)}"
-        for name, r in stages
-    ]
+    # Pipeline flow — stages as an arrow chain: ✅ Build → ✅ Unit Tests → ❌ BAT → …
+    # Split into rows of 4 so the chain wraps cleanly in Slack
+    COLS = 4
+    flow_chunks: list[str] = []
+    row_items: list[str] = []
+    for i, (name, r) in enumerate(stages):
+        row_items.append(f"{result_icon(r)}  *{name}*")
+        if len(row_items) == COLS or i == len(stages) - 1:
+            flow_chunks.append("  →  ".join(row_items))
+            row_items = []
+    pipeline_flow = "\n".join(flow_chunks)
 
     footer_parts = []
     if duration_str:
@@ -133,7 +134,7 @@ def main() -> int:
             {"type": "divider"},
             {
                 "type": "section",
-                "text": {"type": "mrkdwn", "text": "\n".join(stage_rows)},
+                "text": {"type": "mrkdwn", "text": pipeline_flow},
             },
             {
                 "type": "context",
