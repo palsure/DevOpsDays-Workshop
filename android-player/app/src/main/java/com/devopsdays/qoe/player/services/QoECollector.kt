@@ -3,6 +3,7 @@ package com.devopsdays.qoe.player.services
 import android.content.Context
 import android.os.Build
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.devopsdays.qoe.player.models.QoEMetricPayload
 import com.devopsdays.qoe.player.network.QoEApiService
@@ -94,6 +95,7 @@ class QoECollector(
         lastBitrate = newBitrate
     }
 
+    @OptIn(UnstableApi::class)
     private suspend fun sendMetrics(player: Player) {
         val currentTime = player.currentPosition / 1000.0
         val duration = if (player.duration > 0) player.duration / 1000.0 else 0.0
