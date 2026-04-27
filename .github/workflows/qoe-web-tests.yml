@@ -310,14 +310,14 @@ jobs:
         working-directory: web-player
 
       - name: Download build artifact (local serve fallback)
-        if: startsWith(needs.deploy-preview.outputs.preview_url, 'http://localhost')
+        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
         uses: actions/download-artifact@v4
         with:
           name: web-dist
           path: web-player/dist
 
       - name: Serve dist/ locally (fallback when no Firebase preview URL)
-        if: startsWith(needs.deploy-preview.outputs.preview_url, 'http://localhost')
+        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
         run: |
           npm install -g serve
           serve web-player/dist -l 3000 &

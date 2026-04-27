@@ -52,7 +52,9 @@ const LAB_PROVIDER = (process.env.PLAYWRIGHT_LAB_PROVIDER ?? 'browserstack').toL
 const IS_LAB       = RUN_MODE === 'lab';
 
 const BASE_URL           = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173';
-const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL;
+// In CI, never launch a webServer — the runner must provide the target URL (Firebase or local serve).
+// Locally, webServer is started automatically when PLAYWRIGHT_BASE_URL is not set.
+const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL || !!process.env.CI;
 
 // ── Test stage — controls allure output folder and worker count ───────────────
 // Set PLAYWRIGHT_STAGE=bat | smoke | regression (default: e2e)
