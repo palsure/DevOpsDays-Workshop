@@ -827,71 +827,22 @@ jobs:
 
       - name: Update initial Slack message with build outcome
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          UNIT="${{ needs.unit-tests.result }}"
-          UNIT_GATE="${{ needs.unit-gate.outputs.passed }}"
-          DEPLOY="${{ needs.deploy.result }}"
-          BAT_GATE="${{ needs.bat-gate.outputs.passed }}"
-          SMOKE="${{ needs.smoke-tests.result }}"
-
-          if [ "$UNIT" = "success" ] && [ "$UNIT_GATE" = "true" ] && \
-             [ "$DEPLOY" = "success" ] && [ "$BAT_GATE" = "true" ] && \
-             [ "$SMOKE" != "failure" ]; then
-            VERDICT="✅ Success"
-          else
-            VERDICT="❌ Failed"
-          fi
-
-          export VERDICT
-          python3 - <<'PYEOF'
-import json, os, urllib.request
-
-token      = "${{ env.SLACK_BOT_TOKEN }}"
-channel    = "${{ secrets.SLACK_CHANNEL_ID }}"
-ts         = "${{ needs.notify-start.outputs.thread_ts }}"
-verdict    = os.environ.get("VERDICT", "❌ Failed")
-run_number = "${{ github.run_number }}"
-repo       = "${{ github.repository }}"
-sha_full   = "${{ github.sha }}"
-branch     = "${{ github.ref_name }}"
-actor      = "${{ github.actor }}"
-event_name = "${{ github.event_name }}"
-env_label  = "${{ env.ENV_LABEL }}"
-run_id     = "${{ github.run_id }}"
-
-sha        = sha_full[:7]
-commit_url = f"https://github.com/{repo}/commit/{sha_full}"
-run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
-header     = f"[API] Stream-QoE-App  |  Build #{run_number}  —  {verdict}"
-
-payload = json.dumps({
-    "channel": channel,
-    "ts": ts,
-    "text": header,
-    "unfurl_links": False,
-    "unfurl_media": False,
-    "blocks": [
-        {"type": "header", "text": {"type": "plain_text", "text": header, "emoji": True}},
-        {"type": "section", "fields": [
-            {"type": "mrkdwn", "text": f"*Branch:*\n`{branch}`"},
-            {"type": "mrkdwn", "text": f"*Environment:*\n{env_label}"},
-            {"type": "mrkdwn", "text": f"*Commit:*\n<{commit_url}|{sha}>"},
-            {"type": "mrkdwn", "text": f"*Triggered by:*\n{actor} ({event_name})"},
-        ]},
-        {"type": "divider"},
-        {"type": "context", "elements": [{"type": "mrkdwn", "text": "Results are in this thread."}]},
-        {"type": "actions", "elements": [{"type": "button",
-            "text": {"type": "plain_text", "text": "View Run", "emoji": True},
-            "url": run_url, "style": "primary"}]},
-    ],
-}).encode()
-
-req = urllib.request.Request(
-    "https://slack.com/api/chat.update",
-    data=payload,
-    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-)
-with urllib.request.urlopen(req) as resp:
-    result = json.loads(resp.read())
-    print(f"chat.update response: ok={result.get('ok')} error={result.get('error','')}")
-PYEOF
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ENV_LABEL: ${{ env.ENV_LABEL }}
+          BUILD_VERDICT: >-
+            ${{ (needs.unit-tests.result == 'success' &&
+                 needs.unit-gate.outputs.passed == 'true' &&
+                 needs.deploy.result == 'success' &&
+                 needs.bat-gate.outputs.passed == 'true' &&
+                 needs.smoke-tests.result != 'failure') && 'success' || 'failure' }}
+        run: python3 .github/scripts/update_build_message.py
