@@ -3,8 +3,10 @@
 # Reusable workflow — post a "build started" message to Slack and
 # capture the thread_ts + start_epoch for downstream jobs to use.
 #
-# Called by:  qoe-api-tests.yml   (module-name: API)
-#             qoe-web-tests.yml   (module-name: WEB)
+# Called by:  qoe-api-tests.yml     (module-name: API)
+#             qoe-web-tests.yml     (module-name: WEB)
+#             qoe-android-tests.yml (module-name: ANDROID)
+#             qoe-ios-tests.yml     (module-name: iOS)
 
 name: Shared — Notify Build Started
 
@@ -12,7 +14,7 @@ on:
   workflow_call:
     inputs:
       module-name:
-        description: '"API" or "WEB" — shown in the Slack header as [MODULE]'
+        description: 'Module label shown in the Slack header as [MODULE] — e.g. "API", "WEB", "ANDROID", "iOS"'
         type: string
         required: true
       pipeline-steps:

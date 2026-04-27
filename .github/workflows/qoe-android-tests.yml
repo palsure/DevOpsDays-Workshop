@@ -1,17 +1,26 @@
-# QoE Android Player Pipeline
+# Stream-QoE-App-Android
 #
-# Stages (mirrors web pipeline structure):
-#   0. notify-start    — post "build started" to Slack
-#   1. unit-tests      — JVM unit tests + Allure results → Slack thread reply
-#   1b. lint           — Android lint (parallel with unit-tests)
-#   2. build           — Assemble debug APK (only when unit-tests + lint pass)
-#   3. bat-e2e         — BAT instrumented tests on emulator → Slack thread reply
-#   4. smoke-e2e       — Smoke instrumented tests on emulator → Slack thread reply
-#   5. regression-e2e  — Regression tests (nightly/on-demand only)
-#   6. quality-gate    — Gate: unit + BAT + Smoke must all pass
-#   7a. publish-internal — Firebase App Distribution (internal testers)
-#   7b. publish-public   — Firebase public testers (manual approval gate)
-#   8. report          — Final summary + Slack overall result
+# Pipeline flow:
+#   0. notify-start     — Post "build started" to Slack; capture thread_ts + start_epoch.
+#   1. unit-tests  ┐   — JUnit4 + MockK unit tests with Allure; inline unit gate (≥80%).
+#   2. lint        ┘   — Both run IN PARALLEL (fail-fast). Lint via detekt/ktlint.
+#   3. build            — Assemble debug APK; produces artifact.
+#   4. bat-e2e          — @BAT Espresso tests on emulator; inline BAT gate.
+#   5. smoke-e2e        — @Smoke tests; after BAT gate passes.
+#   6. regression-e2e   — @Regression; nightly schedule only; continue-on-error.
+#   7. quality-gate     — Final gate; blocks Firebase publish.
+#   8. publish-internal — Firebase App Distribution (internal track).
+#   9. publish-public   — Firebase App Distribution (public / testers).
+#  10. report           — Slack summary + update initial message.
+#
+# Required secrets (Slack steps are skipped when not set):
+#   SLACK_BOT_TOKEN       — Slack bot OAuth token
+#   SLACK_CHANNEL_ID      — Target Slack channel ID
+# Optional secrets:
+#   FIREBASE_TOKEN        — Firebase CI token
+#   FIREBASE_PROJECT_ID   — Firebase project ID
+#   FIREBASE_APP_ID_ANDROID — Firebase App ID for App Distribution
+#   FIREBASE_TESTERS      — Comma-separated list of tester emails
 
 name: Stream-QoE-App-Android
 
@@ -20,23 +29,21 @@ on:
     paths:
       - 'android-player/**'
       - '.github/workflows/qoe-android-tests.yml'
+      - '.github/workflows/shared-notify-start.yml'
+      - '.github/actions/**'
+      - '.github/scripts/stage_result_to_slack.py'
+      - '.github/scripts/module_result_to_slack.py'
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'android-player/**'
       - '.github/workflows/qoe-android-tests.yml'
   schedule:
-    # Nightly regression run at 02:00 UTC
-    - cron: '0 2 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       skip_tests:
         description: 'Skip tests and force-publish to Firebase (hotfix mode)'
-        required: false
-        default: false
-        type: boolean
-      run_regression:
-        description: 'Run Regression tests (in addition to BAT + Smoke)'
         required: false
         default: false
         type: boolean
@@ -45,702 +52,769 @@ on:
         required: false
         default: 'STAGE'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 env:
+  QUALITY_GATE_THRESHOLD: '80'
+  ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
   SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
   SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-  JAVA_VERSION: '17'
-  API_LEVEL: 34
-  AVD_TARGET: default
-  ARCH: x86_64
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 0 — Notify Start
+# 0. NOTIFY START  (reusable workflow)
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    name: Notify — build started
-    runs-on: ubuntu-latest
-    outputs:
-      thread_ts:   ${{ steps.post.outputs.thread_ts }}
-      start_epoch: ${{ steps.ts.outputs.start_epoch }}
-
-    steps:
-      - name: Record start time
-        id: ts
-        run: echo "start_epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
-
-      - name: Post "build started" to Slack
-        id: post
-        if: env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          SHORT_SHA="${{ github.sha }}"
-          SHORT_SHA="${SHORT_SHA:0:7}"
-          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          PAYLOAD=$(python3 - <<EOF
-          import json
-          blocks = [
-            {"type": "header", "text": {"type": "plain_text", "text": "[ANDROID] Build — Started  |  Build #${{ github.run_number }}", "emoji": True}},
-            {"type": "section", "fields": [
-              {"type": "mrkdwn", "text": "*Branch:*\n\`${{ github.ref_name }}\`"},
-              {"type": "mrkdwn", "text": "*Commit:*\n<$COMMIT_URL|${SHORT_SHA}>"},
-              {"type": "mrkdwn", "text": "*Triggered by:*\n${{ github.actor }} (${{ github.event_name }})"},
-            ]},
-            {"type": "divider"},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "⏳ Unit tests & lint running… BAT/Smoke results will follow in this thread."}]},
-            {"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "View Run", "emoji": True}, "url": "$RUN_URL", "style": "primary"}]}
-          ]
-          print(json.dumps({"channel": "${{ env.SLACK_CHANNEL_ID }}", "unfurl_links": False, "unfurl_media": False, "blocks": blocks}))
-          EOF
-          )
-
-          RESPONSE=$(curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
-          echo "Slack response: $RESPONSE"
-          TS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('ts',''))")
-          echo "thread_ts=$TS" >> "$GITHUB_OUTPUT"
-
-      - name: Set empty thread_ts when Slack not configured
-        if: env.SLACK_BOT_TOKEN == '' || env.SLACK_CHANNEL_ID == ''
-        run: echo "thread_ts=" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/shared-notify-start.yml
+    with:
+      module-name:       ANDROID
+      pipeline-steps:    "Unit ∥ Lint → Build APK → BAT → Smoke → Regression (nightly) → Firebase"
+      environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — Unit Tests (JVM, Allure results)
+# 1. UNIT TESTS — JUnit4 + MockK; Allure adapter; inline quality gate (≥80%)
 # ─────────────────────────────────────────────────────────────────────────────
   unit-tests:
-    name: "Stage 1 — Unit Tests"
+    name: "Unit Tests (JUnit4)"
     runs-on: ubuntu-latest
-    needs: notify-start
+    timeout-minutes: 15
+    needs: [notify-start]
     if: inputs.skip_tests != true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
+    outputs:
+      gate_passed: ${{ steps.unit-gate.outputs.gate_passed }}
 
     steps:
+      - name: Record job start time
+        run: echo "UNIT_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        working-directory: android-player
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Run unit tests
         id: unit
-        run: ./gradlew unitTest --no-daemon
+        run: ./gradlew testDebugUnitTest --no-daemon
         working-directory: android-player
-        continue-on-error: true
 
-      - name: Generate Allure report (unit)
+      - name: Calculate unit duration
         if: always()
         run: |
-          allure generate app/build/allure-results/unit --clean \
-            -o app/build/reports/allure-report/unit || true
-        working-directory: android-player
-        continue-on-error: true
+          if [ "${UNIT_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - UNIT_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "UNIT_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
-      - name: Upload Allure results (unit)
+      - name: Upload unit test results (JUnit XML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-unit-allure-results
-          path: android-player/app/build/allure-results/unit/
-          retention-days: 7
-
-      - name: Upload Allure HTML report (unit)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-unit-allure-report
-          path: android-player/app/build/reports/allure-report/unit/
+          name: android-unit-junit
+          path: android-player/app/build/test-results/testDebugUnitTest/
           retention-days: 14
 
-      - name: Upload JUnit XML results
+      - name: Upload unit Allure raw results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-unit-test-results
-          path: android-player/app/build/test-results/testDebugUnitTest/
-          retention-days: 7
+          name: allure-results-android-unit
+          path: android-player/app/build/allure-results/unit/
+          retention-days: 14
 
-      - name: Post unit test result to Slack thread
+      - name: Generate & deploy unit Allure report
+        if: always()
+        uses: ./.github/actions/publish-allure
+        with:
+          stage-title:        "Android Unit Tests"
+          results-src:        android-player/app/build/allure-results/unit
+          pages-destination:  allure/${{ github.run_number }}/android/unit
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack — unit test result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "Unit Tests (JUnit4)"
+          stage-result:    ${{ steps.unit.outcome }}
+          duration:        ${{ env.UNIT_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/unit
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:       android-player/app/build/test-results/testDebugUnitTest
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      - name: Evaluate unit quality gate (inline)
+        id: unit-gate
         if: always()
         env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: Unit Tests
-          JUNIT_DIR: android-player/app/build/test-results/testDebugUnitTest
-          STAGE_RESULT: ${{ steps.unit.outcome }}
-          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
+          QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
+        run: |
+          UNIT="${{ steps.unit.outcome }}"
+          SKIP="${{ inputs.skip_tests }}"
 
-      - name: Send unit test Slack reply
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Hotfix mode — unit gate bypassed"
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          if [ "$UNIT" != "success" ]; then
+            echo "❌ Unit tests did not succeed (result=$UNIT) — gate FAILED"
+            echo "gate_passed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          python3 - <<'EOF'
+          import glob, xml.etree.ElementTree as ET, os
+          files = glob.glob("android-player/app/build/test-results/**/*.xml", recursive=True)
+          total = passed = failed = skipped = 0
+          for f in files:
+              try:
+                  root = ET.parse(f).getroot()
+                  suites = root.findall('testsuite') if root.tag == 'testsuites' else [root]
+                  for s in suites:
+                      t  = int(s.attrib.get("tests",    0))
+                      fa = int(s.attrib.get("failures", 0)) + int(s.attrib.get("errors", 0))
+                      sk = int(s.attrib.get("skipped",  0))
+                      total += t; failed += fa; skipped += sk; passed += max(0, t - fa - sk)
+              except Exception:
+                  pass
+
+          threshold = float(os.environ.get("QUALITY_GATE_THRESHOLD", "80"))
+          rate = (100.0 * passed / total) if total > 0 else 0.0
+          gate_ok = rate >= threshold and failed == 0
+
+          print(f"Unit gate: {passed}/{total} passed ({rate:.1f}%) — threshold {threshold}%")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh:
+              gh.write(f"gate_passed={'true' if gate_ok else 'false'}\n")
+          if not gate_ok:
+              print(f"❌ FAILED — {rate:.1f}% < {threshold}% or {failed} test(s) failed")
+          else:
+              print(f"✅ PASSED — running BAT tests after build")
+          EOF
+
+      - name: Post unit gate decision to Slack
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
-
-      - name: Fail if unit tests failed
-        if: steps.unit.outcome == 'failure'
-        run: exit 1
+        run: |
+          PASSED="${{ steps.unit-gate.outputs.gate_passed }}"
+          TS="${{ needs.notify-start.outputs.thread_ts }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "$PASSED" = "true" ]; then
+            ICON="✅"; MSG="Unit gate *PASSED* — build and BAT tests can proceed…"
+          else
+            ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          fi
+          python3 - <<EOF
+          import json, pathlib
+          blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
+            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
+          ]
+          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
+                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
+          pathlib.Path("unit-gate-payload.json").write_text(json.dumps(payload))
+          EOF
+          curl -sf -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @unit-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1b — Lint (parallel with unit-tests)
+# 2. LINT — Kotlin static analysis; runs IN PARALLEL with unit tests
 # ─────────────────────────────────────────────────────────────────────────────
   lint:
-    name: "Stage 1b — Lint"
+    name: "Lint"
     runs-on: ubuntu-latest
-    needs: notify-start
-    if: inputs.skip_tests != true
+    timeout-minutes: 10
+    needs: [notify-start]
 
     steps:
+      - name: Record job start time
+        run: echo "LINT_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Run Android Lint
+        id: lint
+        run: ./gradlew lintDebug --no-daemon
         working-directory: android-player
 
-      - name: Run lint
-        run: ./gradlew lint --no-daemon
-        working-directory: android-player
-        continue-on-error: true
+      - name: Calculate lint duration
+        if: always()
+        run: |
+          if [ "${LINT_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - LINT_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "LINT_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-lint-report
-          path: android-player/app/build/reports/lint-results*.html
-          retention-days: 7
+          path: android-player/app/build/reports/lint-results-debug.html
+          retention-days: 14
+
+      - name: Notify Slack — lint result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "Lint"
+          stage-result:    ${{ steps.lint.outcome }}
+          duration:        ${{ env.LINT_DURATION }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 2 — Build debug APK
+# 3. BUILD — Assemble debug APK; produces artifact for E2E tests
 # ─────────────────────────────────────────────────────────────────────────────
   build:
-    name: "Stage 2 — Build Debug APK"
+    name: "Build APK"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [notify-start, unit-tests, lint]
-    if: always() && needs.notify-start.result == 'success' && needs.unit-tests.result != 'failure' && needs.lint.result != 'failure'
 
     steps:
+      - name: Record job start time
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Assemble debug APK
+        id: build
+        run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
         working-directory: android-player
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
-        working-directory: android-player
+      - name: Calculate build duration
+        if: always()
+        run: |
+          if [ "${BUILD_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - BUILD_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "BUILD_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: android-debug-apk
-          path: android-player/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          path: |
+            android-player/app/build/outputs/apk/debug/app-debug.apk
+            android-player/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          retention-days: 7
+
+      - name: Notify Slack — build result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "Build APK"
+          stage-result:    ${{ steps.build.outcome }}
+          duration:        ${{ env.BUILD_DURATION }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 3 — BAT instrumented tests (emulator)
+# 4. BAT E2E — @BAT Espresso tests on emulator; inline BAT gate
 # ─────────────────────────────────────────────────────────────────────────────
   bat-e2e:
-    name: "Stage 3 — BAT (Instrumented)"
+    name: "BAT — Build Acceptance Tests"
     runs-on: macos-latest
-    needs: [notify-start, build]
-    if: inputs.skip_tests != true && needs.build.result == 'success'
+    timeout-minutes: 30
+    needs: [notify-start, build, unit-tests]
+    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
+    outputs:
+      gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
     steps:
+      - name: Record job start time
+        run: echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        working-directory: android-player
-
-      - name: Run BAT instrumented tests
+      - name: Run BAT tests on emulator
         id: bat
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ env.API_LEVEL }}
-          target: ${{ env.AVD_TARGET }}
-          arch: ${{ env.ARCH }}
+          api-level: 29
+          arch: x86_64
           profile: Nexus 6
-          script: |
-            cd android-player
-            ./gradlew connectedDebugAndroidTest \
-              -PtestStage=bat \
-              --no-daemon \
-              2>&1 | tee bat-test.log
+          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-        continue-on-error: true
+          working-directory: android-player
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --no-daemon
 
-      - name: Upload BAT test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-bat-test-results
-          path: android-player/app/build/outputs/androidTest-results/connected/
-          retention-days: 7
-
-      - name: Upload BAT test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-bat-test-log
-          path: android-player/bat-test.log
-          retention-days: 7
-
-      - name: Generate Allure report (BAT)
+      - name: Calculate BAT duration
         if: always()
         run: |
-          # Convert Android instrumented test XML to Allure-compatible results
-          allure generate android-player/app/build/outputs/androidTest-results/connected \
-            --clean -o android-player/app/build/reports/allure-report/bat || true
-        continue-on-error: true
+          if [ "${BAT_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - BAT_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "BAT_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
-      - name: Upload Allure HTML report (BAT)
+      - name: Upload BAT test results (JUnit XML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-bat-allure-report
-          path: android-player/app/build/reports/allure-report/bat/
+          name: android-bat-junit
+          path: android-player/app/build/outputs/androidTest-results/connected/
           retention-days: 14
 
-      - name: Post BAT result to Slack thread
+      - name: Generate & deploy BAT Allure report
         if: always()
-        env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: BAT (Instrumented)
-          STAGE_RESULT: ${{ steps.bat.outcome }}
-          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send BAT Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: ./.github/actions/publish-allure
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          stage-title:        "Android BAT"
+          results-src:        android-player/app/build/outputs/androidTest-results/connected
+          pages-destination:  allure/${{ github.run_number }}/android/bat
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fail if BAT tests failed
-        if: steps.bat.outcome == 'failure'
-        run: exit 1
+      - name: Notify Slack — BAT result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "BAT (Build Acceptance Tests)"
+          stage-result:    ${{ steps.bat.outcome }}
+          duration:        ${{ env.BAT_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/bat
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:       android-player/app/build/outputs/androidTest-results/connected
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      - name: Evaluate BAT quality gate (inline)
+        id: bat-gate
+        if: always()
+        run: |
+          BAT="${{ steps.bat.outcome }}"
+          SKIP="${{ inputs.skip_tests }}"
+
+          if [ "$SKIP" = "true" ]; then
+            echo "⚡ Hotfix mode — BAT gate bypassed"
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$BAT" = "success" ]; then
+            echo "✅ BAT gate PASSED — Smoke tests can start"
+            echo "gate_passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ BAT gate FAILED (bat=$BAT) — blocking Smoke tests and Firebase"
+            echo "gate_passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post BAT gate decision to Slack
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        run: |
+          PASSED="${{ steps.bat-gate.outputs.gate_passed }}"
+          TS="${{ needs.notify-start.outputs.thread_ts }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "$PASSED" = "true" ]; then
+            ICON="✅"; MSG="BAT gate *PASSED* — running Smoke tests…"
+          else
+            ICON="🚫"; MSG="BAT gate *FAILED* — Smoke tests and Firebase publish *BLOCKED*."
+          fi
+          python3 - <<EOF
+          import json, pathlib
+          blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
+            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
+          ]
+          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
+                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
+          pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
+          EOF
+          curl -sf -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d @bat-gate-payload.json
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 4 — Smoke instrumented tests (emulator, after BAT passes)
+# 5. SMOKE E2E — @Smoke Espresso tests; after BAT gate passes
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-e2e:
-    name: "Stage 4 — Smoke (Instrumented)"
+    name: "Smoke Tests"
     runs-on: macos-latest
+    timeout-minutes: 30
     needs: [notify-start, build, bat-e2e]
-    if: inputs.skip_tests != true && needs.bat-e2e.result == 'success'
+    if: needs.bat-e2e.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    continue-on-error: true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
 
     steps:
+      - name: Record job start time
+        run: echo "SMOKE_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        working-directory: android-player
-
-      - name: Run Smoke instrumented tests
+      - name: Run Smoke tests on emulator
         id: smoke
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ env.API_LEVEL }}
-          target: ${{ env.AVD_TARGET }}
-          arch: ${{ env.ARCH }}
+          api-level: 29
+          arch: x86_64
           profile: Nexus 6
-          script: |
-            cd android-player
-            ./gradlew connectedDebugAndroidTest \
-              -PtestStage=smoke \
-              --no-daemon \
-              2>&1 | tee smoke-test.log
+          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-        continue-on-error: true
+          working-directory: android-player
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --no-daemon
 
-      - name: Upload Smoke test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-smoke-test-results
-          path: android-player/app/build/outputs/androidTest-results/connected/
-          retention-days: 7
-
-      - name: Upload Smoke test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-smoke-test-log
-          path: android-player/smoke-test.log
-          retention-days: 7
-
-      - name: Generate Allure report (Smoke)
+      - name: Calculate Smoke duration
         if: always()
         run: |
-          allure generate android-player/app/build/outputs/androidTest-results/connected \
-            --clean -o android-player/app/build/reports/allure-report/smoke || true
-        continue-on-error: true
+          if [ "${SMOKE_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - SMOKE_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "SMOKE_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
-      - name: Upload Allure HTML report (Smoke)
+      - name: Upload Smoke test results (JUnit XML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-smoke-allure-report
-          path: android-player/app/build/reports/allure-report/smoke/
+          name: android-smoke-junit
+          path: android-player/app/build/outputs/androidTest-results/connected/
           retention-days: 14
 
-      - name: Post Smoke result to Slack thread
+      - name: Generate & deploy Smoke Allure report
         if: always()
-        env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: Smoke (Instrumented)
-          STAGE_RESULT: ${{ steps.smoke.outcome }}
-          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send Smoke Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: ./.github/actions/publish-allure
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          stage-title:        "Android Smoke"
+          results-src:        android-player/app/build/outputs/androidTest-results/connected
+          pages-destination:  allure/${{ github.run_number }}/android/smoke
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack — Smoke result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "Smoke Tests"
+          stage-result:    ${{ steps.smoke.outcome }}
+          duration:        ${{ env.SMOKE_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/smoke
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:       android-player/app/build/outputs/androidTest-results/connected
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail if Smoke tests failed
         if: steps.smoke.outcome == 'failure'
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 5 — Regression instrumented tests (nightly or manual trigger)
+# 6. REGRESSION E2E — @Regression; nightly schedule or manual; non-blocking
 # ─────────────────────────────────────────────────────────────────────────────
   regression-e2e:
-    name: "Stage 5 — Regression (Instrumented)"
+    name: "Regression Tests"
     runs-on: macos-latest
+    timeout-minutes: 45
     needs: [notify-start, build, smoke-e2e]
-    # Run only on schedule (nightly) or when explicitly requested
-    if: >
-      inputs.skip_tests != true &&
-      needs.smoke-e2e.result == 'success' &&
-      (github.event_name == 'schedule' || inputs.run_regression == true)
+    if: |
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      needs.build.result == 'success'
+    continue-on-error: true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
 
     steps:
+      - name: Record job start time
+        run: echo "REGRESSION_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          java-version: '17'
 
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-android-${{ hashFiles('android-player/**/*.gradle*') }}
-          restore-keys: ${{ runner.os }}-gradle-android-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        working-directory: android-player
-
-      - name: Run Regression instrumented tests
+      - name: Run Regression tests on emulator
         id: regression
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ env.API_LEVEL }}
-          target: ${{ env.AVD_TARGET }}
-          arch: ${{ env.ARCH }}
+          api-level: 29
+          arch: x86_64
           profile: Nexus 6
-          script: |
-            cd android-player
-            ./gradlew connectedDebugAndroidTest \
-              -PtestStage=regression \
-              --no-daemon \
-              2>&1 | tee regression-test.log
+          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-        continue-on-error: true
+          working-directory: android-player
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=regression --no-daemon
 
-      - name: Upload Regression test results
+      - name: Calculate Regression duration
+        if: always()
+        run: |
+          if [ "${REGRESSION_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - REGRESSION_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "REGRESSION_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload Regression test results (JUnit XML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-regression-test-results
+          name: android-regression-junit
           path: android-player/app/build/outputs/androidTest-results/connected/
           retention-days: 14
 
-      - name: Generate Allure report (Regression)
+      - name: Generate & deploy Regression Allure report
         if: always()
-        run: |
-          allure generate android-player/app/build/outputs/androidTest-results/connected \
-            --clean -o android-player/app/build/reports/allure-report/regression || true
-        continue-on-error: true
-
-      - name: Upload Allure HTML report (Regression)
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/publish-allure
         with:
-          name: android-regression-allure-report
-          path: android-player/app/build/reports/allure-report/regression/
-          retention-days: 14
+          stage-title:        "Android Regression"
+          results-src:        android-player/app/build/outputs/androidTest-results/connected
+          pages-destination:  allure/${{ github.run_number }}/android/regression
+          github-token:       ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Post Regression result to Slack thread
+      - name: Notify Slack — Regression result
         if: always()
-        env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: Regression (Instrumented)
-          STAGE_RESULT: ${{ steps.regression.outcome }}
-          REPORT_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
-
-      - name: Send Regression Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     ANDROID
+          stage-name:      "Regression Tests"
+          stage-result:    ${{ steps.regression.outcome }}
+          duration:        ${{ env.REGRESSION_DURATION }}
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/regression
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:       android-player/app/build/outputs/androidTest-results/connected
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 6 — Quality Gate
-# Passes when: unit + BAT + Smoke succeed (or skip_tests=true).
-# Regression is informational only and does not block deployment.
+# 7. QUALITY GATE — BAT gate failed; block Firebase and alert team
 # ─────────────────────────────────────────────────────────────────────────────
   quality-gate:
-    name: "Stage 6 — Quality Gate"
+    name: "Quality Gate"
     runs-on: ubuntu-latest
-    needs: [notify-start, unit-tests, build, bat-e2e, smoke-e2e]
-    if: always() && needs.build.result == 'success'
-    outputs:
-      passed: ${{ steps.check.outputs.passed }}
+    timeout-minutes: 5
+    needs: [notify-start, bat-e2e]
+    if: always() && needs.bat-e2e.result != 'skipped' && needs.bat-e2e.outputs.gate_passed != 'true'
 
     steps:
-      - id: check
-        name: Evaluate quality gate
-        run: |
-          SKIP="${{ inputs.skip_tests }}"
-          UNIT="${{ needs.unit-tests.result }}"
-          BAT="${{ needs.bat-e2e.result }}"
-          SMOKE="${{ needs.smoke-e2e.result }}"
+      - uses: actions/checkout@v4
 
-          if [ "$SKIP" = "true" ]; then
-            echo "⚡ Force-publish mode — tests skipped, gate bypassed"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-          elif [ "$UNIT" = "success" ] && [ "$BAT" = "success" ] && [ "$SMOKE" = "success" ]; then
-            echo "✅ Quality gate PASSED (unit=$UNIT, bat=$BAT, smoke=$SMOKE)"
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "❌ Quality gate FAILED (unit=$UNIT, bat=$BAT, smoke=$SMOKE)"
-            echo "passed=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Block deployment
+        run: |
+          echo "❌ BAT gate failed — build #${{ github.run_number }} blocked from Firebase distribution"
+          echo "Commit: ${{ github.sha }} will NOT be published"
+          echo "Branch: ${{ github.head_ref || github.ref_name }}"
+          echo "Fix failing BAT tests before this build can be distributed."
+
+      - name: Notify Slack — deployment blocked
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:     ANDROID
+          stage-name:      "Deployment Blocked (BAT Gate Failed)"
+          stage-result:    failure
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 7a — Firebase internal testers
+# 8. PUBLISH INTERNAL — Firebase App Distribution (internal testers)
 # ─────────────────────────────────────────────────────────────────────────────
   publish-internal:
-    name: "Stage 7a — Publish to Internal Testers"
+    name: "Publish Internal (Firebase)"
     runs-on: ubuntu-latest
-    needs: [notify-start, build, quality-gate]
-    if: always() && needs.quality-gate.outputs.passed == 'true' && needs.build.result == 'success'
+    timeout-minutes: 10
+    needs: [notify-start, build, bat-e2e, smoke-e2e]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      needs.bat-e2e.outputs.gate_passed == 'true' &&
+      needs.smoke-e2e.result != 'failure'
 
     steps:
+      - name: Record job start time
+        run: echo "PUBLISH_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
-      - name: Download APK artifact
+      - name: Download debug APK
         uses: actions/download-artifact@v4
         with:
           name: android-debug-apk
-          path: ./apk
+          path: apk-artifacts
 
-      - name: Distribute to Firebase — internal-testers
-        id: firebase_internal
-        if: env.FIREBASE_APP_ID_ANDROID != '' && env.FIREBASE_CREDENTIAL_FILE_CONTENT != ''
+      - name: Publish to Firebase App Distribution (internal)
+        id: firebase-publish
+        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_APP_ID_ANDROID != ''
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
           groups: internal-testers
-          file: apk/app-debug.apk
+          file: apk-artifacts/app-debug.apk
           releaseNotes: |
-            [INTERNAL] Build #${{ github.run_number }} — ${{ github.ref_name }}
+            Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
             Commit: ${{ github.sha }}
-            Status: Pending public release approval — smoke test before approving.
         env:
-          FIREBASE_APP_ID_ANDROID: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
-          FIREBASE_CREDENTIAL_FILE_CONTENT: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Post internal publish result to Slack thread
+      - name: Calculate publish duration
         if: always()
-        env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: "Firebase Internal Testers"
-          STAGE_RESULT: ${{ steps.firebase_internal.outcome || 'skipped' }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
+        run: |
+          if [ "${PUBLISH_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - PUBLISH_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "PUBLISH_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
-      - name: Send internal publish Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
+      - name: Notify Slack — internal publish result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     ANDROID
+          stage-name:      "Firebase Internal Distribution"
+          stage-result:    ${{ steps.firebase-publish.outcome || 'skipped' }}
+          duration:        ${{ env.PUBLISH_DURATION }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 7b — Firebase public testers (manual approval required)
+# 9. PUBLISH PUBLIC — Firebase App Distribution (external testers; manual only)
 # ─────────────────────────────────────────────────────────────────────────────
   publish-public:
-    name: "Stage 7b — Publish to Public Testers"
+    name: "Publish Public (Firebase)"
     runs-on: ubuntu-latest
-    environment: firebase-production
-    needs: [notify-start, build, quality-gate, publish-internal]
-    if: always() && needs.quality-gate.outputs.passed == 'true' && needs.publish-internal.result == 'success'
+    timeout-minutes: 10
+    needs: [notify-start, build, bat-e2e, publish-internal]
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      needs.build.result == 'success' &&
+      needs.bat-e2e.outputs.gate_passed == 'true' &&
+      needs.publish-internal.result == 'success'
 
     steps:
+      - name: Record job start time
+        run: echo "PUBLISH_PUB_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
-      - name: Download APK artifact
+      - name: Download debug APK
         uses: actions/download-artifact@v4
         with:
           name: android-debug-apk
-          path: ./apk
+          path: apk-artifacts
 
-      - name: Distribute to Firebase — public-testers
-        id: firebase_public
-        if: env.FIREBASE_APP_ID_ANDROID != '' && env.FIREBASE_CREDENTIAL_FILE_CONTENT != ''
+      - name: Publish to Firebase App Distribution (testers)
+        id: firebase-publish-pub
+        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_APP_ID_ANDROID != ''
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
-          groups: public-testers
-          file: apk/app-debug.apk
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          groups: ${{ secrets.FIREBASE_TESTERS || 'external-testers' }}
+          file: apk-artifacts/app-debug.apk
           releaseNotes: |
-            Build #${{ github.run_number }} — ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            ✅ Approved after internal smoke testing.
+            Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
+            Environment: ${{ env.ENV_LABEL }}
         env:
-          FIREBASE_APP_ID_ANDROID: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
-          FIREBASE_CREDENTIAL_FILE_CONTENT: ${{ secrets.FIREBASE_CREDENTIAL_FILE_CONTENT }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
-      - name: Post public publish result to Slack thread
+      - name: Calculate publish duration
         if: always()
-        env:
-          MODULE_NAME: ANDROID
-          STAGE_NAME: "Firebase Public Testers"
-          STAGE_RESULT: ${{ steps.firebase_public.outcome || 'skipped' }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/stage_result_to_slack.py
+        run: |
+          if [ "${PUBLISH_PUB_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - PUBLISH_PUB_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "PUBLISH_PUB_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
-      - name: Send public publish Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
+      - name: Notify Slack — public publish result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./stage-slack-payload.json
+          module-name:     ANDROID
+          stage-name:      "Firebase Public Distribution"
+          stage-result:    ${{ steps.firebase-publish-pub.outcome || 'skipped' }}
+          duration:        ${{ env.PUBLISH_PUB_DURATION }}
+          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 8 — Final summary + Slack overall result
+# 10. REPORT — final pipeline summary + Slack overall result
 # ─────────────────────────────────────────────────────────────────────────────
   report:
-    name: "Stage 8 — Report & Slack Summary"
+    name: "Report & Slack Summary"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - notify-start
       - unit-tests
@@ -748,51 +822,63 @@ jobs:
       - build
       - bat-e2e
       - smoke-e2e
-      - regression-e2e
-      - quality-gate
-      - publish-internal
-      - publish-public
     if: always()
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pipeline summary
+      - name: Calculate total pipeline duration
         run: |
-          echo "## Android Player Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          START_EPOCH="${{ needs.notify-start.outputs.start_epoch }}"
+          NOW=$(date +%s)
+          ELAPSED=$(( NOW - START_EPOCH ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m ${SECS}s" || DUR="${SECS}s"
+          echo "TOTAL_DURATION=$DUR" >> "$GITHUB_ENV"
+
+      - name: GitHub Step Summary
+        run: |
+          echo "## 🤖 Android Player Pipeline — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build Debug APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT (Instrumented) | ${{ needs.bat-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Smoke (Instrumented) | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Regression (Instrumented) | ${{ needs.regression-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Quality Gate | ${{ needs.quality-gate.result }} (${{ needs.quality-gate.outputs.passed }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Firebase Internal | ${{ needs.publish-internal.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Firebase Public   | ${{ needs.publish-public.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Tests | ${{ needs.bat-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** \`${{ github.ref_name }}\`  |  **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Allure Reports (GitHub Pages)" >> $GITHUB_STEP_SUMMARY
+          BASE="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android"
+          echo "- [Unit]($BASE/unit) | [BAT]($BASE/bat) | [Smoke]($BASE/smoke) | [Regression]($BASE/regression)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Build Slack overall summary payload
+      - name: Build final Slack summary payload
         if: always()
         env:
           MODULE_NAME: ANDROID
-          STAGE1_NAME: Unit Tests
+          STAGE1_NAME: Unit Tests (JUnit4)
           STAGE1_RESULT: ${{ needs.unit-tests.result }}
-          STAGE2_NAME: Build Debug APK
-          STAGE2_RESULT: ${{ needs.build.result }}
-          STAGE3_NAME: BAT (Instrumented)
-          STAGE3_RESULT: ${{ needs.bat-e2e.result }}
-          STAGE4_NAME: Smoke (Instrumented)
-          STAGE4_RESULT: ${{ needs.smoke-e2e.result }}
-          STAGE5_NAME: Firebase Public
-          STAGE5_RESULT: ${{ needs.publish-public.result }}
+          STAGE2_NAME: "Unit Gate (≥80%)"
+          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE3_NAME: Lint
+          STAGE3_RESULT: ${{ needs.lint.result }}
+          STAGE4_NAME: Build APK
+          STAGE4_RESULT: ${{ needs.build.result }}
+          STAGE5_NAME: BAT Tests
+          STAGE5_RESULT: ${{ needs.bat-e2e.result }}
+          STAGE6_NAME: BAT Gate
+          STAGE6_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE7_NAME: Smoke Tests
+          STAGE7_RESULT: ${{ needs.smoke-e2e.result }}
+          TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_NAME: ${{ github.head_ref || github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
           WORKFLOW_START_EPOCH: ${{ needs.notify-start.outputs.start_epoch }}
         run: python3 .github/scripts/module_result_to_slack.py
@@ -811,15 +897,42 @@ jobs:
       - name: Send overall summary Slack reply
         if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
         uses: slackapi/slack-github-action@v2.1.1
+        continue-on-error: true
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: ./module-slack-payload.json
 
-      - name: Fail pipeline if any critical stage failed
+      - name: Update initial Slack message with build outcome
+        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          MODULE_NAME: ANDROID
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ENV_LABEL: ${{ env.ENV_LABEL }}
+          BUILD_VERDICT: >-
+            ${{ (needs.unit-tests.result == 'success' &&
+                 needs.unit-tests.outputs.gate_passed == 'true' &&
+                 needs.build.result == 'success' &&
+                 needs.bat-e2e.outputs.gate_passed == 'true') && 'success' || 'failure' }}
+        run: python3 .github/scripts/update_build_message.py
+
+      - name: Fail pipeline if critical stage failed
         if: |
           needs.unit-tests.result == 'failure' ||
+          needs.unit-tests.outputs.gate_passed == 'false' ||
+          needs.lint.result == 'failure' ||
           needs.build.result == 'failure' ||
-          needs.bat-e2e.result == 'failure' ||
-          needs.smoke-e2e.result == 'failure'
+          needs.bat-e2e.result == 'failure'
         run: exit 1
