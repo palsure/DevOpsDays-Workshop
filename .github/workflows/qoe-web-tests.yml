@@ -371,6 +371,15 @@ jobs:
           path: web-player/playwright-report/bat/
           retention-days: 14
 
+      - name: Upload BAT Playwright JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-bat-playwright-json
+          path: web-player/playwright-results-bat.json
+          retention-days: 14
+
       - name: Upload BAT Allure raw results
         if: always()
         uses: actions/upload-artifact@v4
@@ -583,6 +592,15 @@ jobs:
           path: web-player/playwright-report/smoke/
           retention-days: 14
 
+      - name: Upload Smoke Playwright JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-smoke-playwright-json
+          path: web-player/playwright-results-smoke.json
+          retention-days: 14
+
       - name: Upload Smoke Allure raw results
         if: always()
         uses: actions/upload-artifact@v4
@@ -669,6 +687,15 @@ jobs:
         with:
           name: web-regression-playwright-report
           path: web-player/playwright-report/regression/
+          retention-days: 14
+
+      - name: Upload Regression Playwright JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-regression-playwright-json
+          path: web-player/playwright-results-regression.json
           retention-days: 14
 
       - name: Upload Regression Allure raw results
