@@ -26,7 +26,9 @@ async function selectVideoAndPlay(
   page: import('@playwright/test').Page,
   tileLabel: string,
 ) {
-  await allure.step(`Select tile from carousel: "${tileLabel.replace('Play ', '')}"`, async () => {
+  const videoTitle = tileLabel.replace(/^Play\s+/, '');
+
+  await allure.step(`Select tile from carousel: "${videoTitle}"`, async () => {
     const tile = page.getByRole('button', { name: tileLabel });
     await tile.scrollIntoViewIfNeeded();
     await tile.click();
@@ -35,6 +37,13 @@ async function selectVideoAndPlay(
   await allure.step('Click Play CTA on detail page', async () => {
     const playBtn = page.getByTestId('detail-play-btn');
     await expect(playBtn).toBeVisible({ timeout: 10_000 });
+
+    // Capture the URL (base URL of the deployment under test).
+    // The app uses in-memory routing, so the URL stays at the root;
+    // we log it here so it is visible alongside the step in the Allure timeline.
+    const url = page.url();
+    await allure.parameter('player_url', url);
+
     await playBtn.click();
   });
 }
@@ -77,6 +86,11 @@ test.describe('QoE quality gates (workshop demos)', () => {
     // flow (home → carousel → detail → play) in the video recording.
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
+
+    // Record which deployment is under test — visible in every Allure report.
+    const testedUrl = page.url();
+    await allure.parameter('tested_url', testedUrl);
+    await allure.link(testedUrl, 'Tested App URL');
   });
 
   test('baseline: first frame within generous budget', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
