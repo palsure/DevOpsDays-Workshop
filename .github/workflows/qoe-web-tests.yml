@@ -493,6 +493,7 @@ jobs:
         id: deploy
         if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
         run: |
+          echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
@@ -520,6 +521,14 @@ jobs:
           echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
           echo "channel=local" >> "$GITHUB_OUTPUT"
 
+      - name: Calculate deploy duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${DEPLOY_START:-0} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "DEPLOY_DURATION=$DUR" >> "$GITHUB_ENV"
+
       - name: Notify Slack — preview deploy result
         if: always()
         uses: ./.github/actions/slack-stage-notify
@@ -527,6 +536,7 @@ jobs:
           module-name:     WEB
           stage-name:      Firebase Preview Deploy
           stage-result:    ${{ steps.deploy.outcome || 'skipped' }}
+          duration:        ${{ env.DEPLOY_DURATION }}
           report-url:      ${{ steps.deploy.outputs.preview_url }}
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}

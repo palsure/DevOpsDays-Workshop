@@ -25,11 +25,11 @@ from pathlib import Path
 
 def result_icon(result: str) -> str:
     return {
-        "success": ":large_green_circle:",
-        "failure": ":red_circle:",
-        "skipped": ":white_circle:",
-        "cancelled": ":white_circle:",
-    }.get(result.lower(), ":white_circle:")
+        "success":   "✅",
+        "failure":   "❌",
+        "skipped":   "⏭",
+        "cancelled": "⏭",
+    }.get(result.lower(), "⏭")
 
 
 def fmt_duration(seconds: float) -> str:
@@ -77,8 +77,8 @@ def main() -> int:
             overall = "failure"
             break
 
-    verdict      = "PASSED" if overall == "success" else "FAILED"
-    overall_icon = ":large_green_circle:" if overall == "success" else ":red_circle:"
+    verdict      = "Success" if overall == "success" else "Failed"
+    overall_icon = "✅" if overall == "success" else "❌"
 
     # Duration
     duration_str = ""
@@ -91,8 +91,14 @@ def main() -> int:
             pass
 
     # Stage rows — each on its own line
+    result_label = {
+        "success":   "success",
+        "failure":   "failure",
+        "skipped":   "skipped",
+        "cancelled": "cancelled",
+    }
     stage_rows = [
-        f"{result_icon(r)}  *{name}:* {r}"
+        f"{result_icon(r)}  *{name}:* {result_label.get(r.lower(), r)}"
         for name, r in stages
     ]
 
@@ -105,13 +111,11 @@ def main() -> int:
     thread_ts  = os.environ.get("THREAD_TS", "")
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
-    verdict_label = "Success" if overall == "success" else "Failed"
-
     total_duration = os.environ.get("TOTAL_DURATION", "").strip()
     if total_duration:
-        header_text = f"[{module}] Build Completed  |  Total Duration: {total_duration}  |  {verdict_label}"
+        header_text = f"{overall_icon} [{module}] Build Completed  |  Total Duration: {total_duration}  |  {verdict}"
     else:
-        header_text = f"[{module}] Build Completed  |  {verdict_label}"
+        header_text = f"{overall_icon} [{module}] Build Completed  |  {verdict}"
 
     payload = {
         "text": header_text,
