@@ -128,6 +128,9 @@ jobs:
     timeout-minutes: 10
     needs: [notify-start]
     if: inputs.skip_tests != true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
     outputs:
       thread_ts:   ${{ needs.notify-start.outputs.thread_ts }}
       gate_passed: ${{ steps.unit-gate.outputs.gate_passed }}
@@ -286,6 +289,9 @@ jobs:
     timeout-minutes: 20
     needs: [notify-start, deploy-preview, unit-tests]
     if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.deploy-preview.result == 'success'
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
     outputs:
       gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
@@ -309,41 +315,25 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Download build artifact (local serve fallback)
-        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist
-
-      - name: Serve dist/ locally (fallback when no Firebase preview URL)
-        if: "!startsWith(needs.deploy-preview.outputs.preview_url, 'https://')"
+      - name: Confirm BAT target URL (must be Firebase Preview)
         run: |
-          npm install -g serve
-          serve web-player/dist -l 3000 &
-          echo "SERVE_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "✅ Local server ready" && break
-            echo "Waiting ($i/15)…"; sleep 2
-          done
+          URL="${{ needs.deploy-preview.outputs.preview_url }}"
+          echo "🔍 BAT target URL: ${URL:-<not set>}"
+          if [[ "$URL" != https://* ]]; then
+            echo "❌ ERROR: Firebase Preview URL is required for BAT tests."
+            echo "   Got: '${URL:-<empty>}'"
+            echo "   BAT tests validate the preview deployment — they must NOT run on localhost."
+            exit 1
+          fi
+          echo "✅ BAT will run against Firebase Preview: $URL"
 
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
-        run: |
-          PREVIEW_URL="${{ needs.deploy-preview.outputs.preview_url }}"
-          echo "🔍 BAT target URL: ${PREVIEW_URL:-<not set>}"
-          npx playwright test \
-            --project=chromium \
-            --grep "@BAT" \
-            --base-url "${PREVIEW_URL:-http://localhost:3000}"
+        run: npm run e2e:bat
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_STAGE: bat
-
-      - name: Stop local server (if started)
-        if: always() && env.SERVE_PID != ''
-        run: kill "$SERVE_PID" 2>/dev/null || true
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
 
       - name: Calculate BAT duration
         if: always()
@@ -478,53 +468,59 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Deploy to preview channel
-        id: deploy
-        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
+        id: resolve-url
         run: |
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
           CHANNEL="build-${{ github.run_number }}"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          PROJECT="$FIREBASE_PROJECT_ID"
+          TOKEN="$FIREBASE_TOKEN"
+
+          # Check credentials INSIDE the shell — step-level env: is reliable here,
+          # unlike the step `if:` condition which only sees job-level env.
+          if [ -z "$TOKEN" ] || [ -z "$PROJECT" ]; then
+            echo "⚠️  Firebase credentials not configured — skipping preview deploy."
+            echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
+            echo "channel=local-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            echo "PREVIEW_URL=http://localhost:3000" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "🚀 Deploying channel: $CHANNEL to project: $PROJECT"
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
-            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
-            --token "${{ secrets.FIREBASE_TOKEN }}" \
-            --json 2>&1 || true)
-          echo "=== Firebase deploy output ==="
+            --project "$PROJECT" \
+            --token "$TOKEN" 2>&1) || { echo "$OUTPUT"; echo "❌ Firebase deploy failed"; exit 1; }
           echo "$OUTPUT"
-          echo "=============================="
-          # 1st pass: jq — parse the JSON result field for the channel URL (most reliable)
-          URL=$(echo "$OUTPUT" | jq -r '.result | to_entries[0].value.url // empty' 2>/dev/null || true)
-          # 2nd pass: grep for https://...--....web.app pattern
-          if [ -z "$URL" ]; then
-            URL=$(echo "$OUTPUT" | grep -oP 'https://[a-z0-9-]+--[a-z0-9-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
-          fi
-          # 3rd pass: any https firebase URL
+
+          # Strategy 1: preview channel URL pattern (project--channel-hash.web.app)
+          URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9-]+--[a-zA-Z0-9-]+\.web\.app' | head -1 || true)
+          # Strategy 2: any Firebase HTTPS URL in the output
           if [ -z "$URL" ]; then
             URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
           fi
+          # Strategy 3: query channel list — clean JSON source, independent of deploy output format
+          if [ -z "$URL" ]; then
+            echo "⚠️  URL not found in deploy output — querying channel list..."
+            URL=$(firebase hosting:channel:list \
+              --project "$PROJECT" --token "$TOKEN" --json 2>/dev/null \
+              | jq -r --arg ch "$CHANNEL" \
+                '.result.channels[]? | select(.name | endswith("/"+$ch)) | .url // empty' \
+              2>/dev/null | head -1 || true)
+          fi
+
+          if [ -z "$URL" ]; then
+            echo "❌ Could not extract preview URL from deploy output or channel list."
+            exit 1
+          fi
+
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "✅ Preview URL: ${URL:-<not extracted>}"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "✅ Preview URL: $URL"
         working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-
-      - name: Resolve preview URL
-        id: resolve-url
-        if: always()
-        run: |
-          URL="${{ steps.deploy.outputs.preview_url }}"
-          CHANNEL="${{ steps.deploy.outputs.channel }}"
-          if [ -z "$URL" ]; then
-            URL="http://localhost:3000"
-            CHANNEL="local-${{ github.run_number }}"
-            echo "⚠️  Firebase URL not extracted — BAT/Smoke will use localhost fallback"
-          fi
-          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "✅ Resolved preview URL: $URL"
-          # Also expose as env var so it's visible in the job summary
-          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
 
       - name: Calculate deploy duration
         if: always()
@@ -542,7 +538,7 @@ jobs:
         with:
           module-name:     WEB
           stage-name:      Firebase Preview Deploy
-          stage-result:    ${{ steps.deploy.outcome || 'skipped' }}
+          stage-result:    ${{ steps.resolve-url.outcome }}
           duration:        ${{ env.DEPLOY_DURATION }}
           report-url:      ${{ steps.resolve-url.outputs.preview_url }}
           link-label:      ":globe_with_meridians: Preview URL"
@@ -561,6 +557,9 @@ jobs:
     needs: [notify-start, promote-live, deploy-preview]
     if: needs.promote-live.result == 'success'
     continue-on-error: true
+    concurrency:
+      group: gh-pages-deploy-${{ github.run_id }}
+      cancel-in-progress: false
 
     steps:
       - name: Record job start time
@@ -582,40 +581,26 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Download dist artifact (local server fallback)
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist
-
-      - name: Install static file server
-        run: npm install -g serve
-
-      - name: Serve dist/ on port 3000 (fallback when Firebase URL unavailable)
+      - name: Confirm Smoke target URL (must be Firebase Live)
         run: |
-          serve -s dist -l 3000 &
-          for i in $(seq 1 15); do
-            curl -sf http://localhost:3000/ > /dev/null && echo "Local server ready" && break
-            echo "Waiting for local server… ($i/15)"; sleep 2
-          done
-        working-directory: web-player
+          URL="${{ needs.promote-live.outputs.live_url }}"
+          echo "🔍 Smoke target URL: ${URL:-<not set>}"
+          if [[ "$URL" != https://* ]]; then
+            echo "❌ ERROR: Firebase Live URL is required for Smoke tests."
+            echo "   Got: '${URL:-<empty>}'"
+            echo "   Smoke tests validate the live deployment — they must NOT run on preview/localhost."
+            exit 1
+          fi
+          echo "✅ Smoke will run against Firebase Live: $URL"
 
       - name: Run Smoke tests (@Smoke, 3 workers)
         id: smoke
         continue-on-error: true
-        run: |
-          LIVE_URL="${{ needs.promote-live.outputs.live_url }}"
-          PREVIEW_URL="${{ needs.deploy-preview.outputs.preview_url }}"
-          SMOKE_URL="${LIVE_URL:-${PREVIEW_URL:-http://localhost:3000}}"
-          echo "🔍 Smoke target URL: $SMOKE_URL"
-          npx playwright test \
-            --project=chromium \
-            --grep "@Smoke" \
-            --base-url "$SMOKE_URL"
+        run: npm run e2e:smoke
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_STAGE: smoke
+          PLAYWRIGHT_BASE_URL: ${{ needs.promote-live.outputs.live_url }}
 
       - name: Calculate Smoke duration
         if: always()

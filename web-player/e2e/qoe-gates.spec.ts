@@ -17,6 +17,38 @@ async function waitForFirstFrame(page: import('@playwright/test').Page, timeout 
 }
 
 /**
+ * Simulate a real user selecting a video tile from the home page carousel,
+ * navigating to the detail page, and pressing the Play CTA.
+ *
+ * @param tileLabel  The aria-label of the VideoTile button, e.g. "Play Crystal Clear"
+ */
+async function selectVideoAndPlay(
+  page: import('@playwright/test').Page,
+  tileLabel: string,
+) {
+  const videoTitle = tileLabel.replace(/^Play\s+/, '');
+
+  await allure.step(`Select tile from carousel: "${videoTitle}"`, async () => {
+    const tile = page.getByRole('button', { name: tileLabel });
+    await tile.scrollIntoViewIfNeeded();
+    await tile.click();
+  });
+
+  await allure.step('Click Play CTA on detail page', async () => {
+    const playBtn = page.getByTestId('detail-play-btn');
+    await expect(playBtn).toBeVisible({ timeout: 10_000 });
+
+    // Capture the URL (base URL of the deployment under test).
+    // The app uses in-memory routing, so the URL stays at the root;
+    // we log it here so it is visible alongside the step in the Allure timeline.
+    const url = page.url();
+    await allure.parameter('player_url', url);
+
+    await playBtn.click();
+  });
+}
+
+/**
  * Snapshot the request log and assert no critical network issues exist.
  * Called at the end of each test after the scenario has played out.
  *
@@ -50,9 +82,15 @@ async function assertNoNetworkIssues(
 test.describe('QoE quality gates (workshop demos)', () => {
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to home page first — captures full navigation flow in video recording
+    // Start from the home page so every test captures the full navigation
+    // flow (home → carousel → detail → play) in the video recording.
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
+
+    // Record which deployment is under test — visible in every Allure report.
+    const testedUrl = page.url();
+    await allure.parameter('tested_url', testedUrl);
+    await allure.link(testedUrl, 'Tested App URL');
   });
 
   test('baseline: first frame within generous budget', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
@@ -75,7 +113,8 @@ from transient network latency).
     await allure.tag('qoe', 'ttff', 'baseline');
     await allure.link('https://www.w3.org/TR/media-source/', 'MSE spec', 'reference');
 
-    await page.goto('/?scenario=baseline&e2e_autoplay=1');
+    // Home → QoE Demo Scenarios carousel → "Crystal Clear" tile → detail page → Play
+    await selectVideoAndPlay(page, 'Play Crystal Clear');
 
     await allure.step('Wait for first frame', () => waitForFirstFrame(page));
 
@@ -112,7 +151,8 @@ in CI prevents regressions landing in production.
     await allure.label('testType', 'automated');
     await allure.tag('qoe', 'ttff', 'startup-delay');
 
-    await page.goto('/?scenario=startup_delay&e2e_autoplay=1');
+    // Home → QoE Demo Scenarios carousel → "The Delay" tile → detail page → Play
+    await selectVideoAndPlay(page, 'Play The Delay');
 
     await allure.step('Wait for first frame (with injected delay)', () => waitForFirstFrame(page));
 
@@ -152,7 +192,8 @@ probe (or computer-vision CI check) can catch it. The test asserts that the
     await allure.label('testType', 'automated');
     await allure.tag('qoe', 'visual-fault', 'black-screen');
 
-    await page.goto('/?scenario=black_screen_pulse&e2e_autoplay=1');
+    // Home → QoE Demo Scenarios carousel → "Blackout" tile → detail page → Play
+    await selectVideoAndPlay(page, 'Play Blackout');
 
     const overlay = page.getByTestId('visual-blackout-overlay');
 
@@ -189,7 +230,8 @@ and accumulate it in \`totalBufferingTime\`.
     await allure.label('testType', 'automated');
     await allure.tag('qoe', 'rebuffering', 'stall');
 
-    await page.goto('/?scenario=forced_mid_play_rebuffer&e2e_autoplay=1');
+    // Home → QoE Demo Scenarios carousel → "The Stall" tile → detail page → Play
+    await selectVideoAndPlay(page, 'Play The Stall');
 
     await allure.step('Wait for first frame', () => waitForFirstFrame(page));
 

@@ -59,6 +59,20 @@ runs:
         fi
 
     - name: Deploy to GitHub Pages
+      id: gh-pages-deploy
+      continue-on-error: true
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        token: ${{ inputs.github-token }}
+        branch: gh-pages
+        folder: stage-allure-report
+        target-folder: ${{ inputs.pages-destination }}
+        clean: false
+        single-commit: false
+
+    # Retry once on push conflict (concurrent deployments from parallel jobs)
+    - name: Retry Deploy to GitHub Pages
+      if: steps.gh-pages-deploy.outcome == 'failure'
       uses: JamesIves/github-pages-deploy-action@v4
       with:
         token: ${{ inputs.github-token }}
