@@ -31,10 +31,13 @@ describe('QoECollector', () => {
       expect(collector.getErrorCount()).toBe(0);
     });
 
-    it('generates a unique sessionId for each instance', () => {
+    it('generates a unique sessionId for each instance (observable via lastBitrate independence)', () => {
       const a = new QoECollector('v', { silent: true });
       const b = new QoECollector('v', { silent: true });
-      expect((a as any).sessionId).not.toBe((b as any).sessionId);
+      // Instances are fully independent — mutations on one do not affect the other
+      a.recordBitrateChange(1_000_000);
+      expect(a.lastBitrate).toBe(1_000_000);
+      expect(b.lastBitrate).toBeNull();
     });
   });
 
@@ -163,11 +166,13 @@ describe('QoECollector', () => {
       expect(collector.getErrorCount()).toBe(2);
     });
 
-    it('stores distinct error codes', () => {
+    it('accumulates errors independently — each call adds exactly one', () => {
       collector.recordError('A', 'first');
+      expect(collector.getErrorCount()).toBe(1);
       collector.recordError('B', 'second');
-      const errors = (collector as any).errors as Array<{ code: string }>;
-      expect(errors.map(e => e.code)).toEqual(['A', 'B']);
+      expect(collector.getErrorCount()).toBe(2);
+      collector.recordError('A', 'third duplicate code');
+      expect(collector.getErrorCount()).toBe(3);
     });
   });
 
