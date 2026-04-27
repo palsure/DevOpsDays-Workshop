@@ -12,6 +12,7 @@ export function VideoTile({ video, onClick }: VideoTileProps) {
       onClick={() => onClick(video)}
       type="button"
       aria-label={`Play ${video.title}`}
+      data-testid={`tile-${video.id}`}
     >
       {/* Thumbnail */}
       <div className="tile-thumb" style={{ background: video.gradient }}>
