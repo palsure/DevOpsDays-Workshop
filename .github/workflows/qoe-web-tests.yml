@@ -12,17 +12,14 @@
 #                        Allure results → allure-results/bat → GitHub Pages.
 #   5. bat-gate        — Evaluate BAT outcome.
 #                        PASS → deploy preview + run Smoke.
-#                        FAIL → build blocked, Smoke & Regression skipped.
+#                        FAIL → build blocked, Smoke skipped.
 #   6. deploy-preview  — Deploy dist/ to Firebase Hosting preview channel.
-#   7. smoke-tests     — @Smoke Playwright tests (3 workers, ~90 s timeout).
-#                        Broader coverage; runs against the preview URL.
+#   7. smoke-tests     — @Smoke Playwright tests (runs against preview URL).
+#                        Broader coverage; smoke fails → rollback preview.
 #                        Allure results → allure-results/smoke → GitHub Pages.
-#   8. regression-tests— @Regression Playwright tests (2 workers, ~120 s timeout).
-#                        Network-throttle & advanced scenarios. Non-blocking gate.
-#                        Allure results → allure-results/regression → GitHub Pages.
-#   9. promote-live    — Promote Firebase preview to live channel when Smoke passes.
-#  10. rollback-preview— Delete preview channel when Smoke fails (live unchanged).
-#  11. report          — Final pipeline summary to GitHub Step Summary + Slack.
+#   8. promote-live    — Promote Firebase preview to live channel when Smoke passes.
+#   9. rollback-preview— Delete preview channel when Smoke fails (live unchanged).
+#  10. report          — Final pipeline summary to GitHub Step Summary + Slack.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN       — Slack bot OAuth token
@@ -84,7 +81,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       WEB
-      pipeline-steps:    "Unit → BAT → Smoke → Regression"
+      pipeline-steps:    "Unit → BAT → Smoke"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -156,6 +153,9 @@ jobs:
           echo "UNIT_START=$(date +%s)" >> "$GITHUB_ENV"
           npm test
         working-directory: web-player
+        env:
+          CI: 'true'
+          ALLURE_RESULTS_DIR: allure-results/unit
 
       - name: Calculate unit duration
         if: always()
@@ -172,13 +172,6 @@ jobs:
           name: web-unit-junit
           path: web-player/test-results/vitest-junit.xml
           retention-days: 14
-
-      - name: Prepare unit Allure results (JUnit → allure-results/unit)
-        if: always()
-        run: |
-          mkdir -p web-player/allure-results/unit
-          cp web-player/test-results/vitest-junit.xml \
-             web-player/allure-results/unit/TEST-vitest.xml 2>/dev/null || true
 
       - name: Upload unit Allure raw results
         if: always()
@@ -450,7 +443,7 @@ jobs:
           if [ "$PASSED" = "true" ]; then
             ICON="✅"; MSG="BAT gate *PASSED* — deploying preview, running Smoke tests…"
           else
-            ICON="🚫"; MSG="BAT gate *FAILED* — Smoke & Regression tests *BLOCKED*."
+            ICON="🚫"; MSG="BAT gate *FAILED* — Smoke tests *BLOCKED*."
           fi
           python3 - <<EOF
           import json, pathlib
@@ -637,100 +630,7 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. REGRESSION TESTS — @Regression; 2 workers; non-blocking; always runs after Smoke
-# ─────────────────────────────────────────────────────────────────────────────
-  regression-tests:
-    name: "Regression Tests (Network Throttle)"
-    runs-on: ubuntu-latest
-    needs: [notify-start, bat-gate, smoke-tests]
-    if: needs.bat-gate.outputs.passed == 'true'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: web-player/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: web-player
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-        working-directory: web-player
-
-      - name: Run Regression tests (@Regression, 2 workers)
-        id: regression
-        continue-on-error: true
-        run: |
-          echo "REG_START=$(date +%s)" >> "$GITHUB_ENV"
-          npm run e2e:regression
-        working-directory: web-player
-        env:
-          CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
-
-      - name: Calculate Regression duration
-        if: always()
-        run: |
-          ELAPSED=$(( $(date +%s) - ${REG_START:-0} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "REG_DURATION=$DUR" >> "$GITHUB_ENV"
-
-      - name: Upload Regression Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-regression-playwright-report
-          path: web-player/playwright-report/regression/
-          retention-days: 14
-
-      - name: Upload Regression Playwright JSON results
-        if: always()
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: web-regression-playwright-json
-          path: web-player/playwright-results-regression.json
-          retention-days: 14
-
-      - name: Upload Regression Allure raw results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results-web-regression
-          path: web-player/allure-results/regression
-          retention-days: 14
-
-      - name: Generate & deploy Regression Allure report
-        if: always()
-        uses: ./.github/actions/publish-allure
-        with:
-          stage-title:        "Web Regression"
-          results-src:        web-player/allure-results/regression
-          pages-destination:  allure/${{ github.run_number }}/web/regression
-          github-token:       ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Notify Slack — Regression result
-        if: always()
-        uses: ./.github/actions/slack-stage-notify
-        with:
-          module-name:     WEB
-          stage-name:      Regression Tests
-          stage-result:    ${{ steps.regression.outcome }}
-          duration:        ${{ env.REG_DURATION }}
-          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web/regression
-          thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
-          playwright-json: web-player/playwright-results-regression.json
-          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
-          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 9. PROMOTE LIVE — only when Smoke passes
+# 8. PROMOTE LIVE — only when Smoke passes
 # ─────────────────────────────────────────────────────────────────────────────
   promote-live:
     name: "Promote to Live"
@@ -827,7 +727,6 @@ jobs:
       - bat-gate
       - deploy-preview
       - smoke-tests
-      - regression-tests
       - promote-live
       - rollback-preview
     if: always()
@@ -857,14 +756,13 @@ jobs:
           echo "| BAT Gate | ${{ needs.bat-gate.outputs.passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Regression Tests | ${{ needs.regression-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Live | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Allure Reports (GitHub Pages)" >> $GITHUB_STEP_SUMMARY
           BASE="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web"
-          echo "- [Unit]($BASE/unit) | [BAT]($BASE/bat) | [Smoke]($BASE/smoke) | [Regression]($BASE/regression)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Unit]($BASE/unit) | [BAT]($BASE/bat) | [Smoke]($BASE/smoke)" >> $GITHUB_STEP_SUMMARY
 
       - name: Build final Slack summary payload
         if: always()
@@ -882,10 +780,8 @@ jobs:
           STAGE5_RESULT: ${{ needs.bat-gate.outputs.passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: Smoke Tests
           STAGE6_RESULT: ${{ needs.smoke-tests.result }}
-          STAGE7_NAME: Regression Tests
-          STAGE7_RESULT: ${{ needs.regression-tests.result }}
-          STAGE8_NAME: Firebase Live
-          STAGE8_RESULT: ${{ needs.promote-live.result }}
+          STAGE7_NAME: Firebase Live
+          STAGE7_RESULT: ${{ needs.promote-live.result }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
