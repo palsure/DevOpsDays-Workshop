@@ -49,6 +49,12 @@ async function assertNoNetworkIssues(
 
 test.describe('QoE quality gates (workshop demos)', () => {
 
+  test.beforeEach(async ({ page }) => {
+    // Navigate to home page first — captures full navigation flow in video recording
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+  });
+
   test('baseline: first frame within generous budget', { tag: ['@BAT'] }, async ({ page, networkCapture }) => {
     await allure.feature('Time to First Frame');
     await allure.story('Baseline (reference stream)');

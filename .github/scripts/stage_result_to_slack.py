@@ -124,6 +124,7 @@ def main() -> int:
     junit_dir    = os.environ.get("JUNIT_DIR", "")
     pw_json      = os.environ.get("PLAYWRIGHT_JSON", "")
     report_url   = os.environ.get("REPORT_URL", "")
+    link_label   = os.environ.get("LINK_LABEL", ":bar_chart: View Report")
     stage_result = os.environ.get("STAGE_RESULT", "unknown")
     thread_ts    = os.environ.get("THREAD_TS", "")
     duration_raw = os.environ.get("DURATION", "")
@@ -184,11 +185,12 @@ def main() -> int:
 
     # ── Stats text ────────────────────────────────────────────────────────────
     if has_stats:
+        # Inline pass rate next to the passed count: "Passed: 58 (100%)"
+        passed_str = f"{passed} ({pct(passed, total)})"
         stats_text = (
             f"{icon}  "
-            f"*Passed:* {passed}  |  *Failed:* {failed}  |  "
-            f"*Skipped:* {skipped}  |  *Total:* {total}  |  "
-            f"*Pass Rate:* {pct(passed, total)}"
+            f"*Passed:* {passed_str}  |  *Failed:* {failed}  |  "
+            f"*Skipped:* {skipped}  |  *Total:* {total}"
         )
     else:
         stats_text = f"{icon}  *Result:* {verdict}"
@@ -196,24 +198,18 @@ def main() -> int:
     # ── Footer ────────────────────────────────────────────────────────────────
     footer_parts = [f"<{commit_url}|{sha}>  •  {build_label}"]
     if report_url:
-        footer_parts.append(f"<{report_url}|:bar_chart: View Report>")
+        footer_parts.append(f"<{report_url}|{link_label}>")
     footer_parts.append(f"<{run_url}|:arrow_forward: View Run>")
     footer_text = "    ".join(footer_parts)
 
     # ── Payload ───────────────────────────────────────────────────────────────
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
-    stage_icon = {
-        "PASSED":    "✅",
-        "FAILED":    "❌",
-        "SKIPPED":   "⏭",
-        "CANCELLED": "⏭",
-    }.get(verdict, "⏭")
-
+    # No tick/cross prefix — the colored circle in stats_text is sufficient signal
     header_text = (
-        f"{stage_icon} [{module}] {stage} — {verdict}  |  Duration: {duration_str}"
+        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
         if duration_str
-        else f"{stage_icon} [{module}] {stage} — {verdict}  |  {build_label}"
+        else f"[{module}] {stage} — {verdict}  |  {build_label}"
     )
 
     payload: dict = {

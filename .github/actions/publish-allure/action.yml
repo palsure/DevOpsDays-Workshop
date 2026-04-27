@@ -21,9 +21,24 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache Allure CLI
+      id: allure-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/allure-cli
+        key: allure-cli-${{ runner.os }}-2.29.0
+
     - name: Install Allure CLI
       shell: bash
-      run: npm install -g allure-commandline
+      run: |
+        ALLURE_DIR="${{ runner.temp }}/allure-cli"
+        if [ -f "$ALLURE_DIR/bin/allure" ]; then
+          echo "✅ Allure CLI restored from cache"
+        else
+          echo "📦 Installing allure-commandline@2.29.0"
+          npm install -g allure-commandline@2.29.0 --prefix "$ALLURE_DIR"
+        fi
+        echo "$ALLURE_DIR/bin" >> "$GITHUB_PATH"
 
     - name: Generate Allure report
       shell: bash

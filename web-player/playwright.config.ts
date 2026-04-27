@@ -52,7 +52,9 @@ const LAB_PROVIDER = (process.env.PLAYWRIGHT_LAB_PROVIDER ?? 'browserstack').toL
 const IS_LAB       = RUN_MODE === 'lab';
 
 const BASE_URL           = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173';
-const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL;
+// In CI, never launch a webServer — the runner must provide the target URL (Firebase or local serve).
+// Locally, webServer is started automatically when PLAYWRIGHT_BASE_URL is not set.
+const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL || !!process.env.CI;
 
 // ── Test stage — controls allure output folder and worker count ───────────────
 // Set PLAYWRIGHT_STAGE=bat | smoke | regression (default: e2e)
@@ -70,7 +72,8 @@ const STAGE_TIMEOUT: Record<string, number> = {
   e2e:   90_000,
 };
 
-const stageWorkers  = IS_LAB ? 1 : (process.env.CI ? 1 : STAGE_WORKERS[STAGE]);
+// In CI, respect stage-specific parallelism; fall back to 1 only when no stage value is set.
+const stageWorkers  = IS_LAB ? 1 : (STAGE_WORKERS[STAGE] ?? (process.env.CI ? 1 : undefined));
 const stageTimeout  = STAGE_TIMEOUT[STAGE] ?? 90_000;
 const allureFolder  = `allure-results/${STAGE}`;
 
@@ -140,7 +143,9 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: !IS_LAB,
   forbidOnly: !!process.env.CI,
-  retries:  process.env.CI ? 1 : 0,
+  // BAT keeps 1 retry in CI for resilience; Smoke has 0 retries so Allure
+  // counts match Playwright JSON stats (retries create duplicate Allure entries).
+  retries: process.env.CI ? (STAGE === 'bat' ? 1 : 0) : 0,
   workers:  stageWorkers,
   timeout:  stageTimeout,
 
