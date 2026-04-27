@@ -4,9 +4,10 @@
 #   0. notify-start    — Post "build started" to Slack; capture thread_ts + start_epoch.
 #   1. build  ┐        — tsc + vite build; produces deployable dist/ artifact.
 #   2. unit   ┘        — Both run IN PARALLEL (fail-fast). Vitest gate (≥80%) inlined.
-#   3. bat-tests       — @BAT Playwright tests (4 workers). Gate inlined.
-#                        Waits for BOTH build AND unit-tests gate to pass.
-#   4. deploy-preview  — Firebase preview channel deployed after BAT gate passes.
+#   3. deploy-preview  — Firebase preview channel deployed right after build.
+#                        BAT tests run against this real URL (no localhost serve).
+#   4. bat-tests       — @BAT Playwright tests (4 workers) against preview URL.
+#                        Gate inlined. Waits for unit-tests gate + deploy-preview.
 #   5. promote-live    — Promotes preview → live RIGHT AFTER BAT gate passes.
 #                        Trusted deployment: BAT is sufficient for promotion.
 #   6. report  ──────  — Fires after promote-live. Pipeline marks complete here.
@@ -75,7 +76,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       WEB
-      pipeline-steps:    "Build ∥ Unit → BAT → Deploy → Promote → Smoke (async)"
+      pipeline-steps:    "Build ∥ Unit → Deploy Preview → BAT → Promote → Smoke (async)"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -283,8 +284,8 @@ jobs:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [notify-start, build, unit-tests]
-    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    needs: [notify-start, deploy-preview, unit-tests]
+    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.deploy-preview.result == 'success'
     outputs:
       gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
@@ -308,34 +309,13 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web-player/dist
-
-      - name: Install static file server
-        run: npm install -g serve
-
-      - name: Serve dist/ on port 3000
-        run: |
-          serve web-player/dist -l 3000 &
-          echo "SERVE_PID=$!" >> "$GITHUB_ENV"
-          echo "Waiting for server on port 3000…"
-          for i in $(seq 1 15); do
-            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
-              echo "✅ Server ready (attempt $i)"; exit 0
-            fi
-            sleep 1
-          done
-          echo "❌ Server not ready after 15s"; exit 1
-
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
         run: npm run e2e:bat
         working-directory: web-player
         env:
           CI: 'true'
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
 
       - name: Calculate BAT duration
         if: always()
@@ -346,10 +326,6 @@ jobs:
             [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
             echo "BAT_DURATION=$DUR" >> "$GITHUB_ENV"
           fi
-
-      - name: Stop dev server
-        if: always()
-        run: kill "$SERVE_PID" 2>/dev/null || true
 
       - name: Upload BAT Playwright report
         if: always()
@@ -450,8 +426,8 @@ jobs:
     name: "Deploy Firebase Preview"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, build, bat-tests]
-    if: always() && needs.bat-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    needs: [notify-start, build]
+    if: always() && needs.build.result == 'success'
     outputs:
       preview_url: ${{ steps.resolve-url.outputs.preview_url }}
       channel:     ${{ steps.resolve-url.outputs.channel }}
@@ -787,7 +763,7 @@ jobs:
           echo "| BAT Gate | ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Live Promotion | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Smoke Tests | async (validating live) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | 🔄 In Progress (async) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -813,6 +789,8 @@ jobs:
           STAGE6_RESULT: ${{ needs.deploy-preview.result }}
           STAGE7_NAME: Firebase Live Promotion
           STAGE7_RESULT: ${{ needs.promote-live.result }}
+          STAGE8_NAME: Smoke Tests
+          STAGE8_RESULT: in-progress
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
