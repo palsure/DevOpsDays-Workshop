@@ -477,26 +477,36 @@ jobs:
           TOKEN="${{ secrets.FIREBASE_TOKEN }}"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
 
-          # Capture all output (stdout + stderr) — Firebase always prints the
-          # preview URL in human-readable form regardless of --json flag behaviour.
-          echo "🚀 Deploying channel: $CHANNEL"
+          echo "🚀 Deploying channel: $CHANNEL to project: $PROJECT"
           OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
             --expires 2h \
             --project "$PROJECT" \
             --token "$TOKEN" 2>&1) || { echo "$OUTPUT"; echo "❌ Firebase deploy failed"; exit 1; }
-
           echo "$OUTPUT"
 
+          # Strategy 1: grep deploy output for preview channel URL pattern
           # Firebase prints: "Channel URL (project): https://project--channel-hash.web.app"
-          # Pattern 1: preview channel URL  (project--channel-hash form)
           URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9-]+--[a-zA-Z0-9-]+\.web\.app' | head -1 || true)
-          # Pattern 2: any .web.app or .firebaseapp.com HTTPS URL
+
+          # Strategy 2: any Firebase HTTPS URL in the output
           if [ -z "$URL" ]; then
             URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
           fi
 
+          # Strategy 3: query the channel list — clean JSON, most reliable
+          if [ -z "$URL" ]; then
+            echo "⚠️  URL not in deploy output — querying channel list..."
+            URL=$(firebase hosting:channel:list \
+              --project "$PROJECT" \
+              --token "$TOKEN" \
+              --json 2>/dev/null \
+              | jq -r --arg ch "$CHANNEL" \
+                '.result.channels[]? | select(.name | endswith("/"+$ch)) | .url // empty' \
+              2>/dev/null | head -1 || true)
+          fi
+
           echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "✅ Preview URL: ${URL:-<not extracted>}"
+          echo "✅ Preview URL: ${URL:-<not extracted — see output above>}"
         working-directory: web-player
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
