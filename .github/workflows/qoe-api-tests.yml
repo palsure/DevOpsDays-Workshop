@@ -42,7 +42,17 @@ on:
   workflow_dispatch:
     inputs:
       skip_tests:
-        description: 'Skip tests and bypass quality gate (hotfix mode)'
+        description: 'Skip ALL tests — bypass every gate and deploy immediately (full hotfix)'
+        required: false
+        default: false
+        type: boolean
+      skip_unit_tests:
+        description: 'Skip Unit Tests & gate — go straight to Deploy + BAT (fallback deploy)'
+        required: false
+        default: false
+        type: boolean
+      skip_bat:
+        description: 'Skip BAT Tests & gate — go straight to Smoke (post-deploy fallback)'
         required: false
         default: false
         type: boolean
@@ -123,7 +133,7 @@ jobs:
     name: Unit Tests (pre-deploy)
     runs-on: ubuntu-latest
     needs: notify-start
-    if: inputs.skip_tests != true
+    if: inputs.skip_tests != true && inputs.skip_unit_tests != true
     outputs:
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
 
@@ -261,10 +271,11 @@ jobs:
           QUALITY_GATE_THRESHOLD: ${{ env.QUALITY_GATE_THRESHOLD }}
         run: |
           SKIP="${{ inputs.skip_tests }}"
+          SKIP_UNIT="${{ inputs.skip_unit_tests }}"
           UNIT="${{ needs.unit-tests.result }}"
 
-          if [ "$SKIP" = "true" ]; then
-            echo "⚡ Force-publish mode — unit gate bypassed"
+          if [ "$SKIP" = "true" ] || [ "$SKIP_UNIT" = "true" ]; then
+            echo "⚡ Unit tests skipped — gate bypassed (skip_tests=$SKIP, skip_unit_tests=$SKIP_UNIT)"
             echo "passed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -452,7 +463,7 @@ jobs:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
     needs: [notify-start, unit-tests, unit-gate, deploy]
-    if: inputs.skip_tests != true && needs.deploy.result == 'success'
+    if: inputs.skip_tests != true && inputs.skip_bat != true && needs.deploy.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
@@ -572,10 +583,11 @@ jobs:
         name: Evaluate BAT gate
         run: |
           SKIP="${{ inputs.skip_tests }}"
+          SKIP_BAT="${{ inputs.skip_bat }}"
           BAT="${{ needs.bat-tests.result }}"
 
-          if [ "$SKIP" = "true" ]; then
-            echo "⚡ Force-publish mode — BAT skipped, gate bypassed"
+          if [ "$SKIP" = "true" ] || [ "$SKIP_BAT" = "true" ]; then
+            echo "⚡ BAT tests skipped — gate bypassed (skip_tests=$SKIP, skip_bat=$SKIP_BAT)"
             echo "passed=true" >> "$GITHUB_OUTPUT"
           elif [ "$BAT" = "success" ]; then
             echo "✅ BAT gate PASSED — all Build Acceptance Tests succeeded"
