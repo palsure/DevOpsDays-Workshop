@@ -114,6 +114,7 @@ def main() -> int:
         header_text = f"[{module}] Build Completed  |  {verdict_label}"
 
     payload = {
+        "text": header_text,
         "unfurl_links": False,
         "unfurl_media": False,
         "blocks": [

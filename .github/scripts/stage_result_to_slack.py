@@ -187,7 +187,14 @@ def main() -> int:
     # ── Payload ───────────────────────────────────────────────────────────────
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
+    header_text = (
+        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
+        if duration_str
+        else f"[{module}] {stage} — {verdict}  |  {build_label}"
+    )
+
     payload: dict = {
+        "text": header_text,
         "unfurl_links": False,
         "unfurl_media": False,
         "blocks": [
@@ -195,11 +202,7 @@ def main() -> int:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": (
-                        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
-                        if duration_str
-                        else f"[{module}] {stage} — {verdict}  |  {build_label}"
-                    ),
+                    "text": header_text,
                     "emoji": True,
                 },
             },
