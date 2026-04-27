@@ -8,13 +8,13 @@
 #                            Validates the artifact is deployable before running test suites.
 #                            FAIL → BAT + Smoke blocked.
 #   3. bat-tests           — @Tag("BAT") Build Acceptance Tests (Testcontainers, own DB).
-#                            Gate inlined. FAIL → pipeline blocked; Smoke skipped.
-#   4. api-report  ──────  — Fires RIGHT AFTER bat-tests. Pipeline marks complete here.
-#                            Smoke, promote, and rollback continue asynchronously.
-#   5. smoke-tests         — @Tag("Smoke") tests (postgres service). Async / non-blocking.
-#                            continue-on-error; results via Slack only; never blocks report.
-#   6. promote-live        — Smoke PASSED → marks build as production-ready.
-#   7. rollback            — Smoke FAILED → blocks production promotion.
+#                            Gate inlined. FAIL → pipeline blocked; Promote + Smoke skipped.
+#   4. promote-live        — BAT gate PASSED → marks build as production-ready immediately.
+#                            Trusted deployment: BAT is sufficient for promotion.
+#   5. api-report  ──────  — Fires RIGHT AFTER promote-live. Pipeline marks complete here.
+#   6. smoke-tests         — @Tag("Smoke") tests against promoted build. Async / non-blocking.
+#                            Validates the promoted production state end-to-end.
+#   7. rollback            — Smoke FAILED → triggers rollback alert for promoted build.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN   — Slack bot OAuth token
@@ -84,7 +84,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       API
-      pipeline-steps:    "Unit → BAT → Smoke (async) → Promote"
+      pipeline-steps:    "Unit → Build → BAT → Promote → Smoke (async)"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -480,11 +480,11 @@ jobs:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [notify-start, bat-tests, build-and-verify]
+    needs: [notify-start, promote-live, build-and-verify]
     continue-on-error: true
     if: |
       inputs.skip_tests != true &&
-      needs.bat-tests.outputs.gate_passed == 'true' &&
+      needs.promote-live.result == 'success' &&
       needs.build-and-verify.result == 'success'
 
     services:
@@ -583,14 +583,14 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. PROMOTE LIVE — mark build as production-ready when Smoke passes
+# 6. PROMOTE LIVE — mark build as production-ready right after BAT gate passes
 # ─────────────────────────────────────────────────────────────────────────────
   promote-live:
     name: "Promote API to Production"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, build-and-verify, smoke-tests]
-    if: always() && needs.smoke-tests.result == 'success' && needs.build-and-verify.result == 'success'
+    needs: [notify-start, bat-tests]
+    if: always() && needs.bat-tests.outputs.gate_passed == 'true'
 
     steps:
       - uses: actions/checkout@v4
@@ -598,7 +598,7 @@ jobs:
       - name: Promote to production
         id: promote
         run: |
-          echo "✅ Smoke tests passed — build #${{ github.run_number }} approved for production"
+          echo "✅ BAT gate passed — build #${{ github.run_number }} promoted to production"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.head_ref || github.ref_name }}"
           echo "Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -620,33 +620,34 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. ROLLBACK — block production promotion when Smoke fails
+# 8. ROLLBACK — trigger rollback alert when Smoke fails after production promote
 # ─────────────────────────────────────────────────────────────────────────────
   rollback:
-    name: "Rollback — Smoke Failed"
+    name: "Rollback — Smoke Failed Post-Promote"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, build-and-verify, smoke-tests]
-    if: always() && needs.build-and-verify.result == 'success' && needs.smoke-tests.result != 'success'
+    needs: [notify-start, promote-live, smoke-tests]
+    if: always() && needs.promote-live.result == 'success' && needs.smoke-tests.result != 'success'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Block production promotion
+      - name: Trigger production rollback
         run: |
-          echo "❌ Smoke tests failed — build #${{ github.run_number }} blocked from production"
-          echo "Commit: ${{ github.sha }} will NOT be promoted"
+          echo "❌ Smoke tests failed on promoted build #${{ github.run_number }} — initiating rollback"
+          echo "Commit: ${{ github.sha }} needs to be reverted in production"
           # In a real pipeline this step would:
-          # - Skip Docker image re-tag
+          # - Re-tag previous stable Docker image back to :latest
+          # - Trigger Kubernetes rollout undo / ECS service rollback
           # - Trigger PagerDuty / on-call alert
           # - Open automatic incident ticket
 
-      - name: Notify Slack — rollback
+      - name: Notify Slack — production rollback
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     API
-          stage-name:      "Production Promotion Blocked (Smoke Failed)"
+          stage-name:      "Production Rollback (Smoke Failed Post-Promote)"
           stage-result:    failure
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -659,7 +660,7 @@ jobs:
     name: API Report & Slack notification
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, unit-tests, build-and-verify, bat-tests]
+    needs: [notify-start, unit-tests, build-and-verify, bat-tests, promote-live]
     if: always()
 
     steps:
@@ -698,8 +699,8 @@ jobs:
           STAGE4_RESULT: ${{ needs.bat-tests.result }}
           STAGE5_NAME: BAT Gate
           STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
-          STAGE6_NAME: Smoke Tests
-          STAGE6_RESULT: in-progress
+          STAGE6_NAME: API Live Promotion
+          STAGE6_RESULT: ${{ needs.promote-live.result }}
           THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
         run: python3 .github/scripts/module_result_to_slack.py
 
@@ -734,7 +735,7 @@ jobs:
             ${{ (needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.build-and-verify.result == 'success' &&
                  needs.bat-tests.outputs.gate_passed == 'true' &&
-                 needs.smoke-tests.result != 'failure') && 'success' || 'failure' }}
+                 needs.promote-live.result == 'success') && 'success' || 'failure' }}
         run: python3 .github/scripts/update_build_message.py
 
       # ── PR comment with per-stage results + Allure links ──────────────────

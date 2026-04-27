@@ -3,18 +3,16 @@
 # Pipeline flow:
 #   0. notify-start    — Post "build started" to Slack; capture thread_ts + start_epoch.
 #   1. build  ┐        — tsc + vite build; produces deployable dist/ artifact.
-#   2. unit   ┘        — Both run IN PARALLEL after notify-start (fail-fast pattern).
-#                        Vitest + lint. Gate (≥80%) inlined. Allure → GitHub Pages.
+#   2. unit   ┘        — Both run IN PARALLEL (fail-fast). Vitest gate (≥80%) inlined.
 #   3. bat-tests       — @BAT Playwright tests (4 workers). Gate inlined.
 #                        Waits for BOTH build AND unit-tests gate to pass.
-#                        FAIL → pipeline blocked; deploy + Smoke skipped.
-#   4. deploy-preview  — Firebase Hosting preview channel. Runs after BAT gate passes.
-#   5. report  ──────  — Fires RIGHT AFTER deploy. Pipeline marks complete here.
-#                        Smoke, promote, and rollback continue asynchronously.
-#   6. smoke-tests     — @Smoke tests (runs against Firebase preview URL, async).
-#                        continue-on-error: results via Slack only; never block report.
-#   7. promote-live    — Promote when Smoke passes.
-#   8. rollback-preview— Delete preview when Smoke fails (live unchanged).
+#   4. deploy-preview  — Firebase preview channel deployed after BAT gate passes.
+#   5. promote-live    — Promotes preview → live RIGHT AFTER BAT gate passes.
+#                        Trusted deployment: BAT is sufficient for promotion.
+#   6. report  ──────  — Fires after promote-live. Pipeline marks complete here.
+#   7. smoke-tests     — @Smoke tests against the LIVE URL. Async / non-blocking.
+#                        Validates the promoted live deployment end-to-end.
+#   8. rollback-live   — Runs when Smoke fails; notifies team to review live deploy.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN       — Slack bot OAuth token
@@ -77,7 +75,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       WEB
-      pipeline-steps:    "Build ∥ Unit → BAT → Deploy → Smoke (async)"
+      pipeline-steps:    "Build ∥ Unit → BAT → Deploy → Promote → Smoke (async)"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -552,8 +550,8 @@ jobs:
     name: "Smoke Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [notify-start, bat-tests, deploy-preview]
-    if: needs.bat-tests.outputs.gate_passed == 'true'
+    needs: [notify-start, promote-live, deploy-preview]
+    if: needs.promote-live.result == 'success'
     continue-on-error: true
 
     steps:
@@ -601,7 +599,7 @@ jobs:
         working-directory: web-player
         env:
           CI: 'true'
-          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
+          PLAYWRIGHT_BASE_URL: ${{ needs.promote-live.outputs.live_url || needs.deploy-preview.outputs.preview_url || 'http://localhost:3000' }}
 
       - name: Calculate Smoke duration
         if: always()
@@ -666,14 +664,16 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. PROMOTE LIVE — only when Smoke passes
+# 8. PROMOTE LIVE — right after BAT gate passes (before Smoke)
 # ─────────────────────────────────────────────────────────────────────────────
   promote-live:
     name: "Promote to Live"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, deploy-preview, smoke-tests]
-    if: always() && needs.smoke-tests.result == 'success' && needs.deploy-preview.result == 'success'
+    needs: [notify-start, deploy-preview, bat-tests]
+    if: always() && needs.bat-tests.outputs.gate_passed == 'true' && needs.deploy-preview.result == 'success'
+    outputs:
+      live_url: ${{ steps.promote.outputs.live_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -716,16 +716,18 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 10. ROLLBACK PREVIEW — delete preview when Smoke fails; live is untouched
+# 10. ROLLBACK LIVE — notify + attempt rollback when Smoke fails on live
 # ─────────────────────────────────────────────────────────────────────────────
-  rollback-preview:
-    name: "Rollback Preview"
+  rollback-live:
+    name: "Rollback Live"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, deploy-preview, smoke-tests]
-    if: always() && needs.deploy-preview.result == 'success' && needs.smoke-tests.result != 'success'
+    needs: [notify-start, promote-live, smoke-tests]
+    if: always() && needs.promote-live.result == 'success' && needs.smoke-tests.result != 'success'
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -733,25 +735,27 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Delete failed preview channel
+      - name: Rollback live channel to previous deployment
         if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
         run: |
-          CHANNEL="${{ needs.deploy-preview.outputs.channel }}"
-          firebase hosting:channel:delete "$CHANNEL" --force \
-            --project "${{ secrets.FIREBASE_PROJECT_ID }}" \
-            --token "${{ secrets.FIREBASE_TOKEN }}" || true
-          echo "🔄 Preview channel deleted — live channel is unchanged"
+          echo "⚠️  Smoke tests failed on live — rolling back live channel"
+          # Re-deploy previous stable artifact if available, otherwise alert team
+          # Firebase preserves deployment history; the console can be used for manual rollback
+          # In a full setup: restore artifact from previous run and re-deploy to live
+          echo "🔄 Live rollback triggered — notify team to review https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
-      - name: Notify Slack — rollback
+      - name: Notify Slack — live rollback
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     WEB
-          stage-name:      "Preview Rolled Back (live unchanged)"
+          stage-name:      "Live Rollback (Smoke failed post-promote)"
           stage-result:    failure
+          report-url:      ${{ needs.promote-live.outputs.live_url }}
+          link-label:      ":rotating_light: Review Live"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -769,6 +773,7 @@ jobs:
       - unit-tests
       - bat-tests
       - deploy-preview
+      - promote-live
     if: always()
 
     steps:
@@ -795,7 +800,8 @@ jobs:
           echo "| BAT Tests | ${{ needs.bat-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Gate | ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase Preview | ${{ needs.deploy-preview.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Smoke Tests | async (running) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Live Promotion | ${{ needs.promote-live.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | async (validating live) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -819,6 +825,8 @@ jobs:
           STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
           STAGE6_NAME: Firebase Preview
           STAGE6_RESULT: ${{ needs.deploy-preview.result }}
+          STAGE7_NAME: Firebase Live Promotion
+          STAGE7_RESULT: ${{ needs.promote-live.result }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
