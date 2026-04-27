@@ -203,10 +203,17 @@ def main() -> int:
     # ── Payload ───────────────────────────────────────────────────────────────
     channel_id = os.environ.get("SLACK_CHANNEL_ID", "")
 
+    stage_icon = {
+        "PASSED":    "✅",
+        "FAILED":    "❌",
+        "SKIPPED":   "⏭",
+        "CANCELLED": "⏭",
+    }.get(verdict, "⏭")
+
     header_text = (
-        f"[{module}] {stage} — {verdict}  |  Duration: {duration_str}"
+        f"{stage_icon} [{module}] {stage} — {verdict}  |  Duration: {duration_str}"
         if duration_str
-        else f"[{module}] {stage} — {verdict}  |  {build_label}"
+        else f"{stage_icon} [{module}] {stage} — {verdict}  |  {build_label}"
     )
 
     payload: dict = {

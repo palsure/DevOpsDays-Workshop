@@ -29,23 +29,26 @@ runs:
       shell: bash
       run: |
         mkdir -p stage-allure-report
+        # Ensure Jekyll ignores this directory (required for Allure's asset paths)
+        touch stage-allure-report/.nojekyll
         printf '<html><head><title>%s</title></head><body><h2>No results for %s — run #%s.</h2></body></html>\n' \
           "${{ inputs.stage-title }}" "${{ inputs.stage-title }}" "${{ github.run_number }}" \
           > stage-allure-report/index.html
         SRC="${{ inputs.results-src }}"
         if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
           allure generate "$SRC" -o stage-allure-report --clean \
-            && echo "✅ Allure report generated" \
-            || echo "⚠️ allure generate failed — placeholder kept"
+            && echo "✅ Allure report generated from $SRC" \
+            || echo "⚠️  allure generate failed — placeholder kept"
         else
-          echo "⚠️ No results found in $SRC — placeholder kept"
+          echo "⚠️  No results found in $SRC — placeholder kept"
         fi
 
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4
-      continue-on-error: true
+      uses: JamesIves/github-pages-deploy-action@v4
       with:
-        github_token: ${{ inputs.github-token }}
-        publish_dir: ./stage-allure-report
-        destination_dir: ${{ inputs.pages-destination }}
-        keep_files: true
+        token: ${{ inputs.github-token }}
+        branch: gh-pages
+        folder: stage-allure-report
+        target-folder: ${{ inputs.pages-destination }}
+        clean: false
+        single-commit: false

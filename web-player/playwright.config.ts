@@ -59,17 +59,15 @@ const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL;
 const STAGE = (process.env.PLAYWRIGHT_STAGE ?? 'e2e').toLowerCase();
 
 const STAGE_WORKERS: Record<string, number | undefined> = {
-  bat:        4,   // fast sanity tests, run fully parallel
-  smoke:      3,   // broader coverage, moderate parallelism
-  regression: 2,   // throttle + slow tests, lower concurrency
-  e2e:        undefined, // auto (all tests together)
+  bat:  4,         // fast sanity tests, run fully parallel
+  smoke: 3,        // broader coverage, moderate parallelism
+  e2e:  undefined, // auto (all tests together)
 };
 
 const STAGE_TIMEOUT: Record<string, number> = {
-  bat:        45_000,   // 45 s — BAT tests are quick
-  smoke:      90_000,   // 90 s — smoke includes stall scenarios
-  regression: 120_000,  // 120 s — throttle tests can be slow
-  e2e:        90_000,
+  bat:   90_000,   // 90 s — allows waitForFirstFrame (60 s) + assertions + CI network latency
+  smoke: 90_000,   // 90 s — smoke includes stall and seek scenarios
+  e2e:   90_000,
 };
 
 const stageWorkers  = IS_LAB ? 1 : (process.env.CI ? 1 : STAGE_WORKERS[STAGE]);

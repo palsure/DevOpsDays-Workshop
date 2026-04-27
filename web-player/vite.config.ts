@@ -21,6 +21,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    reporters: ['default', ['junit', { outputFile: 'test-results/vitest-junit.xml' }]],
+    setupFiles: ['allure-vitest/setup'],
+    reporters: [
+      'default',
+      ['junit', { outputFile: 'test-results/vitest-junit.xml' }],
+      './allure-vitest-reporter.mjs',
+    ],
   },
 });
