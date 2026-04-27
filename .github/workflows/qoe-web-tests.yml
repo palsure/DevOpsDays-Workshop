@@ -160,10 +160,12 @@ jobs:
       - name: Calculate unit duration
         if: always()
         run: |
-          ELAPSED=$(( $(date +%s) - ${UNIT_START:-0} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "UNIT_DURATION=$DUR" >> "$GITHUB_ENV"
+          if [ "${UNIT_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - UNIT_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "UNIT_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Upload unit JUnit XML
         if: always()
@@ -328,18 +330,26 @@ jobs:
           name: web-dist
           path: web-player/dist
 
+      - name: Install static file server
+        run: npm install -g serve
+
       - name: Serve dist/ on port 3000
         run: |
-          npx serve web-player/dist -l 3000 &
+          echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
+          serve web-player/dist -l 3000 &
           echo "SERVE_PID=$!" >> "$GITHUB_ENV"
-          sleep 3
-          curl -sf http://localhost:3000 > /dev/null && echo "✅ Dev server ready" || (echo "❌ Server not ready"; exit 1)
+          echo "Waiting for server on port 3000…"
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "✅ Server ready (attempt $i)"; exit 0
+            fi
+            sleep 1
+          done
+          echo "❌ Server not ready after 15s"; exit 1
 
       - name: Run BAT tests (@BAT, 4 workers)
         id: bat
-        run: |
-          echo "BAT_START=$(date +%s)" >> "$GITHUB_ENV"
-          npm run e2e:bat
+        run: npm run e2e:bat
         working-directory: web-player
         env:
           CI: 'true'
@@ -347,10 +357,12 @@ jobs:
       - name: Calculate BAT duration
         if: always()
         run: |
-          ELAPSED=$(( $(date +%s) - ${BAT_START:-0} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "BAT_DURATION=$DUR" >> "$GITHUB_ENV"
+          if [ "${BAT_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - BAT_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "BAT_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Stop dev server
         if: always()
@@ -524,10 +536,12 @@ jobs:
       - name: Calculate deploy duration
         if: always()
         run: |
-          ELAPSED=$(( $(date +%s) - ${DEPLOY_START:-0} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "DEPLOY_DURATION=$DUR" >> "$GITHUB_ENV"
+          if [ "${DEPLOY_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - DEPLOY_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "DEPLOY_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Notify Slack — preview deploy result
         if: always()
@@ -582,10 +596,12 @@ jobs:
       - name: Calculate Smoke duration
         if: always()
         run: |
-          ELAPSED=$(( $(date +%s) - ${SMOKE_START:-0} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "SMOKE_DURATION=$DUR" >> "$GITHUB_ENV"
+          if [ "${SMOKE_START:-0}" -gt "0" ]; then
+            ELAPSED=$(( $(date +%s) - SMOKE_START ))
+            MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+            [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+            echo "SMOKE_DURATION=$DUR" >> "$GITHUB_ENV"
+          fi
 
       - name: Upload Smoke Playwright report
         if: always()
