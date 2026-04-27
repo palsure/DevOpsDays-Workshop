@@ -1,0 +1,167 @@
+[
+  {
+    "id": 1,
+    "url": "http://localhost:3000/?scenario=black_screen_pulse&e2e_autoplay=1",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 21,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 93
+  },
+  {
+    "id": 2,
+    "url": "http://localhost:3000/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 13,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 144
+  },
+  {
+    "id": 3,
+    "url": "http://localhost:3000/assets/index-2K0fXo0K.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 223,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 354
+  },
+  {
+    "id": 4,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 115,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 765
+  },
+  {
+    "id": 5,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 58,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 823
+  },
+  {
+    "id": 6,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 23,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 878
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 11,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1000
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 27,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1032
+  },
+  {
+    "id": 9,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 25,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1236
+  },
+  {
+    "id": 10,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 30,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1361
+  },
+  {
+    "id": 11,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 24,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1531
+  },
+  {
+    "id": 12,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 37,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1645
+  },
+  {
+    "id": 13,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 19,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1772
+  },
+  {
+    "id": 14,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 15,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1836
+  },
+  {
+    "id": 15,
+    "url": "http://localhost:3000/api/v1/metrics",
+    "method": "POST",
+    "status": 404,
+    "durationMs": 2,
+    "category": "qoe-api",
+    "failed": true,
+    "slow": false,
+    "startedAt": 5651
+  }
+]
