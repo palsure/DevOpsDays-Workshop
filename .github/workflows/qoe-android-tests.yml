@@ -1104,7 +1104,15 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
-          groups: internal-testers
+          # Group name(s) MUST already exist in Firebase Console
+          # (App Distribution → Testers & Groups). Override with repo
+          # Variable FIREBASE_INTERNAL_GROUPS if your project uses a
+          # different name (comma-separated for multiple groups).
+          # If you don't use groups, set repo Secret
+          # FIREBASE_INTERNAL_TESTERS to a comma-separated list of
+          # tester emails — Firebase resolves at least one of the two.
+          groups:  ${{ vars.FIREBASE_INTERNAL_GROUPS || 'internal-testers' }}
+          testers: ${{ secrets.FIREBASE_INTERNAL_TESTERS }}
           file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
             Internal canary — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
@@ -1179,7 +1187,15 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
-          groups: ${{ secrets.FIREBASE_TESTERS || 'external-testers' }}
+          # Override with repo Variable FIREBASE_PUBLIC_GROUPS, or use
+          # the existing FIREBASE_TESTERS secret (legacy name) for the
+          # group list. Either must reference groups that already exist
+          # in Firebase Console → App Distribution → Testers & Groups.
+          groups: >-
+            ${{ vars.FIREBASE_PUBLIC_GROUPS ||
+                secrets.FIREBASE_TESTERS ||
+                'external-testers' }}
+          testers: ${{ secrets.FIREBASE_PUBLIC_TESTERS }}
           file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
             Public release — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
