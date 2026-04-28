@@ -364,14 +364,57 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      # ── Speed up emulator boot on macos runners ──────────────────────────
+      # The system image + AVD definition are cached between runs so we avoid
+      # the 5-7 minute first-boot every time. With caching, subsequent runs
+      # boot from a snapshot in ~30-60s instead of timing out.
+      - name: Enable KVM/HVF check (macOS)
+        run: |
+          echo "Hypervisor framework check:"
+          sysctl kern.hv_support || true
+
+      - name: AVD cache
+        id: avd-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-bat-api33-x86_64-v2
+
+      - name: Create AVD snapshot (cache miss only)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 6000M
+          force-avd-creation: false
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: false
+          script: echo "✅ AVD snapshot generated and cached"
+
       - name: Run BAT tests on emulator
         id: bat
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 33
+          target: default
           arch: x86_64
-          profile: Nexus 6
-          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 6000M
+          force-avd-creation: false
+          emulator-boot-timeout: 1200
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
           script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --no-daemon
@@ -474,15 +517,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: AVD cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-bat-api33-x86_64-v2
+
       - name: Run Smoke tests on emulator
         id: smoke
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 33
+          target: default
           arch: x86_64
-          profile: Nexus 6
-          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 6000M
+          force-avd-creation: false
+          emulator-boot-timeout: 1200
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
           script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --no-daemon
@@ -562,15 +620,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: AVD cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-bat-api33-x86_64-v2
+
       - name: Run Regression tests on emulator
         id: regression
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 33
+          target: default
           arch: x86_64
-          profile: Nexus 6
-          emulator-options: -no-snapshot -no-window -no-boot-anim -gpu swiftshader_indirect
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 6000M
+          force-avd-creation: false
+          emulator-boot-timeout: 1200
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
           script: ./gradlew connectedDebugAndroidTest -PtestStage=regression --no-daemon

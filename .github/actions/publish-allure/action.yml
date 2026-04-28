@@ -90,26 +90,88 @@ runs:
           echo "⚠️  allure generate failed — placeholder kept"
         fi
 
-    - name: Deploy to GitHub Pages
-      id: gh-pages-deploy
-      continue-on-error: true
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        token: ${{ inputs.github-token }}
-        branch: gh-pages
-        folder: stage-allure-report
-        target-folder: ${{ inputs.pages-destination }}
-        clean: false
-        single-commit: false
+    # Robust gh-pages deploy:
+    #   • parallel workflows (web/android/ios) push to the SAME gh-pages branch.
+    #   • a per-workflow concurrency group cannot serialize across workflows, so
+    #     concurrent pushes race and one always loses.
+    #   • we retry up to 6 times with exponential backoff + random jitter so the
+    #     loser pulls the latest tip and re-pushes successfully.
+    - name: Deploy Allure to gh-pages (with retry & jitter)
+      shell: bash
+      env:
+        GH_TOKEN:      ${{ inputs.github-token }}
+        REPO:          ${{ github.repository }}
+        TARGET_FOLDER: ${{ inputs.pages-destination }}
+        SRC_FOLDER:    stage-allure-report
+        ACTOR:         ${{ github.actor }}
+        RUN_NUMBER:    ${{ github.run_number }}
+      run: |
+        set -uo pipefail
 
-    # Retry once on push conflict (concurrent deployments from parallel jobs)
-    - name: Retry Deploy to GitHub Pages
-      if: steps.gh-pages-deploy.outcome == 'failure'
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        token: ${{ inputs.github-token }}
-        branch: gh-pages
-        folder: stage-allure-report
-        target-folder: ${{ inputs.pages-destination }}
-        clean: false
-        single-commit: false
+        REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+        WORK_DIR="${RUNNER_TEMP}/gh-pages-deploy"
+        SRC_ABS="${GITHUB_WORKSPACE}/${SRC_FOLDER}"
+
+        if [ ! -d "$SRC_ABS" ]; then
+          echo "❌ Source folder not found: $SRC_ABS"
+          exit 1
+        fi
+
+        git config --global user.name  "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        MAX_ATTEMPTS=6
+        SUCCESS=0
+
+        for attempt in $(seq 1 $MAX_ATTEMPTS); do
+          if [ $attempt -gt 1 ]; then
+            # Exponential backoff: 5, 10, 20, 40, 80 seconds + random 0-15 jitter
+            BASE=$(( 5 * (1 << (attempt - 2)) ))
+            JITTER=$(( RANDOM % 16 ))
+            SLEEP_S=$(( BASE + JITTER ))
+            echo "::group::🔄 Attempt ${attempt}/${MAX_ATTEMPTS} — backing off ${SLEEP_S}s"
+            sleep $SLEEP_S
+            echo "::endgroup::"
+          fi
+
+          rm -rf "$WORK_DIR"
+
+          # Shallow-clone gh-pages (or initialize if it doesn't exist)
+          if git clone --depth 1 --branch gh-pages --quiet "$REPO_URL" "$WORK_DIR" 2>/dev/null; then
+            echo "✅ Cloned existing gh-pages branch (attempt ${attempt})"
+          else
+            echo "ℹ️  gh-pages branch missing — creating from scratch"
+            mkdir -p "$WORK_DIR"
+            ( cd "$WORK_DIR" && git init -q -b gh-pages && git remote add origin "$REPO_URL" )
+          fi
+
+          cd "$WORK_DIR"
+
+          # Copy the freshly-generated report into the target sub-folder.
+          # Wipe ONLY this stage's sub-folder (preserves siblings written by other workflows).
+          mkdir -p "$TARGET_FOLDER"
+          rm -rf "${TARGET_FOLDER:?}/"* "${TARGET_FOLDER:?}/".[!.]* 2>/dev/null || true
+          cp -R "$SRC_ABS/." "$TARGET_FOLDER/"
+
+          git add "$TARGET_FOLDER"
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to push (report already up-to-date)"
+            SUCCESS=1
+            break
+          fi
+
+          git commit -q -m "Allure: ${TARGET_FOLDER} (build #${RUN_NUMBER}, attempt ${attempt}) [skip ci]"
+
+          if git push --quiet origin gh-pages 2>&1; then
+            echo "✅ Deployed: https://$(echo "$REPO" | cut -d/ -f1).github.io/$(echo "$REPO" | cut -d/ -f2)/${TARGET_FOLDER}/"
+            SUCCESS=1
+            break
+          else
+            echo "⚠️  Push rejected (likely concurrent push from another workflow) — will retry"
+          fi
+        done
+
+        if [ "$SUCCESS" -ne 1 ]; then
+          echo "❌ Failed to deploy after ${MAX_ATTEMPTS} attempts"
+          exit 1
+        fi
