@@ -763,15 +763,17 @@ jobs:
         env:
           MODULE_NAME:    iOS
           STAGE1_NAME:    Unit Tests (XCTest)
-          STAGE1_RESULT:  ${{ needs.unit-tests.result }}
+          # Use gate output (actual test outcome) so cosmetic step failures
+          # like Allure-publish flakes don't poison the chain rendering.
+          STAGE1_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE2_NAME:    "Unit Gate (≥80%)"
-          STAGE2_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE2_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE3_NAME:    Build App
           STAGE3_RESULT:  ${{ needs.build-app.result }}
           STAGE4_NAME:    BAT Tests
-          STAGE4_RESULT:  ${{ needs.bat-e2e.result }}
+          STAGE4_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE5_NAME:    BAT Gate
-          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE6_NAME:    Smoke Tests
           STAGE6_RESULT:  ${{ needs.smoke-e2e.result }}
           TOTAL_DURATION:     ${{ env.TOTAL_DURATION }}

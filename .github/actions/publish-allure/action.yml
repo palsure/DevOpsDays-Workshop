@@ -172,6 +172,8 @@ runs:
         done
 
         if [ "$SUCCESS" -ne 1 ]; then
-          echo "❌ Failed to deploy after ${MAX_ATTEMPTS} attempts"
-          exit 1
+          echo "::warning title=Allure publish failed::Could not push Allure report to gh-pages after ${MAX_ATTEMPTS} attempts (likely persistent push contention). The test results are still valid; only the hosted report is missing."
+          # Do NOT exit non-zero — Allure hosting is cosmetic. Tests already
+          # passed/failed independently and the parent job's verdict must
+          # reflect the TEST outcome, not the report-publishing outcome.
         fi
