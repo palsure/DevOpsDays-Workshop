@@ -36,8 +36,13 @@ PASS_THRESHOLD = 80.0
 def parse_junit(junit_dir: str) -> tuple[int, int, int, int]:
     """Return (passed, failed, skipped, total) from JUnit XML files.
 
-    Supports both the TEST-*.xml naming convention (Gradle/Maven Surefire) and
-    the vitest-junit.xml output from Vitest's JUnit reporter.
+    Handles both common root shapes:
+      • root = <testsuite>            (Gradle TEST-*.xml, Maven Surefire)
+      • root = <testsuites>           (Swift `swift test --xunit-output`,
+                                       Jest, Vitest, Playwright, …)
+
+    For the latter we sum across every direct <testsuite> child, since the
+    aggregate counts are typically not present on the <testsuites> root.
     """
     total = passed = failed = skipped = 0
     patterns = [
@@ -53,13 +58,15 @@ def parse_junit(junit_dir: str) -> tuple[int, int, int, int]:
             seen.add(f)
             try:
                 root = ET.parse(f).getroot()
-                t  = int(root.attrib.get("tests",    0))
-                fa = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
-                s  = int(root.attrib.get("skipped",  0))
-                total   += t
-                failed  += fa
-                skipped += s
-                passed  += max(0, t - fa - s)
+                suites = root.findall("testsuite") if root.tag == "testsuites" else [root]
+                for s in suites:
+                    t  = int(s.attrib.get("tests",    0))
+                    fa = int(s.attrib.get("failures", 0)) + int(s.attrib.get("errors", 0))
+                    sk = int(s.attrib.get("skipped",  0))
+                    total   += t
+                    failed  += fa
+                    skipped += sk
+                    passed  += max(0, t - fa - sk)
             except Exception:
                 pass
     return passed, failed, skipped, total

@@ -254,30 +254,15 @@ jobs:
           EOF
 
       - name: Post unit gate decision to Slack
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          PASSED="${{ steps.unit-gate.outputs.gate_passed }}"
-          TS="${{ needs.notify-start.outputs.thread_ts }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
-          else
-            ICON="🚫"; MSG="Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
-          fi
-          python3 - <<EOF
-          import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
-          ]
-          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
-                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
-          pathlib.Path("unit-gate-payload.json").write_text(json.dumps(payload))
-          EOF
-          curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d @unit-gate-payload.json
+        if: always()
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      ${{ steps.unit-gate.outputs.gate_passed }}
+          proceed-message:  "Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
+          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
@@ -315,14 +300,17 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: web-player
 
-      - name: Confirm BAT target URL (must be Firebase Preview)
+      - name: Confirm BAT target URL (Firebase Preview)
         run: |
           URL="${{ needs.deploy-preview.outputs.preview_url }}"
-          echo "🔍 BAT target URL: ${URL:-<not set>}"
+          CHANNEL="${{ needs.deploy-preview.outputs.channel }}"
+          echo "🔍 deploy-preview.channel:     '$CHANNEL'"
+          echo "🔍 deploy-preview.preview_url: '${URL:-<empty>}'"
+          echo "🔍 URL length:                 ${#URL}"
           if [[ "$URL" != https://* ]]; then
             echo "❌ ERROR: Firebase Preview URL is required for BAT tests."
             echo "   Got: '${URL:-<empty>}'"
-            echo "   BAT tests validate the preview deployment — they must NOT run on localhost."
+            echo "   Set repo variable FIREBASE_PREVIEW_URL (see deploy-preview job logs)."
             exit 1
           fi
           echo "✅ BAT will run against Firebase Preview: $URL"
@@ -412,30 +400,15 @@ jobs:
           fi
 
       - name: Post BAT gate decision to Slack
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        run: |
-          PASSED="${{ steps.bat-gate.outputs.gate_passed }}"
-          TS="${{ needs.notify-start.outputs.thread_ts }}"
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$PASSED" = "true" ]; then
-            ICON="✅"; MSG="BAT gate *PASSED* — running Smoke tests…"
-          else
-            ICON="🚫"; MSG="BAT gate *FAILED* — Smoke tests *BLOCKED*."
-          fi
-          python3 - <<EOF
-          import json, pathlib
-          blocks = [
-            {"type": "section", "text": {"type": "mrkdwn", "text": "$ICON $MSG"}},
-            {"type": "context", "elements": [{"type": "mrkdwn", "text": "Build #${{ github.run_number }} · <$RUN_URL|View run>"}]}
-          ]
-          payload = {"channel": "${{ secrets.SLACK_CHANNEL_ID }}", "thread_ts": "$TS",
-                     "unfurl_links": False, "unfurl_media": False, "blocks": blocks}
-          pathlib.Path("bat-gate-payload.json").write_text(json.dumps(payload))
-          EOF
-          curl -sf -X POST https://slack.com/api/chat.postMessage \
-            -H "Authorization: Bearer ${{ env.SLACK_BOT_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d @bat-gate-payload.json
+        if: always()
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      ${{ steps.bat-gate.outputs.gate_passed }}
+          proceed-message:  "BAT gate *PASSED* — running Smoke tests…"
+          blocked-message:  "BAT gate *FAILED* — Smoke tests *BLOCKED*."
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. DEPLOY PREVIEW — Firebase Hosting preview channel (after BAT gate)
@@ -467,60 +440,65 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Deploy to preview channel
+      # Static preview URL strategy:
+      #   - Always deploys to the SAME channel name (default "staging")
+      #   - Firebase reuses the SAME URL for the same channel name across deploys
+      #   - URL is read from FIREBASE_PREVIEW_URL — accepts either a repo VARIABLE
+      #     (preferred, since URLs aren't secret) or a repo SECRET (also works)
+      #   - No URL extraction from CLI output — eliminates all flakiness
+      - name: Deploy to fixed preview channel
         id: resolve-url
         run: |
           echo "DEPLOY_START=$(date +%s)" >> "$GITHUB_ENV"
-          CHANNEL="build-${{ github.run_number }}"
-          PROJECT="$FIREBASE_PROJECT_ID"
-          TOKEN="$FIREBASE_TOKEN"
+          CHANNEL="${FIREBASE_CHANNEL_ID:-staging}"
+          PREVIEW_URL="$FIREBASE_PREVIEW_URL"
 
-          # Check credentials INSIDE the shell — step-level env: is reliable here,
-          # unlike the step `if:` condition which only sees job-level env.
-          if [ -z "$TOKEN" ] || [ -z "$PROJECT" ]; then
-            echo "⚠️  Firebase credentials not configured — skipping preview deploy."
-            echo "preview_url=http://localhost:3000" >> "$GITHUB_OUTPUT"
-            echo "channel=local-${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-            echo "PREVIEW_URL=http://localhost:3000" >> "$GITHUB_ENV"
-            exit 0
-          fi
+          echo "::group::🔍 Resolved configuration"
+          echo "Channel ID:           $CHANNEL"
+          echo "Preview URL (length): ${#PREVIEW_URL}"
+          echo "Preview URL:          ${PREVIEW_URL:-<not set>}"
+          echo "::endgroup::"
 
-          echo "🚀 Deploying channel: $CHANNEL to project: $PROJECT"
-          OUTPUT=$(firebase hosting:channel:deploy "$CHANNEL" \
-            --expires 2h \
-            --project "$PROJECT" \
-            --token "$TOKEN" 2>&1) || { echo "$OUTPUT"; echo "❌ Firebase deploy failed"; exit 1; }
-          echo "$OUTPUT"
+          # Write outputs IMMEDIATELY so they're available downstream even if a later command fails
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_URL=$PREVIEW_URL" >> "$GITHUB_ENV"
 
-          # Strategy 1: preview channel URL pattern (project--channel-hash.web.app)
-          URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9-]+--[a-zA-Z0-9-]+\.web\.app' | head -1 || true)
-          # Strategy 2: any Firebase HTTPS URL in the output
-          if [ -z "$URL" ]; then
-            URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.(web\.app|firebaseapp\.com)' | head -1 || true)
-          fi
-          # Strategy 3: query channel list — clean JSON source, independent of deploy output format
-          if [ -z "$URL" ]; then
-            echo "⚠️  URL not found in deploy output — querying channel list..."
-            URL=$(firebase hosting:channel:list \
-              --project "$PROJECT" --token "$TOKEN" --json 2>/dev/null \
-              | jq -r --arg ch "$CHANNEL" \
-                '.result.channels[]? | select(.name | endswith("/"+$ch)) | .url // empty' \
-              2>/dev/null | head -1 || true)
-          fi
-
-          if [ -z "$URL" ]; then
-            echo "❌ Could not extract preview URL from deploy output or channel list."
+          if [ -z "$FIREBASE_TOKEN" ] || [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "❌ FIREBASE_TOKEN or FIREBASE_PROJECT_ID secret missing."
             exit 1
           fi
 
-          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
-          echo "✅ Preview URL: $URL"
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "❌ FIREBASE_PREVIEW_URL is not set (checked both vars and secrets)."
+            echo "   First-time setup:"
+            echo "     1. firebase hosting:channel:deploy $CHANNEL --expires 30d --project $FIREBASE_PROJECT_ID"
+            echo "     2. Copy the URL it prints"
+            echo "     3. Add as repo VARIABLE (recommended): Settings → Secrets and variables → Actions → Variables → New"
+            echo "        Name:  FIREBASE_PREVIEW_URL"
+            echo "        Value: <the URL>"
+            echo "        (Also accepts repo SECRET with the same name)"
+            exit 1
+          fi
+
+          echo "🚀 Deploying to fixed channel: $CHANNEL"
+          firebase hosting:channel:deploy "$CHANNEL" \
+            --expires 30d \
+            --project "$FIREBASE_PROJECT_ID" \
+            --token "$FIREBASE_TOKEN"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "✅ PREVIEW URL: $PREVIEW_URL"
+          echo "════════════════════════════════════════════════════════════"
         working-directory: web-player
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_TOKEN:       ${{ secrets.FIREBASE_TOKEN }}
+          # Project ID is NOT secret (it appears in every public Firebase URL).
+          # Accepting from vars avoids GitHub redacting the URL output downstream.
+          FIREBASE_PROJECT_ID:  ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CHANNEL_ID:  ${{ vars.FIREBASE_CHANNEL_ID }}
+          FIREBASE_PREVIEW_URL: ${{ vars.FIREBASE_PREVIEW_URL || secrets.FIREBASE_PREVIEW_URL }}
 
       - name: Calculate deploy duration
         if: always()
@@ -686,22 +664,33 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Promote preview to live channel
+      - name: Promote preview channel to live
         id: promote
-        if: env.FIREBASE_TOKEN != '' && env.FIREBASE_PROJECT_ID != ''
         run: |
-          PROJECT="${{ secrets.FIREBASE_PROJECT_ID }}"
+          if [ -z "$FIREBASE_TOKEN" ] || [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "❌ FIREBASE_TOKEN or FIREBASE_PROJECT_ID secret missing."
+            exit 1
+          fi
           CHANNEL="${{ needs.deploy-preview.outputs.channel }}"
-          firebase hosting:clone "$PROJECT:$CHANNEL" "$PROJECT:live" \
-            --project "$PROJECT" --token "${{ secrets.FIREBASE_TOKEN }}"
-          firebase hosting:channel:delete "$CHANNEL" --force \
-            --project "$PROJECT" --token "${{ secrets.FIREBASE_TOKEN }}" || true
-          echo "🚀 Promoted build-${{ github.run_number }} to live"
-          echo "live_url=https://${{ secrets.FIREBASE_PROJECT_ID }}.web.app" >> "$GITHUB_OUTPUT"
+          LIVE_URL="https://$FIREBASE_PROJECT_ID.web.app"
+          echo "live_url=$LIVE_URL" >> "$GITHUB_OUTPUT"
+
+          # Clone the fixed staging channel content to the live channel.
+          # NOTE: do NOT delete the staging channel — it's reused on the next deploy
+          # so its URL stays static (the whole point of the fixed-channel approach).
+          firebase hosting:clone "$FIREBASE_PROJECT_ID:$CHANNEL" "$FIREBASE_PROJECT_ID:live" \
+            --project "$FIREBASE_PROJECT_ID" \
+            --token "$FIREBASE_TOKEN"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "🚀 Promoted $CHANNEL → live"
+          echo "🌐 LIVE URL: $LIVE_URL"
+          echo "════════════════════════════════════════════════════════════"
         working-directory: web-player
         env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_TOKEN:      ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
 
       - name: Notify Slack — promote result
         if: always()
@@ -825,51 +814,21 @@ jobs:
           WORKFLOW_START_EPOCH: ${{ needs.notify-start.outputs.start_epoch }}
         run: python3 .github/scripts/module_result_to_slack.py
 
-      - name: Inject thread_ts into summary payload
-        if: always() && needs.notify-start.outputs.thread_ts != ''
-        run: |
-          python3 - <<'EOF'
-          import json, pathlib
-          ts = "${{ needs.notify-start.outputs.thread_ts }}"
-          p = json.loads(pathlib.Path("module-slack-payload.json").read_text())
-          p["thread_ts"] = ts
-          pathlib.Path("module-slack-payload.json").write_text(json.dumps(p))
-          EOF
-
-      - name: Send overall summary Slack reply
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        continue-on-error: true
+      - name: Finalize Slack pipeline report
+        if: always()
+        uses: ./.github/actions/slack-pipeline-report
         with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: ./module-slack-payload.json
-
-      - name: Update initial Slack message with build outcome
-        if: always() && env.SLACK_BOT_TOKEN != '' && env.SLACK_CHANNEL_ID != ''
-        continue-on-error: true
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
-          THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
-          MODULE_NAME: WEB
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ENV_LABEL: ${{ env.ENV_LABEL }}
-          BUILD_VERDICT: >-
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          module-name:      WEB
+          build-verdict: >-
             ${{ (needs.build.result == 'success' &&
                  needs.unit-tests.result != 'failure' &&
                  needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.bat-tests.outputs.gate_passed == 'true' &&
                  needs.deploy-preview.result == 'success') && 'success' || 'failure' }}
-        run: python3 .github/scripts/update_build_message.py
+          env-label:        ${{ env.ENV_LABEL }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       # ── PR comment with per-stage results + Allure links ──────────────────
       - name: Download unit JUnit results

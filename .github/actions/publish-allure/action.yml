@@ -42,20 +42,52 @@ runs:
 
     - name: Generate Allure report
       shell: bash
+      env:
+        STAGE_TITLE:        ${{ inputs.stage-title }}
+        SRC:                ${{ inputs.results-src }}
+        GITHUB_WORKFLOW:    ${{ github.workflow }}
+        GITHUB_REPOSITORY:  ${{ github.repository }}
+        GITHUB_RUN_ID:      ${{ github.run_id }}
+        GITHUB_RUN_NUMBER:  ${{ github.run_number }}
+        GITHUB_SERVER_URL:  ${{ github.server_url }}
+        ALLURE_REPORT_NAME: ${{ inputs.stage-title }}
       run: |
         mkdir -p stage-allure-report
         # Ensure Jekyll ignores this directory (required for Allure's asset paths)
         touch stage-allure-report/.nojekyll
         printf '<html><head><title>%s</title></head><body><h2>No results for %s — run #%s.</h2></body></html>\n' \
-          "${{ inputs.stage-title }}" "${{ inputs.stage-title }}" "${{ github.run_number }}" \
+          "$STAGE_TITLE" "$STAGE_TITLE" "$GITHUB_RUN_NUMBER" \
           > stage-allure-report/index.html
-        SRC="${{ inputs.results-src }}"
-        if [ -d "$SRC" ] && [ "$(ls -A "$SRC" 2>/dev/null)" ]; then
-          allure generate "$SRC" -o stage-allure-report --clean \
-            && echo "✅ Allure report generated from $SRC" \
-            || echo "⚠️  allure generate failed — placeholder kept"
-        else
+
+        if [ ! -d "$SRC" ] || [ -z "$(ls -A "$SRC" 2>/dev/null)" ]; then
           echo "⚠️  No results found in $SRC — placeholder kept"
+          exit 0
+        fi
+
+        # Detect what we have under $SRC:
+        #   • any *-result.json → real Allure results (Android JUnit4 adapter,
+        #                         Web Allure reporter) — feed directly to allure
+        #   • only *.xml        → JUnit/xUnit (Swift `swift test --xunit-output`,
+        #                         plain XCTest) — convert to Allure JSON first
+        #                         so the report shows real test cases instead
+        #                         of the empty "Allure Report Unknown" page.
+        ALLURE_INPUT="$SRC"
+        HAS_ALLURE_JSON=$(find "$SRC" -type f -name '*-result.json' -print -quit 2>/dev/null)
+        HAS_JUNIT_XML=$(find "$SRC" -type f -name '*.xml' -print -quit 2>/dev/null)
+
+        if [ -z "$HAS_ALLURE_JSON" ] && [ -n "$HAS_JUNIT_XML" ]; then
+          echo "ℹ️  No Allure JSON in $SRC — converting JUnit XML to Allure format"
+          ALLURE_INPUT="$RUNNER_TEMP/allure-input"
+          rm -rf "$ALLURE_INPUT"
+          python3 "$GITHUB_ACTION_PATH/../../scripts/junit_to_allure.py" \
+            --input  "$SRC" \
+            --output "$ALLURE_INPUT"
+        fi
+
+        if allure generate "$ALLURE_INPUT" -o stage-allure-report --clean; then
+          echo "✅ Allure report generated from $ALLURE_INPUT"
+        else
+          echo "⚠️  allure generate failed — placeholder kept"
         fi
 
     - name: Deploy to GitHub Pages

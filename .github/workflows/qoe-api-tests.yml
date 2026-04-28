@@ -163,7 +163,7 @@ jobs:
         with:
           stage-title:        "Unit Tests"
           results-src:        backend-api/build/allure-results/unit
-          pages-destination:  allure/${{ github.run_number }}/unit
+          pages-destination:  allure/${{ github.run_number }}/api/unit
           github-token:       ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify Slack — unit test result
@@ -174,7 +174,7 @@ jobs:
           stage-name:      Unit Tests
           stage-result:    ${{ steps.unit.outcome }}
           duration:        ${{ env.UNIT_DURATION }}
-          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/unit
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/api/unit
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           junit-dir:       backend-api/build/test-results/unitTest
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -415,7 +415,7 @@ jobs:
         with:
           stage-title:        "BAT Tests"
           results-src:        backend-api/build/allure-results/bat
-          pages-destination:  allure/${{ github.run_number }}/bat
+          pages-destination:  allure/${{ github.run_number }}/api/bat
           github-token:       ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify Slack — BAT result
@@ -426,7 +426,7 @@ jobs:
           stage-name:      BAT
           stage-result:    ${{ steps.bat.outcome }}
           duration:        ${{ env.BAT_DURATION }}
-          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/bat
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/api/bat
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           junit-dir:       backend-api/build/test-results/batTest
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -561,7 +561,7 @@ jobs:
         with:
           stage-title:        "Smoke Tests"
           results-src:        backend-api/build/allure-results/smoke
-          pages-destination:  allure/${{ github.run_number }}/smoke
+          pages-destination:  allure/${{ github.run_number }}/api/smoke
           github-token:       ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify Slack — Smoke result
@@ -572,7 +572,7 @@ jobs:
           stage-name:      Smoke Tests
           stage-result:    ${{ steps.smoke.outcome }}
           duration:        ${{ env.SMOKE_DURATION }}
-          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/smoke
+          report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/api/smoke
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           junit-dir:       backend-api/build/test-results/smokeTest
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -805,7 +805,7 @@ jobs:
           JUNIT_UNIT_PATH:    artifacts/unit
           JUNIT_BAT_PATH:     artifacts/bat
           JUNIT_SMOKE_PATH:   artifacts/smoke
-          BASE_PAGES_URL:     https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}
+          BASE_PAGES_URL:     https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/api
         run: python3 .github/scripts/pr_summary_api.py
 
       - name: Post or update PR comment

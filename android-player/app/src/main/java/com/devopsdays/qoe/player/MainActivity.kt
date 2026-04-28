@@ -4,9 +4,11 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.devopsdays.qoe.player.services.QoECollector
@@ -20,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     private var qoeCollector: QoECollector? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
