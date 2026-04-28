@@ -1,27 +1,40 @@
 # Stream-QoE-App-Android
 #
-# Pipeline flow — Build is gated on Unit-test gate AND Lint passing
-# (industry-standard fail-fast — don't waste runner minutes building
-#  if the code didn't pass its own tests/lint):
+# Pipeline flow — internal release goes out as soon as the build is green
+# (Unit gate + Lint), BAT validates the artifact ALREADY on Firebase, and
+# only on a green BAT do we promote to the public channel + run Smoke
+# against the public release:
 #
 #   notify-start ──┬─→ unit-tests (gate ≥80%) ─┐
-#                  └─→ lint ───────────────────┴─→ build ─→ bat-e2e ─→ smoke-e2e
-#                                                              │
-#                                                              ▼
-#                                                       publish-internal
-#                                                              ▼
-#                                                       publish-public
+#                  └─→ lint ───────────────────┴─→ build APK
+#                                                     ▼
+#                                            publish-internal (Firebase)
+#                                                     ▼
+#                                            bat-e2e ─→ BAT gate
+#                                                     ▼ (gate passed)
+#                                            publish-public (Firebase)
+#                                                     ▼
+#                                              smoke-e2e
 #
 #   0. notify-start     — Post "build started" to Slack.
 #   1. unit-tests       — JUnit4 + MockK; inline unit gate (≥80%).
 #   2. lint             — Android Lint (runs in parallel with unit-tests).
-#   3. build            — Assemble debug APK; ONLY runs if unit gate passed AND lint passed.
-#   4. bat-e2e          — @BAT Espresso tests; dual-mode runner (see below).
-#   5. smoke-e2e        — @Smoke tests; after BAT gate passes; dual-mode runner.
-#   6. regression-e2e   — @Regression; nightly schedule only; continue-on-error.
-#   7. quality-gate     — Trigger if unit gate OR BAT gate failed; blocks publish.
-#   8. publish-internal — Firebase App Distribution (gated by unit AND BAT).
-#   9. publish-public   — Firebase App Distribution (public / testers).
+#   3. build            — Assemble debug APK + androidTest APK; gated on
+#                         unit gate AND lint passing.
+#   4. publish-internal — Canary release to Firebase internal-testers.
+#                         Runs immediately after build — internal-testers
+#                         are the audience that catches device issues.
+#   5. bat-e2e          — @BAT Espresso tests against the internally-released
+#                         build; dual-mode runner (LambdaTest / KVM emulator).
+#   5b. bat-skip-notice — Slack-only sibling for the SKIP_BAT path.
+#   6. quality-gate     — On HARD BAT failure: block public promotion.
+#                         (Internal release stays live; that is intentional.)
+#   7. publish-public   — Promote to public-testers ONLY after BAT pass
+#                         (or soft-gated skip). No more workflow_dispatch
+#                         constraint — promotion is automatic on green BAT.
+#   8. smoke-e2e        — @Smoke against the public-released build; runs
+#                         after publish-public. Dual-mode runner.
+#   9. regression-e2e   — @Regression; nightly schedule only; non-blocking.
 #  10. report           — Slack summary + update initial message.
 #
 # DUAL-MODE BAT/SMOKE RUNNER
@@ -103,6 +116,11 @@ env:
   ENV_LABEL: ${{ github.event.inputs.environment || 'STAGE' }}
   SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
   SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+  # Exposed at workflow level so the publish-internal / publish-public
+  # step-level `if: env.FIREBASE_TOKEN != ''` checks can see them.
+  # Step-level `if:` cannot access secrets directly nor a step's own env.
+  FIREBASE_TOKEN:           ${{ secrets.FIREBASE_TOKEN }}
+  FIREBASE_APP_ID_ANDROID:  ${{ secrets.FIREBASE_APP_ID_ANDROID }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -119,7 +137,8 @@ jobs:
       # vars context is available in workflow-level inputs; the suffix
       # tells reviewers at a glance which device farm a given run targeted.
       pipeline-steps: >-
-        Unit ∥ Lint → Unit Gate → Build APK → BAT → Smoke → Firebase
+        Unit ∥ Lint → Unit Gate → Build APK → Internal Firebase → BAT →
+        BAT Gate → Public Firebase → Smoke
         ${{ vars.LT_USERNAME != '' && '(BAT/Smoke on LambdaTest real device)' || '(BAT/Smoke on local emulator)' }}
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
@@ -428,15 +447,20 @@ jobs:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [notify-start, build, unit-tests]
+    # BAT validates the APK that has just been published to the Firebase
+    # internal channel. The local APK we install on the runner is the
+    # exact same artifact bytes (uploaded to Firebase by publish-internal),
+    # so we install it directly from the build artifact instead of doing a
+    # round-trip download from Firebase — same outcome, faster.
+    needs: [notify-start, build, unit-tests, publish-internal]
     # Skip path:
     #   • inputs.skip_bat = true (workflow_dispatch checkbox)  → skip
     #   • vars.SKIP_BAT = 'true'  (repo Variable for "lab is down today") → skip
     #   • [skip-bat] in commit message OR PR title → skip (per-run override)
     # When the job is skipped this way, the bat-skip-notice sibling job
     # below posts a Slack message ("device lab availability") and the rest
-    # of the pipeline (Smoke skipped, Firebase deploy on Unit gate alone)
-    # follows the existing soft-gate logic.
+    # of the pipeline (Smoke skipped, public Firebase deploy on Unit gate
+    # alone) follows the existing soft-gate logic.
     if: |
       inputs.skip_tests != true &&
       inputs.skip_bat   != true &&
@@ -444,7 +468,8 @@ jobs:
       !contains(github.event.head_commit.message, '[skip-bat]') &&
       !contains(github.event.pull_request.title, '[skip-bat]') &&
       needs.unit-tests.outputs.gate_passed == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.publish-internal.result == 'success'
     continue-on-error: true
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
@@ -690,7 +715,7 @@ jobs:
     name: "BAT — Skipped (device lab unavailable)"
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [notify-start, build, unit-tests]
+    needs: [notify-start, build, unit-tests, publish-internal]
     if: |
       (inputs.skip_bat == true ||
        vars.SKIP_BAT == 'true' ||
@@ -698,7 +723,8 @@ jobs:
        contains(github.event.pull_request.title, '[skip-bat]')) &&
       inputs.skip_tests != true &&
       needs.unit-tests.outputs.gate_passed == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.publish-internal.result == 'success'
     steps:
       - name: Log skip reason
         run: |
@@ -727,8 +753,16 @@ jobs:
     # ubuntu-latest for both LT and emulator paths (no macOS queue wait).
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [notify-start, build, bat-e2e]
-    if: needs.bat-e2e.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    # Smoke validates the APK that has just been promoted to the public
+    # Firebase channel. Same artifact bytes as internal — publishing is a
+    # promotion, not a rebuild — so we install from the build artifact
+    # (faster than a Firebase round-trip), but the dependency on
+    # publish-public makes the sequencing clear in the pipeline graph.
+    needs: [notify-start, build, bat-e2e, publish-public]
+    if: |
+      needs.bat-e2e.outputs.gate_passed == 'true' &&
+      needs.build.result == 'success' &&
+      needs.publish-public.result == 'success'
     continue-on-error: true
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
@@ -986,34 +1020,42 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. QUALITY GATE — BAT gate failed; block Firebase and alert team
+# 7. QUALITY GATE — BAT gate failed; block public promotion + alert team
+#
+#    NOTE on ordering: internal Firebase publish has already happened by the
+#    time this job runs (publish-internal is upstream of bat-e2e). A hard
+#    BAT failure does NOT roll back the internal release — internal-testers
+#    are the audience that catches device-level issues, so leaving the bad
+#    build accessible to them while we investigate is intentional. What we
+#    DO block is promotion to the public channel.
 # ─────────────────────────────────────────────────────────────────────────────
   quality-gate:
     name: "Quality Gate"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [notify-start, bat-e2e]
-    # Only block deployment on a HARD BAT failure (tests ran and reported
-    # failures). 'skipped' (emulator unavailable) is not a blocker — Firebase
-    # deploy proceeds based on the Unit gate per the soft-gate policy.
+    # Only block public promotion on a HARD BAT failure (tests ran and
+    # reported failures). 'skipped' (device lab unavailable) is not a
+    # blocker — public promotion proceeds based on the Unit gate per the
+    # soft-gate policy.
     if: always() && needs.bat-e2e.outputs.gate_passed == 'false'
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Block deployment
+      - name: Block public promotion
         run: |
-          echo "❌ BAT gate failed — build #${{ github.run_number }} blocked from Firebase distribution"
-          echo "Commit: ${{ github.sha }} will NOT be published"
+          echo "BAT gate failed — build #${{ github.run_number }} BLOCKED from public Firebase distribution"
+          echo "Internal release is still live for internal-testers — fix BAT and re-run to promote."
+          echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.head_ref || github.ref_name }}"
-          echo "Fix failing BAT tests before this build can be distributed."
 
-      - name: Notify Slack — deployment blocked
+      - name: Notify Slack — public promotion blocked
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     ANDROID
-          stage-name:      "Deployment Blocked (BAT Gate Failed)"
+          stage-name:      "Public Promotion Blocked (BAT Gate Failed)"
           stage-result:    failure
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -1021,28 +1063,27 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 8. PUBLISH INTERNAL — Firebase App Distribution (internal testers)
+#
+#    Runs RIGHT AFTER build, BEFORE BAT/Smoke. The internal channel is our
+#    "canary" release: it goes out to internal-testers as soon as the code
+#    has passed unit + lint gates. BAT then validates the artifact that is
+#    actually live on Firebase, and only on a green BAT do we promote to
+#    the public channel (publish-public → smoke).
 # ─────────────────────────────────────────────────────────────────────────────
   publish-internal:
     name: "Publish Internal (Firebase)"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, unit-tests, build, bat-e2e, smoke-e2e]
-    # Soft-gate policy:
-    #   • Build MUST succeed.
-    #   • Unit gate MUST pass — this is the mandatory deploy gate.
-    #   • BAT gate must NOT be a hard failure ('false'). All three "non-fail"
-    #     states are acceptable for Firebase publish:
-    #       - 'true'    → BAT passed
-    #       - 'skipped' → ran but device unavailable (see bat-e2e.bat-gate)
-    #       - empty     → bat-e2e job itself was skipped via inputs.skip_bat /
-    #                     vars.SKIP_BAT (device lab availability — see job 4b)
-    #   • Smoke result must not be a hard failure (skipped/success both OK).
+    needs: [notify-start, unit-tests, build]
+    # Gate policy: ship to internal as soon as the build is green and the
+    # Unit gate passes. We deliberately do NOT wait for BAT/Smoke here —
+    # internal-testers are the audience that catches device-level issues
+    # the unit suite cannot see.
     if: |
       always() &&
+      inputs.skip_tests != true &&
       needs.build.result == 'success' &&
-      needs.unit-tests.outputs.gate_passed == 'true' &&
-      needs.bat-e2e.outputs.gate_passed != 'false' &&
-      needs.smoke-e2e.result != 'failure'
+      needs.unit-tests.outputs.gate_passed == 'true'
 
     steps:
       - name: Record job start time
@@ -1064,10 +1105,11 @@ jobs:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
           groups: internal-testers
-          file: apk-artifacts/app-debug.apk
+          file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
-            Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
+            Internal canary — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
             Commit: ${{ github.sha }}
+            BAT will validate this build before promotion to the public channel.
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
@@ -1094,22 +1136,29 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9. PUBLISH PUBLIC — Firebase App Distribution (external testers; manual only)
+# 9. PUBLISH PUBLIC — Firebase App Distribution (external testers)
+#
+#    Promotion gate: only runs after BAT validated the internal release.
+#    Soft-gate policy preserved — a 'skipped' BAT (device lab unavailable)
+#    still allows promotion based on the Unit gate alone, but a HARD BAT
+#    failure blocks public promotion (and the quality-gate job alerts).
 # ─────────────────────────────────────────────────────────────────────────────
   publish-public:
     name: "Publish Public (Firebase)"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, unit-tests, build, bat-e2e, publish-internal]
-    # Same soft-gate policy as publish-internal: Unit gate is mandatory,
-    # BAT 'skipped' (device unavailable) is acceptable, BAT 'false' blocks.
+    needs: [notify-start, unit-tests, build, publish-internal, bat-e2e]
+    # STRICT promotion gate: only when BAT actually passed.
+    # 'skipped' (device lab unavailable) does NOT promote — internal
+    # remains the latest version available to users until we can validate
+    # on a real / cloud device. Flip back to `!= 'false'` if you want the
+    # old soft-gate behaviour (publish-public on skipped too).
     if: |
       always() &&
-      github.event_name == 'workflow_dispatch' &&
       needs.build.result == 'success' &&
+      needs.publish-internal.result == 'success' &&
       needs.unit-tests.outputs.gate_passed == 'true' &&
-      needs.bat-e2e.outputs.gate_passed != 'false' &&
-      needs.publish-internal.result == 'success'
+      needs.bat-e2e.outputs.gate_passed == 'true'
 
     steps:
       - name: Record job start time
@@ -1131,10 +1180,11 @@ jobs:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
           groups: ${{ secrets.FIREBASE_TESTERS || 'external-testers' }}
-          file: apk-artifacts/app-debug.apk
+          file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
-            Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
+            Public release — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
             Environment: ${{ env.ENV_LABEL }}
+            Promoted from internal channel after BAT validation passed.
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
@@ -1172,7 +1222,9 @@ jobs:
       - unit-tests
       - lint
       - build
+      - publish-internal
       - bat-e2e
+      - publish-public
       - smoke-e2e
     if: always()
 
@@ -1190,7 +1242,7 @@ jobs:
 
       - name: GitHub Step Summary
         run: |
-          echo "## 🤖 Android Player Pipeline — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Android Player Pipeline — Build #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
@@ -1198,8 +1250,10 @@ jobs:
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Internal | ${{ needs.publish-internal.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Tests | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (device unavailable)' || (needs.bat-e2e.result == 'skipped' && 'skipped (device lab availability)' || 'failed')) }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (soft-gated)' || (needs.bat-e2e.result == 'skipped' && 'skipped (device lab availability)' || 'failed')) }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firebase Public | ${{ needs.publish-public.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
@@ -1213,7 +1267,8 @@ jobs:
         env:
           MODULE_NAME: ANDROID
           # Chain order matches the actual pipeline execution:
-          # Unit ∥ Lint → Unit Gate → Build → BAT → BAT Gate → Smoke
+          # Unit ∥ Lint → Unit Gate → Build → Internal Firebase → BAT →
+          # BAT Gate → Public Firebase → Smoke
           STAGE1_NAME: Unit Tests (JUnit4)
           # Use gate output (actual test outcome) so cosmetic step failures
           # like Allure-publish flakes don't poison the chain rendering.
@@ -1224,17 +1279,21 @@ jobs:
           STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE4_NAME: Build APK
           STAGE4_RESULT: ${{ needs.build.result }}
-          STAGE5_NAME: BAT Tests
+          STAGE5_NAME: Firebase Internal
+          STAGE5_RESULT: ${{ needs.publish-internal.result }}
+          STAGE6_NAME: BAT Tests
           # bat-e2e has continue-on-error: true, so needs.bat-e2e.result is
           # always 'success' even on hard failure. Read the gate output
           # instead — it is the source of truth (true | false | skipped).
           # When bat-e2e.result == 'skipped' the whole job was bypassed via
           # skip_bat / vars.SKIP_BAT (device lab availability).
-          STAGE5_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure')) }}
-          STAGE6_NAME: BAT Gate
           STAGE6_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure')) }}
-          STAGE7_NAME: Smoke Tests
-          STAGE7_RESULT: ${{ needs.smoke-e2e.result }}
+          STAGE7_NAME: BAT Gate
+          STAGE7_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure')) }}
+          STAGE8_NAME: Firebase Public
+          STAGE8_RESULT: ${{ needs.publish-public.result }}
+          STAGE9_NAME: Smoke Tests
+          STAGE9_RESULT: ${{ needs.smoke-e2e.result }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
