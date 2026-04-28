@@ -1,0 +1,7 @@
+"Epic","Feature","Story","FAILED","BROKEN","PASSED","SKIPPED","UNKNOWN"
+"","Startup Latency","Startup delay (late manifest attach)","0","0","1","0","0"
+"","Rebuffering Detection","Mid-play stall (HLS stop/start)","0","0","1","0","0"
+"","","","0","3","0","0","0"
+"","ABR","Automatic Level Selection","0","0","1","0","0"
+"","ABR","Manual Level Override","0","0","1","0","0"
+"","Player Controls","Seek Backward","0","0","1","0","0"

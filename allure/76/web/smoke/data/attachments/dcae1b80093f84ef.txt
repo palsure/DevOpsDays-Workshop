@@ -1,0 +1,38 @@
+# Network & Console Timeline
+# Generated: 2026-04-28T00:58:47.699Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++    207ms  other           GET     200     187ms  https://devopsdays-119f5.web.app/   
++    320ms  app-asset       GET     200     105ms  https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js   
++    354ms  app-asset       GET     200     139ms  https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css   
++    473ms  other           GET     200      57ms  https://devopsdays-119f5.web.app/?scenario=baseline&e2e_autoplay=1   
++    490ms  app-asset       GET     200       0ms  https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js   
++    490ms  app-asset       GET     200       0ms  https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css   
++    740ms  hls-manifest    GET     200     120ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    817ms  hls-manifest    GET     200      76ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    822ms  hls-segment     GET     200       5ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++   1083ms  hls-manifest    GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   1130ms  hls-segment     GET     200      33ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   1795ms  hls-segment     GET     200      53ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   2150ms  hls-segment     GET     200      33ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   2518ms  hls-segment     GET     200      62ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   2801ms  hls-segment     GET     200      24ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   3032ms  hls-segment     GET     200      37ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   3229ms  hls-segment     GET     200      25ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   5681ms  qoe-api         POST    200      59ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  10654ms  qoe-api         POST    200      35ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  15653ms  qoe-api         POST    200      34ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  20659ms  qoe-api         POST    200      40ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  25652ms  qoe-api         POST    200      34ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  30663ms  qoe-api         POST    200      44ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  35659ms  qoe-api         POST    200      40ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  40655ms  qoe-api         POST    200      36ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  45651ms  qoe-api         POST    200      32ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  50654ms  qoe-api         POST    200      35ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  55654ms  qoe-api         POST    200      35ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  60657ms  qoe-api         POST    200      38ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  65656ms  qoe-api         POST    200      37ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  70660ms  qoe-api         POST    200      41ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  75659ms  qoe-api         POST    200      40ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  80661ms  qoe-api         POST    200      42ms  https://devopsdays-119f5.web.app/api/v1/metrics   
++  85661ms  qoe-api         POST    200      43ms  https://devopsdays-119f5.web.app/api/v1/metrics   
