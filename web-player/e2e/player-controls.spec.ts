@@ -12,8 +12,9 @@
  * framework-agnostic (no CSS selector hacks; just the JS player API).
  */
 
-import { test, expect } from './fixtures';
-import { allure }       from 'allure-playwright';
+import { test, expect }      from './fixtures';
+import { allure }             from 'allure-playwright';
+import { selectVideoAndPlay } from './video-helpers';
 import type { QoeDemoSnapshot } from '../src/demo/qoeDemoBridge';
 
 // ── Bridge helpers ─────────────────────────────────────────────────────────────
@@ -74,10 +75,16 @@ async function waitForPlayhead(
 test.describe('Player Controls (pause / play / seek)', () => {
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to home page first — visible in video recording as full navigation flow
+    // UI navigation: home → "Crystal Clear" tile → detail page → click Play CTA.
+    // The user-gesture click satisfies the headless browser autoplay policy so
+    // the video reliably begins decoding (URL+autoplay query params do not).
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.goto('/?scenario=baseline&e2e_autoplay=1');
+    const testedUrl = page.url();
+    await allure.parameter('tested_url', testedUrl);
+    await allure.link(testedUrl, 'Tested App URL');
+
+    await selectVideoAndPlay(page, 'Play Crystal Clear');
     await waitForFirstFrame(page);
   });
 
@@ -233,10 +240,14 @@ the player correctly handles backward seeking in an HLS VOD stream.
 test.describe('ABR & Bitrate (HLS.js level management)', () => {
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to home page first — visible in video recording as full navigation flow
+    // UI navigation (same as Player Controls suite) — bypasses autoplay block.
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.goto('/?scenario=baseline&e2e_autoplay=1');
+    const testedUrl = page.url();
+    await allure.parameter('tested_url', testedUrl);
+    await allure.link(testedUrl, 'Tested App URL');
+
+    await selectVideoAndPlay(page, 'Play Crystal Clear');
     await waitForManifest(page);
   });
 
@@ -420,7 +431,9 @@ correctly end-to-end.
 **Pass condition:** \`bitrateSwitches ≥ 1\`
     `.trim());
 
-    await page.goto('/?scenario=bitrate_step_down&e2e_autoplay=1');
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await selectVideoAndPlay(page, 'Play Signal Loss');
     await waitForFirstFrame(page);
 
     await allure.step('Wait for forced level-switch event (≤ 20 s)', async () => {

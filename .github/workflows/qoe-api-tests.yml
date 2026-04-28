@@ -704,15 +704,17 @@ jobs:
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
           MODULE_NAME: API
           STAGE1_NAME: Unit Tests
-          STAGE1_RESULT: ${{ needs.unit-tests.result }}
+          # Use gate output (actual test outcome) so cosmetic step failures
+          # like Allure-publish flakes don't poison the chain rendering.
+          STAGE1_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE2_NAME: Unit Gate (≥80%)
-          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE3_NAME: Build & Verify
           STAGE3_RESULT: ${{ needs.build-and-verify.result }}
           STAGE4_NAME: BAT
-          STAGE4_RESULT: ${{ needs.bat-tests.result }}
+          STAGE4_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || (needs.bat-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE5_NAME: BAT Gate
-          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || (needs.bat-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE6_NAME: API Live Promotion
           STAGE6_RESULT: ${{ needs.promote-live.result }}
           STAGE7_NAME: Smoke Tests

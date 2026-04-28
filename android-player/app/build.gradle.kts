@@ -3,6 +3,12 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// New Relic Mobile — instruments OkHttp, ANRs, native crashes; provides the
+// NewRelic facade used by MainActivity / QoECollector. The plugin registers
+// under the short id `newrelic`; classpath is loaded from the buildscript
+// block in the root project.
+apply(plugin = "newrelic")
+
 android {
     namespace = "com.devopsdays.qoe.player"
     compileSdk = 34
@@ -15,6 +21,18 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Wipe app data + permissions between tests for true isolation when
+        // running under the orchestrator.
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+
+        // New Relic Mobile application token. Read from the gradle property
+        // `newrelic.token` (e.g. ~/.gradle/gradle.properties) or the env var
+        // `NEW_RELIC_MOBILE_TOKEN`. Empty string when unset → agent stays
+        // disabled at runtime (see MainActivity.onCreate).
+        val nrToken: String = (project.findProperty("newrelic.token") as? String)
+            ?: System.getenv("NEW_RELIC_MOBILE_TOKEN")
+            ?: ""
+        buildConfigField("String", "NEWRELIC_TOKEN", "\"$nrToken\"")
 
         // Instrumented test stage filter: -PtestStage=bat|smoke|regression|all
         val testStage = (project.findProperty("testStage") as? String) ?: "all"
@@ -26,6 +44,12 @@ android {
             "regression" -> testInstrumentationRunnerArguments["annotation"] =
                 "com.devopsdays.qoe.player.categories.Regression"
         }
+    }
+
+    buildFeatures {
+        // Required so we can read `BuildConfig.NEWRELIC_TOKEN` at runtime.
+        // AGP 8 disables BuildConfig generation by default.
+        buildConfig = true
     }
 
     buildTypes {
@@ -48,15 +72,26 @@ android {
     }
 
     testOptions {
+        // ── JVM Unit Tests — parallel JVM forks ───────────────────────────────
         unitTests.all {
-            // Run JVM unit tests across multiple forked JVMs (one test class
-            // per fork). GitHub Actions runners have 2–4 cores; cap at 4 to
-            // avoid oversubscription and excessive memory use.
-            it.maxParallelForks =
-                (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 4)
+            // Use ALL available CPU cores (capped at 4 for GitHub-hosted runners
+            // which expose 4 vCPUs). One test class per fork → maximum CPU usage.
+            it.maxParallelForks = Runtime.getRuntime().availableProcessors()
+                .coerceIn(2, 4)
             // Recycle JVMs after this many test classes to keep heap stable.
-            it.forkEvery = 50
+            it.forkEvery = 100
+            it.jvmArgs("-Xmx1g", "-XX:+UseParallelGC")
         }
+
+        // ── Instrumented Tests — Android Test Orchestrator ────────────────────
+        // Each test method runs in its OWN process (clearPackageData=true), so:
+        //   • crashes in one test don't poison the next
+        //   • the orchestrator can dispatch tests to worker processes
+        //   • the same emulator instance is reused (no boot overhead per test)
+        // This is the standard way to get parallel-style instrumentation tests
+        // on a single emulator without firing up multiple devices.
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+        animationsDisabled = true
     }
 }
 
@@ -80,6 +115,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // New Relic Mobile — version must match the gradle plugin in the root
+    // build.gradle.kts; the plugin enforces this at configuration time.
+    implementation("com.newrelic.agent.android:android-agent:7.5.1")
+
     // ── JVM Unit Tests ────────────────────────────────────────────────────────
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.10")
@@ -93,6 +132,10 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.espresso:espresso-idling-resource:3.5.1")
+    // AndroidX Test Orchestrator — runs each test in its own process so they
+    // can be dispatched in parallel and don't share state. Required by the
+    // testOptions { execution = "ANDROIDX_TEST_ORCHESTRATOR" } setting above.
+    androidTestUtil("androidx.test:orchestrator:1.4.2")
 }
 
 // ── Custom Gradle tasks (mirrors backend-api convention) ──────────────────────

@@ -61,9 +61,9 @@ const USE_EXTERNAL_SERVER = !!process.env.PLAYWRIGHT_BASE_URL || !!process.env.C
 const STAGE = (process.env.PLAYWRIGHT_STAGE ?? 'e2e').toLowerCase();
 
 const STAGE_WORKERS: Record<string, number | undefined> = {
-  bat:  4,         // fast sanity tests, run fully parallel
-  smoke: 3,        // broader coverage, moderate parallelism
-  e2e:  undefined, // auto (all tests together)
+  bat:   4,        // fast sanity tests, run fully parallel
+  smoke: 4,        // run smoke fully in parallel too — matches BAT for max throughput
+  e2e:   undefined,// auto (all tests together)
 };
 
 const STAGE_TIMEOUT: Record<string, number> = {

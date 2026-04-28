@@ -21,8 +21,10 @@ services:
 
   backend:
     build:
-      context: ./backend-api
-      dockerfile: Dockerfile
+      # Repo root context so the Dockerfile can COPY the shared
+      # ops/monitoring/newrelic/newrelic.yml into the runtime image.
+      context: .
+      dockerfile: backend-api/Dockerfile
     container_name: qoe-backend
     ports:
       - "8080:8080"
@@ -30,8 +32,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/qoe_db
       SPRING_DATASOURCE_USERNAME: qoe_user
       SPRING_DATASOURCE_PASSWORD: qoe_password
-      NEWRELIC_ENABLED: ${NEWRELIC_ENABLED:-false}
+      # New Relic Java APM — opt-in. Set NEWRELIC_ENABLED=true and supply a
+      # license key to attach the agent at startup (see backend-api/docker-entrypoint.sh).
+      NEWRELIC_ENABLED:     ${NEWRELIC_ENABLED:-false}
       NEWRELIC_LICENSE_KEY: ${NEWRELIC_LICENSE_KEY:-}
+      NEWRELIC_APP_NAME:    ${NEWRELIC_APP_NAME:-QoE API}
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,6 +50,15 @@ services:
     build:
       context: .
       dockerfile: web-player/Dockerfile
+      # Vite inlines VITE_* env vars at build time, so they must be passed as
+      # build args (not runtime env). Anything blank => the NR Browser agent
+      # stays disabled at runtime (see web-player/src/services/newrelic.ts).
+      args:
+        VITE_NEWRELIC_LICENSE_KEY:    ${VITE_NEWRELIC_LICENSE_KEY:-}
+        VITE_NEWRELIC_APPLICATION_ID: ${VITE_NEWRELIC_APPLICATION_ID:-}
+        VITE_NEWRELIC_ACCOUNT_ID:     ${VITE_NEWRELIC_ACCOUNT_ID:-}
+        VITE_NEWRELIC_TRUST_KEY:      ${VITE_NEWRELIC_TRUST_KEY:-}
+        VITE_NEWRELIC_AGENT_ID:       ${VITE_NEWRELIC_AGENT_ID:-}
     container_name: qoe-web-player
     ports:
       - "3000:3000"

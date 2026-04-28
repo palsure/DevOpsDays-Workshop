@@ -5,6 +5,7 @@ import com.devopsdays.qoe.api.models.QoEMetric;
 import com.devopsdays.qoe.api.repositories.QoEMetricRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.newrelic.api.agent.NewRelic;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,56 @@ public class QoEMetricsService {
         QoEMetric saved = repository.save(metric);
         log.info("Saved QoE metric: platform={}, videoId={}, sessionId={}", 
                 saved.getPlatform(), saved.getVideoId(), saved.getSessionId());
+        recordNewRelicEvent(saved);
         return saved;
+    }
+
+    /**
+     * Emit a {@code QoEMetric} custom event to New Relic Insights.
+     *
+     * <p>Custom events let us slice playback quality by platform, device, video, and
+     * session in NRQL ({@code SELECT * FROM QoEMetric ...}) without polluting Spring
+     * transaction traces with thousands of attributes. Only scalar attributes are
+     * sent — JSON blobs (bufferingEvents, errors) are skipped because Insights drops
+     * any attribute longer than 4096 chars.
+     *
+     * <p>When the New Relic agent isn't attached (e.g. local dev without a license
+     * key) the {@code NewRelic} facade is wired to a no-op implementation, so this
+     * call is safe to make unconditionally.
+     */
+    private void recordNewRelicEvent(QoEMetric m) {
+        try {
+            Map<String, Object> attrs = new HashMap<>();
+            attrs.put("platform",            m.getPlatform());
+            attrs.put("videoId",             m.getVideoId());
+            attrs.put("sessionId",           m.getSessionId());
+            attrs.put("playbackState",       m.getPlaybackState());
+            attrs.put("playbackQuality",     m.getPlaybackQuality());
+            attrs.put("deviceType",          m.getDeviceType());
+            attrs.put("os",                  m.getOs());
+            attrs.put("browser",             m.getBrowser());
+            attrs.put("currentResolution",   m.getCurrentResolution());
+            putIfNonNull(attrs, "currentTime",        m.getCurrentTime());
+            putIfNonNull(attrs, "duration",           m.getDuration());
+            putIfNonNull(attrs, "totalBufferingTime", m.getTotalBufferingTime());
+            putIfNonNull(attrs, "startupTime",        m.getStartupTime());
+            putIfNonNull(attrs, "currentBitrate",     m.getCurrentBitrate());
+            putIfNonNull(attrs, "bitrateSwitches",    m.getBitrateSwitches());
+            putIfNonNull(attrs, "errorCount",         m.getErrorCount());
+            putIfNonNull(attrs, "framesDropped",      m.getFramesDropped());
+            putIfNonNull(attrs, "framesRendered",     m.getFramesRendered());
+            putIfNonNull(attrs, "networkSpeed",       m.getNetworkSpeed());
+            attrs.values().removeIf(Objects::isNull);
+
+            NewRelic.getAgent().getInsights().recordCustomEvent("QoEMetric", attrs);
+        } catch (Exception e) {
+            // Never let observability break the request path.
+            log.debug("Failed to record New Relic QoEMetric custom event", e);
+        }
+    }
+
+    private static void putIfNonNull(Map<String, Object> attrs, String key, Object value) {
+        if (value != null) attrs.put(key, value);
     }
 
     public List<QoEMetric> getMetrics(String platform, String videoId, String sessionId, 

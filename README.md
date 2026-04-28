@@ -1,167 +1,199 @@
-# Cross Platform Streaming Video QoE Validation in CI/CD Pipelines
+# Cross-Platform Streaming Video QoE Validation in CI/CD Pipelines
 
-## Workshop Overview
+A workshop demonstrating end-to-end Quality of Experience (QoE) validation for streaming video across Web, iOS, and Android, with a shared backend, automated multi-stage tests, and full CI/CD pipelines that emit threaded Slack notifications and Allure reports.
 
-This workshop demonstrates how to implement cross-platform Quality of Experience (QoE) validation for streaming video in CI/CD pipelines. The workshop includes complete, working examples for web, iOS, and Android platforms, integrated with automated testing and monitoring.
+## Workshop overview
 
-## Workshop Duration
+| | |
+|---|---|
+| **Audience** | Practitioners working on video streaming, CI/CD, mobile, or QA |
+| **Outcome** | Run a full multi-platform QoE pipeline locally, then ship the same pipeline to GitHub Actions with Slack reporting and Firebase distribution |
 
-3-4 hours (Half-day workshop)
+## Architecture
 
-## Target Audience
+The four player platforms share a single backend, a single metrics schema, and a single set of CI/CD primitives. Every player collects the same payload shape and posts it to the API every 5 seconds; the API stores it, validates it against thresholds, and exposes a pipeline acceptance gate.
 
-Advanced practitioners with experience in:
-- Video streaming technologies
-- CI/CD pipelines
-- Cross-platform development
-- Quality assurance and testing
+```mermaid
+flowchart LR
+  subgraph Players["📱 Player clients"]
+    direction TB
+    Web["Web Player<br/>React + HLS.js"]
+    iOS["iOS Player<br/>Swift + AVPlayer"]
+    Android["Android Player<br/>Kotlin + ExoPlayer"]
+  end
 
-## Learning Outcomes
+  subgraph Backend["🛰  Backend (Java / Spring Boot)"]
+    direction TB
+    API["REST API<br/>POST /api/v1/metrics<br/>POST /api/v1/validations<br/>POST /api/v1/pipeline/runs"]
+    Validation["Validation engine<br/>thresholds &amp; quality score"]
+    Gate["Acceptance gate"]
+    DB[("PostgreSQL 15<br/>Flyway migrations")]
+    API --> Validation --> Gate
+    API --> DB
+    Validation --> DB
+  end
 
-- Understand QoE metrics relevant to video streaming
-- Implement cross-platform QoE validation
-- Integrate quality checks into CI/CD pipelines
-- Use open-source tools for media validation
-- Handle platform-specific challenges
-- Set up automated quality gates
-- Monitor QoE metrics using New Relic
+  subgraph Schema["📐 Shared contract"]
+    SchemaJSON["ops/shared/schema/<br/>qoe-metrics.schema.json<br/>qoe-metrics.types.ts"]
+  end
+
+  subgraph Obs["📊 Observability"]
+    NR["New Relic<br/>RUM + APM"]
+  end
+
+  Web -- "QoE payload<br/>every 5s" --> API
+  iOS -- "QoE payload<br/>every 5s" --> API
+  Android -- "QoE payload<br/>every 5s" --> API
+
+  Web -- "browser RUM" --> NR
+  API -- "APM" --> NR
+
+  SchemaJSON -. "validates payloads" .-> API
+  SchemaJSON -. "shapes types" .-> Web
+  SchemaJSON -. "shapes types" .-> iOS
+  SchemaJSON -. "shapes types" .-> Android
+```
+
+## CI/CD pipeline shape
+
+Each module owns its own GitHub Actions workflow. Pipelines all follow the same gated shape — *test → build → ship a canary → re-validate → promote* — with threaded Slack notifications and Allure reports published to GitHub Pages along the way.
+
+```mermaid
+flowchart LR
+  Push((Push / PR))
+  subgraph Pipeline["Module pipeline (per-platform)"]
+    direction LR
+    Notify[notify-start]
+    Lint[lint]
+    Unit["unit-tests<br/>(gate ≥80%)"]
+    Build["build<br/>(jar / apk / dist)"]
+    Internal[publish-internal]
+    BAT["BAT e2e<br/>(soft-gated)"]
+    Public[publish-public]
+    Smoke[smoke e2e]
+    Reg[regression<br/>nightly]
+    Report[report &amp; Slack summary]
+    Notify --> Lint
+    Notify --> Unit
+    Lint --> Build
+    Unit --> Build
+    Build --> Internal
+    Internal --> BAT
+    BAT -- "gate=true" --> Public
+    Public --> Smoke
+    Smoke --> Report
+    Reg -.-> Report
+  end
+  Push --> Notify
+  Smoke -.-> Slack[Slack thread]
+  Internal -.-> Slack
+  BAT -.-> Slack
+  Report -.-> Slack
+  Smoke -.-> Pages[GitHub Pages<br/>Allure reports]
+  Build -.-> Firebase[Firebase App Distribution]
+  Internal -.-> Firebase
+  Public -.-> Firebase
+```
+
+The Web and API pipelines use Firebase Hosting (preview channel → live promotion); the Android and iOS pipelines use Firebase App Distribution (internal canary → public promotion). On a hard BAT failure the public promotion is blocked but the internal release stays live so the team can investigate on the same artifact testers are running.
 
 ## Modules
 
 | Module | Description | README |
 |---|---|---|
-| [`backend-api/`](backend-api/README.md) | Java/Spring Boot REST API | Setup, endpoints, test commands |
-| [`web-player/`](web-player/README.md) | React/TypeScript HLS player | Setup, E2E tests, Allure reports |
+| [`backend-api/`](backend-api/README.md) | Java 21 / Spring Boot 3 REST API + PostgreSQL | Setup, endpoints, test commands |
+| [`web-player/`](web-player/README.md) | React + TypeScript + HLS.js player | Setup, E2E tests, Allure reports |
 | [`ios-player/`](ios-player/README.md) | Swift Package library + SwiftUI demo app | Library usage, Xcode build, Firebase deploy |
-| [`android-player/`](android-player/README.md) | Kotlin/ExoPlayer Android app | Android Studio setup, APK build |
-| [`qoe-automation-tests/`](qoe-automation-tests/README.md) | Java/TestNG automation suite | API, web, mobile, validation tests |
+| [`android-player/`](android-player/README.md) | Kotlin / ExoPlayer Android app | Android Studio setup, APK build |
+| [`qoe-automation-tests/`](qoe-automation-tests/README.md) | Java / TestNG cross-platform automation | API, web, mobile, validation tests |
 | [`ops/`](ops/README.md) | Infrastructure, monitoring, shared schema | nginx, FFmpeg, New Relic, JSON schema |
 
-## Project Structure
+## Project structure
 
 ```
-├── backend-api/                 # Java/Spring Boot backend API
-├── web-player/                  # React/TypeScript web player
-├── ios-player/                  # Swift/Xcode iOS player (library + app)
-├── android-player/              # Kotlin/Gradle Android app
-├── qoe-automation-tests/        # Java/TestNG test automation
-├── ops/                         # Ops utilities
-│   ├── infrastructure/          # nginx, FFmpeg, network simulation scripts
-│   ├── monitoring/              # New Relic alerts, dashboards, NRQL queries
-│   └── shared/schema/           # Shared QoE metrics schema + TypeScript types
-├── test-videos/                 # Sample HLS test streams
-└── .github/workflows/           # GitHub Actions CI/CD workflows
+├── backend-api/                 # Spring Boot REST API + Flyway + Testcontainers
+├── web-player/                  # React/Vite SPA + Playwright E2E
+├── ios-player/                  # SwiftPM library (QoePlayer) + SwiftUI demo app
+├── android-player/              # Gradle (Kotlin DSL) Android app + Espresso
+├── qoe-automation-tests/        # Maven/TestNG cross-platform suite
+├── ops/
+│   ├── infrastructure/          # nginx config, FFmpeg HLS transcoder, tc network sim
+│   ├── monitoring/              # New Relic dashboards, alerts, NRQL
+│   └── shared/schema/           # Canonical qoe-metrics.schema.json + TS types
+├── test-videos/                 # Sample HLS streams (gitignored placeholder)
+├── docker-compose.yml           # Full local stack (api + web + db + nginx)
+└── .github/
+    ├── workflows/               # Per-module pipelines + shared/utility workflows
+    ├── scripts/                 # Slack payload builders + Allure helpers
+    └── actions/                 # Reusable composite actions
 ```
 
-## Reference Repositories
-
-This workshop is based on production implementations from:
-
-- **cbs-android**: Android app using Kotlin, ExoPlayer, Gradle
-- **cbs-ios**: iOS app using Swift, AVPlayer, Xcode
-- **api-web-monorepo**: Java/Spring Boot backend API
-- **quality-engineering-test**: Test automation framework
-
-## Quick Start
+## Quick start
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Java 17+ (for backend)
-- Node.js 18+ (for web player)
-- Xcode 15+ (for iOS, macOS only)
-- Android Studio (for Android)
-- New Relic account (for monitoring)
+| Tool | Min version | Used by |
+|---|---|---|
+| Docker Desktop | 24+ | full stack |
+| Java JDK | **21+** | `backend-api` and `qoe-automation-tests` |
+| Node.js | 18+ | `web-player` |
+| Maven | 3.9+ | `qoe-automation-tests` |
+| Allure CLI | 2.27+ | viewing test reports — `brew install allure` |
+| Xcode | 15+ | `ios-player` (macOS only) |
+| Android Studio | Hedgehog or later | `android-player` |
 
-### Running the Demo
+### Bring up the full stack
 
-1. **Start all services**:
-   ```bash
-   docker compose up -d
-   ```
+```bash
+docker compose up -d
+docker compose ps
+curl http://localhost:8080/actuator/health
+```
 
-2. **Access services**:
-   - Backend API: http://localhost:8080
-   - Web Player: http://localhost:3000
-   - New Relic Dashboard: (configured in ops/monitoring/)
+| Service | URL |
+|---|---|
+| Backend API | http://localhost:8080 |
+| API docs (Swagger UI) | http://localhost:8080/swagger-ui/index.html |
+| Web Player | http://localhost:3000 |
+| nginx (video CDN) | http://localhost:8081 |
+| PostgreSQL | localhost:5432 |
 
-3. **Run tests**:
-   ```bash
-   # Backend API — unit only (before deploy) or E2E (needs Docker), or both
-   cd backend-api && ./gradlew unitTest
-   cd backend-api && ./gradlew e2eTest   # after stack / with Docker
-   cd backend-api && ./gradlew test      # unit + e2e
+### Run the test suites
 
-   # Test automation framework
-   cd qoe-automation-tests && mvn test
-   ```
+```bash
+# API — unit only (no Docker), full E2E, or both
+cd backend-api && ./gradlew unitTest
+cd backend-api && ./gradlew e2eTest      # Testcontainers spins up its own Postgres
+cd backend-api && ./gradlew test         # both
 
-## Components
+# Web — Vitest unit + Playwright E2E against the running stack
+cd web-player && npm test
+cd web-player && npm run e2e:docker
 
-### 1. Multi-Platform Video Players
+# Cross-platform automation suite
+cd qoe-automation-tests && mvn test -Dapi.base.url=http://localhost:8080
+```
 
-- **Web Player**: React/TypeScript with HLS.js
-- **iOS Player**: Swift with AVPlayer
-- **Android Player**: Kotlin with ExoPlayer
+A more detailed walk-through (BAT/Smoke/Regression stages, mobile, Allure local serving) lives in [`TESTING.md`](TESTING.md).
 
-All players collect and report QoE metrics to the backend API.
+## CI/CD workflows
 
-### 2. Backend API
-
-Java/Spring Boot REST API that:
-- Receives QoE metrics from all platforms
-- Stores metrics in PostgreSQL
-- Provides query endpoints for metrics and trends
-- Manages video catalog and manifests
-
-### 3. Test Automation Framework
-
-Java/TestNG framework for:
-- Automated QoE validation tests
-- Cross-platform test execution
-- Quality gate enforcement
-- Test reporting
-
-### 4. CI/CD Pipelines
-
-Module-isolated GitHub Actions workflows for:
-- Path-filtered triggers — only the affected module's pipeline runs on each commit
-- Per-module stages: Unit Tests → E2E Tests → Automation E2E
-- Threaded Slack notifications with test counts, pass rate, and report links
-- Aggregate acceptance gate (`build-acceptance-release.yml`) triggered manually
-- PR quality gate (`qoe-pr-e2e.yml`) — Playwright gates on every pull request
+All workflows live in [`.github/workflows/`](.github/workflows/).
 
 | Workflow | Trigger | Module |
 |---|---|---|
-| `qoe-api-tests.yml` | push to `backend-api/**` | Backend API |
-| `qoe-web-tests.yml` | push to `web-player/**` | Web Player |
-| `qoe-android-tests.yml` | push to `android-player/**` | Android Player |
-| `qoe-ios-tests.yml` | push to `ios-player/**` | iOS Player |
-| `qoe-validation.yml` | pull request | All modules (lightweight) |
-| `qoe-pr-e2e.yml` | pull request | Web + API (E2E gate) |
-| `build-acceptance-release.yml` | manual | All modules (acceptance + release) |
+| `qoe-api-tests.yml` | push / PR on `backend-api/**` | Backend API |
+| `qoe-web-tests.yml` | push / PR on `web-player/**` | Web Player |
+| `qoe-android-tests.yml` | push / PR on `android-player/**` | Android Player |
+| `qoe-ios-tests.yml` | push / PR on `ios-player/**` | iOS Player |
+| `qoe-validation.yml` | pull request | Lightweight matrix across modules |
+| `qoe-pr-e2e.yml` | pull request | Web + API (Docker stack + Playwright gate) |
+| `qoe-newrelic.yml` | push / PR on monitoring config | New Relic dashboards / alerts |
+| `build-acceptance-release.yml` | manual | All modules — acceptance + release |
+| `shared-notify-start.yml` | `workflow_call` | Reusable "build started" Slack notify |
 
-### 5. Monitoring
-
-New Relic integration for:
-- Real-time QoE metrics visualization
-- Custom dashboards
-- Automated alerts
-- Performance monitoring
-
-## Workshop Sessions
-
-1. **Foundation & Architecture** (45 min)
-2. **Hands-on Project Setup** (60 min)
-3. **CI/CD Integration** (60 min)
-4. **Advanced Scenarios & Best Practices** (45 min)
-
-See [`presentations/workshop-guide.md`](presentations/workshop-guide.md) for detailed instructions.
-
-## Contributing
-
-This is a workshop demonstration project. For questions or issues, please refer to the workshop guide.
+Reusable composite actions: `slack-stage-notify`, `slack-gate-notify`, `slack-pipeline-report`, `publish-allure`, `lambdatest-espresso`.
 
 ## License
 
-This project is for educational purposes as part of the DevOpsDays Raleigh 2026 workshop.
+Educational use as part of the DevOpsDays Raleigh 2026 workshop.

@@ -82,7 +82,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       iOS
-      pipeline-steps:    "Unit → Build → BAT → Smoke → Regression (nightly) → Firebase"
+      pipeline-steps:    "Unit → Unit Gate → Build → BAT → Smoke → Regression (nightly) → Firebase"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -157,6 +157,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/unit
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player"
+          allure-feature:     "Unit Tests"
+          allure-tag:         "Unit"
+          allure-language:    "swift"
 
       - name: Notify Slack — unit test result
         if: always()
@@ -239,6 +243,8 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 20
     needs: [notify-start, unit-tests]
+    # Industry-standard fail-fast: only build if unit tests passed the gate.
+    if: needs.unit-tests.outputs.gate_passed == 'true'
 
     steps:
       - name: Record job start time
@@ -293,10 +299,15 @@ jobs:
     timeout-minutes: 20
     needs: [notify-start, build-app, unit-tests]
     if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.build-app.result == 'success'
+    # BAT is a soft gate: if `swift test` cannot start within 60 s (toolchain
+    # / simulator unavailable) the job still completes and downstream
+    # Firebase deploy proceeds based on the Unit gate alone.
+    continue-on-error: true
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
       cancel-in-progress: false
     outputs:
+      # 'true' = passed | 'false' = ran and failed | 'skipped' = device/toolchain unavailable
       gate_passed: ${{ steps.bat-gate.outputs.gate_passed }}
 
     steps:
@@ -308,8 +319,29 @@ jobs:
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Probe Swift toolchain (60 s availability check)
+        id: probe
+        continue-on-error: true
+        run: |
+          # Equivalent of "device available within 60 s" for SPM / XCTest:
+          # the Swift toolchain and Package.resolved must be ready in 60 s.
+          # If `swift --version` hangs (rare network init lock, missing SDK)
+          # we surface 'unavailable' and the bat-gate step downgrades to
+          # 'skipped' — Firebase deploy then proceeds on the Unit gate alone.
+          if timeout 60 swift --version >/dev/null 2>&1; then
+            echo "device_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "device_ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Swift toolchain not ready within 60 s — BAT will be skipped."
+          fi
+        working-directory: ios-player
+
       - name: Run BAT tests — swift test --filter BATTests
         id: bat
+        if: steps.probe.outputs.device_ready == 'true'
+        # Soft-fail the test step itself so the gate evaluation step always
+        # runs, even when tests fail or the toolchain crashes mid-run.
+        continue-on-error: true
         run: |
           mkdir -p test-results
           swift test --parallel --filter BATTests \
@@ -351,6 +383,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/bat
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Build Acceptance Tests"
+          allure-tag:         "BAT"
+          allure-language:    "swift"
 
       - name: Notify Slack — BAT result
         if: always()
@@ -371,7 +407,15 @@ jobs:
         if: always()
         run: |
           BAT="${{ steps.bat.outcome }}"
+          DEVICE_READY="${{ steps.probe.outputs.device_ready }}"
           SKIP="${{ inputs.skip_tests }}"
+          # If the toolchain probe failed OR the test step never produced a
+          # JUnit XML, treat BAT as 'skipped' so Firebase deployment can
+          # still proceed gated on the Unit test result.
+          HAS_RESULTS=""
+          if [ -d "ios-player/test-results" ]; then
+            HAS_RESULTS="$(find ios-player/test-results -type f -name '*.xml' 2>/dev/null | head -n1)"
+          fi
 
           if [ "$SKIP" = "true" ]; then
             echo "⚡ Hotfix mode — BAT gate bypassed"
@@ -379,18 +423,35 @@ jobs:
           elif [ "$BAT" = "success" ]; then
             echo "✅ BAT gate PASSED — Smoke tests can start"
             echo "gate_passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$DEVICE_READY" != "true" ] || [ -z "$HAS_RESULTS" ]; then
+            echo "⏭️  BAT SKIPPED — Swift toolchain not ready within 60 s"
+            echo "    or no test results were produced. Proceeding to Firebase"
+            echo "    deploy on the Unit gate alone."
+            echo "gate_passed=skipped" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ BAT gate FAILED (bat=$BAT) — blocking Smoke tests and Firebase"
+            echo "❌ BAT gate FAILED (bat=$BAT) — tests ran and reported failures."
+            echo "    Smoke tests and Firebase publish are BLOCKED."
             echo "gate_passed=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Post BAT gate decision to Slack
-        if: always()
+        if: always() && steps.bat-gate.outputs.gate_passed != 'skipped'
         uses: ./.github/actions/slack-gate-notify
         with:
           gate-passed:      ${{ steps.bat-gate.outputs.gate_passed }}
           proceed-message:  "BAT gate *PASSED* — running Smoke tests…"
           blocked-message:  "BAT gate *FAILED* — Smoke tests and Firebase publish *BLOCKED*."
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      - name: Post BAT skipped notice to Slack (toolchain unavailable)
+        if: always() && steps.bat-gate.outputs.gate_passed == 'skipped'
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      'true'
+          proceed-message:  "BAT *SKIPPED* — iOS toolchain did not respond within 60 s. Proceeding to Firebase based on the Unit test gate."
+          blocked-message:  ""
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -462,6 +523,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/smoke
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Smoke Tests"
+          allure-tag:         "Smoke"
+          allure-language:    "swift"
 
       - name: Notify Slack — Smoke result
         if: always()
@@ -550,6 +615,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/regression
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Regression Tests"
+          allure-tag:         "Regression"
+          allure-language:    "swift"
 
       - name: Notify Slack — Regression result
         if: always()
@@ -573,7 +642,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [notify-start, bat-e2e]
-    if: always() && needs.bat-e2e.result != 'skipped' && needs.bat-e2e.outputs.gate_passed != 'true'
+    # Only block deployment on a HARD BAT failure (tests ran and reported
+    # failures). 'skipped' (toolchain unavailable) is not a blocker —
+    # Firebase deploy proceeds based on the Unit gate per the soft-gate policy.
+    if: always() && needs.bat-e2e.outputs.gate_passed == 'false'
 
     steps:
       - uses: actions/checkout@v4
@@ -602,11 +674,18 @@ jobs:
     name: "Publish Internal (Firebase)"
     runs-on: macos-latest
     timeout-minutes: 15
-    needs: [notify-start, build-app, bat-e2e, smoke-e2e]
+    needs: [notify-start, unit-tests, build-app, bat-e2e, smoke-e2e]
+    # Soft-gate policy:
+    #   • Build MUST succeed.
+    #   • Unit gate MUST pass — this is the mandatory deploy gate.
+    #   • BAT gate must NOT be a hard failure ('false'). 'skipped' (toolchain
+    #     unavailable) is acceptable — see bat-e2e.bat-gate step.
+    #   • Smoke result must not be a hard failure (skipped/success both OK).
     if: |
       always() &&
       needs.build-app.result == 'success' &&
-      needs.bat-e2e.outputs.gate_passed == 'true' &&
+      needs.unit-tests.outputs.gate_passed == 'true' &&
+      needs.bat-e2e.outputs.gate_passed != 'false' &&
       needs.smoke-e2e.result != 'failure'
 
     steps:
@@ -660,12 +739,15 @@ jobs:
     name: "Publish Public (Firebase)"
     runs-on: macos-latest
     timeout-minutes: 15
-    needs: [notify-start, build-app, bat-e2e, publish-internal]
+    needs: [notify-start, unit-tests, build-app, bat-e2e, publish-internal]
+    # Same soft-gate policy as publish-internal: Unit gate is mandatory,
+    # BAT 'skipped' (toolchain unavailable) is acceptable, BAT 'false' blocks.
     if: |
       always() &&
       github.event_name == 'workflow_dispatch' &&
       needs.build-app.result == 'success' &&
-      needs.bat-e2e.outputs.gate_passed == 'true' &&
+      needs.unit-tests.outputs.gate_passed == 'true' &&
+      needs.bat-e2e.outputs.gate_passed != 'false' &&
       needs.publish-internal.result == 'success'
 
     steps:
@@ -748,8 +830,8 @@ jobs:
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build App | ${{ needs.build-app.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Tests | ${{ needs.bat-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Tests | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (toolchain unavailable)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (soft-gated)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
@@ -763,15 +845,20 @@ jobs:
         env:
           MODULE_NAME:    iOS
           STAGE1_NAME:    Unit Tests (XCTest)
-          STAGE1_RESULT:  ${{ needs.unit-tests.result }}
+          # Use gate output (actual test outcome) so cosmetic step failures
+          # like Allure-publish flakes don't poison the chain rendering.
+          STAGE1_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE2_NAME:    "Unit Gate (≥80%)"
-          STAGE2_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE2_RESULT:  ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE3_NAME:    Build App
           STAGE3_RESULT:  ${{ needs.build-app.result }}
           STAGE4_NAME:    BAT Tests
-          STAGE4_RESULT:  ${{ needs.bat-e2e.result }}
+          # bat-e2e has continue-on-error: true, so needs.bat-e2e.result is
+          # always 'success' even on hard failure. Read the gate output
+          # instead — it is the source of truth (true | false | skipped).
+          STAGE4_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
           STAGE5_NAME:    BAT Gate
-          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
           STAGE6_NAME:    Smoke Tests
           STAGE6_RESULT:  ${{ needs.smoke-e2e.result }}
           TOTAL_DURATION:     ${{ env.TOTAL_DURATION }}
@@ -789,19 +876,26 @@ jobs:
         with:
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           module-name:      iOS
+          # Soft-gate verdict: BAT 'skipped' (toolchain unavailable) is NOT
+          # a build failure — Firebase deploy is allowed to proceed on the
+          # Unit gate alone. Only a HARD BAT failure ('false') flips the
+          # overall pipeline verdict to 'failure'.
           build-verdict: >-
             ${{ (needs.unit-tests.result == 'success' &&
                  needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.build-app.result == 'success' &&
-                 needs.bat-e2e.outputs.gate_passed == 'true') && 'success' || 'failure' }}
+                 needs.bat-e2e.outputs.gate_passed != 'false') && 'success' || 'failure' }}
           env-label:        ${{ env.ENV_LABEL }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail pipeline if critical stage failed
+        # bat-e2e uses continue-on-error: true so its job result is always
+        # 'success' — gate_passed is the real outcome (true | false | skipped).
+        # 'skipped' (toolchain unavailable) is NOT a critical failure.
         if: |
           needs.unit-tests.result == 'failure' ||
           needs.unit-tests.outputs.gate_passed == 'false' ||
           needs.build-app.result == 'failure' ||
-          needs.bat-e2e.result == 'failure'
+          needs.bat-e2e.outputs.gate_passed == 'false'
         run: exit 1

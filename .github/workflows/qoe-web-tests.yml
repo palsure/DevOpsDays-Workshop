@@ -2,12 +2,12 @@
 #
 # Pipeline flow:
 #   0. notify-start    — Post "build started" to Slack; capture thread_ts + start_epoch.
-#   1. build  ┐        — tsc + vite build; produces deployable dist/ artifact.
-#   2. unit   ┘        — Both run IN PARALLEL (fail-fast). Vitest gate (≥80%) inlined.
-#   3. deploy-preview  — Firebase preview channel deployed right after build.
+#   1. build           — tsc + vite build; produces deployable dist/ artifact.
+#   2. unit-tests      — Vitest runs AFTER build succeeds. Gate (≥80%) inlined.
+#   3. deploy-preview  — Firebase preview channel deployed ONLY when Unit gate passes.
 #                        BAT tests run against this real URL (no localhost serve).
 #   4. bat-tests       — @BAT Playwright tests (4 workers) against preview URL.
-#                        Gate inlined. Waits for unit-tests gate + deploy-preview.
+#                        Gate inlined.
 #   5. promote-live    — Promotes preview → live RIGHT AFTER BAT gate passes.
 #                        Trusted deployment: BAT is sufficient for promotion.
 #   6. report  ──────  — Fires after promote-live. Pipeline marks complete here.
@@ -76,7 +76,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       WEB
-      pipeline-steps:    "Build ∥ Unit → Deploy Preview → BAT → Promote → Smoke (async)"
+      pipeline-steps:    "Build → Unit → Unit Gate → Deploy Preview → BAT → Promote → Smoke (async)"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -126,8 +126,11 @@ jobs:
     name: "Unit Tests (Vitest)"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start]
-    if: inputs.skip_tests != true
+    # Build → Unit Tests → (gate) → Deploy Preview
+    # Unit tests run AFTER the build artifact is ready so we know the code
+    # at least compiles before we exercise the test suite.
+    needs: [notify-start, build]
+    if: inputs.skip_tests != true && needs.build.result == 'success'
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
       cancel-in-progress: false
@@ -258,22 +261,22 @@ jobs:
         uses: ./.github/actions/slack-gate-notify
         with:
           gate-passed:      ${{ steps.unit-gate.outputs.gate_passed }}
-          proceed-message:  "Unit gate *PASSED* — running BAT tests and Firebase deploy in parallel…"
-          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          proceed-message:  "Unit gate *PASSED* — deploying to Firebase Preview…"
+          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. Deploy + BAT *BLOCKED*."
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
-#    Runs IN PARALLEL with deploy-preview (both unblocked by unit-tests gate)
+# 4. BAT TESTS — @BAT Playwright tests; 4 workers, 45 s timeout per test
+#    Runs against the Firebase Preview URL after deploy-preview completes.
 # ─────────────────────────────────────────────────────────────────────────────
   bat-tests:
     name: "BAT — Build Acceptance Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [notify-start, deploy-preview, unit-tests]
-    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.deploy-preview.result == 'success'
+    needs: [notify-start, deploy-preview]
+    if: inputs.skip_tests != true && needs.deploy-preview.result == 'success'
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
       cancel-in-progress: false
@@ -411,14 +414,18 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. DEPLOY PREVIEW — Firebase Hosting preview channel (after BAT gate)
+# 3. DEPLOY PREVIEW — Firebase Hosting preview channel
+#    Gated on Unit gate (≥80%) — only deploy code that passed its own tests.
 # ─────────────────────────────────────────────────────────────────────────────
   deploy-preview:
     name: "Deploy Firebase Preview"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [notify-start, build]
-    if: always() && needs.build.result == 'success'
+    needs: [notify-start, build, unit-tests]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      needs.unit-tests.outputs.gate_passed == 'true'
     outputs:
       preview_url: ${{ steps.resolve-url.outputs.preview_url }}
       channel:     ${{ steps.resolve-url.outputs.channel }}
@@ -525,7 +532,8 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. SMOKE TESTS — @Smoke Playwright tests; 3 workers; async (non-blocking)
+# 6. SMOKE TESTS — @Smoke Playwright tests; 4 workers; async (non-blocking)
+#    Runs after promote-live against the LIVE URL.
 #    Runs after deploy-preview; results delivered via Slack only.
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-tests:
@@ -571,7 +579,7 @@ jobs:
           fi
           echo "✅ Smoke will run against Firebase Live: $URL"
 
-      - name: Run Smoke tests (@Smoke, 3 workers)
+      - name: Run Smoke tests (@Smoke, 4 workers)
         id: smoke
         continue-on-error: true
         run: npm run e2e:smoke
@@ -643,7 +651,7 @@ jobs:
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. PROMOTE LIVE — right after BAT gate passes (before Smoke)
+# 5. PROMOTE LIVE — right after BAT gate passes (before Smoke)
 # ─────────────────────────────────────────────────────────────────────────────
   promote-live:
     name: "Promote to Live"
@@ -706,7 +714,7 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 10. ROLLBACK — BAT gate failed; block deployment and alert team
+# 8. ROLLBACK — BAT gate failed; block deployment and alert team
 # ─────────────────────────────────────────────────────────────────────────────
   rollback:
     name: "Rollback — BAT Gate Failed"
@@ -737,7 +745,7 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 11. REPORT — final pipeline summary + Slack overall result
+# 7. REPORT — final pipeline summary + Slack overall result
 # ─────────────────────────────────────────────────────────────────────────────
   report:
     name: "Report & Slack Summary"
@@ -792,15 +800,17 @@ jobs:
           STAGE1_NAME: Build
           STAGE1_RESULT: ${{ needs.build.result }}
           STAGE2_NAME: Unit Tests (Vitest)
-          STAGE2_RESULT: ${{ needs.unit-tests.result }}
+          # Use gate output (actual test outcome) so cosmetic step failures
+          # like Allure-publish flakes don't poison the chain rendering.
+          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE3_NAME: "Unit Gate (≥80%)"
-          STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE4_NAME: Firebase Preview
           STAGE4_RESULT: ${{ needs.deploy-preview.result }}
           STAGE5_NAME: BAT Tests
-          STAGE5_RESULT: ${{ needs.bat-tests.result }}
+          STAGE5_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || (needs.bat-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE6_NAME: BAT Gate
-          STAGE6_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || 'failure' }}
+          STAGE6_RESULT: ${{ needs.bat-tests.outputs.gate_passed == 'true' && 'success' || (needs.bat-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE7_NAME: Firebase Live Promotion
           STAGE7_RESULT: ${{ needs.promote-live.result }}
           STAGE8_NAME: Smoke Tests
