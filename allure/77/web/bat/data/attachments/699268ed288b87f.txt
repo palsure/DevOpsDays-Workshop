@@ -1,0 +1,19 @@
+# Network & Console Timeline
+# Generated: 2026-04-28T01:19:46.528Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     30ms  other           GET     200      13ms  https://devopsdays-119f5--staging-f94fjr68.web.app/   
++     46ms  app-asset       GET     200      13ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css   
++     70ms  app-asset       GET     200      37ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js   
++    208ms  other           GET     200       5ms  https://devopsdays-119f5--staging-f94fjr68.web.app/?scenario=baseline&e2e_autoplay=1   
++    216ms  app-asset       GET     200       1ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js   
++    218ms  app-asset       GET     200       0ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css   
++    412ms  hls-manifest    GET     200     108ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    434ms  hls-manifest    GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    457ms  hls-segment     GET     200      23ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    553ms  hls-manifest    GET     200       5ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    620ms  hls-segment     GET     200      61ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++    869ms  hls-segment     GET     200       0ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   1002ms  hls-segment     GET     200      22ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   1231ms  hls-segment     GET     200       0ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   1353ms  hls-segment     GET     200       4ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
