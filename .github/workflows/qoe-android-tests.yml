@@ -425,6 +425,7 @@ jobs:
     # Skip path:
     #   • inputs.skip_bat = true (workflow_dispatch checkbox)  → skip
     #   • vars.SKIP_BAT = 'true'  (repo Variable for "lab is down today") → skip
+    #   • [skip-bat] in commit message OR PR title → skip (per-run override)
     # When the job is skipped this way, the bat-skip-notice sibling job
     # below posts a Slack message ("device lab availability") and the rest
     # of the pipeline (Smoke skipped, Firebase deploy on Unit gate alone)
@@ -433,6 +434,8 @@ jobs:
       inputs.skip_tests != true &&
       inputs.skip_bat   != true &&
       vars.SKIP_BAT     != 'true' &&
+      !contains(github.event.head_commit.message, '[skip-bat]') &&
+      !contains(github.event.pull_request.title, '[skip-bat]') &&
       needs.unit-tests.outputs.gate_passed == 'true' &&
       needs.build.result == 'success'
     continue-on-error: true
@@ -675,7 +678,10 @@ jobs:
     timeout-minutes: 5
     needs: [notify-start, build, unit-tests]
     if: |
-      (inputs.skip_bat == true || vars.SKIP_BAT == 'true') &&
+      (inputs.skip_bat == true ||
+       vars.SKIP_BAT == 'true' ||
+       contains(github.event.head_commit.message, '[skip-bat]') ||
+       contains(github.event.pull_request.title, '[skip-bat]')) &&
       inputs.skip_tests != true &&
       needs.unit-tests.outputs.gate_passed == 'true' &&
       needs.build.result == 'success'
