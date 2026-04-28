@@ -525,7 +525,7 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6. SMOKE TESTS — @Smoke Playwright tests; 3 workers; async (non-blocking)
+# 6. SMOKE TESTS — @Smoke Playwright tests; 4 workers; async (non-blocking)
 #    Runs after deploy-preview; results delivered via Slack only.
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-tests:
@@ -571,7 +571,7 @@ jobs:
           fi
           echo "✅ Smoke will run against Firebase Live: $URL"
 
-      - name: Run Smoke tests (@Smoke, 3 workers)
+      - name: Run Smoke tests (@Smoke, 4 workers)
         id: smoke
         continue-on-error: true
         run: npm run e2e:smoke
