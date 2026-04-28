@@ -1,0 +1,17 @@
+# Network & Console Timeline
+# Generated: 2026-04-28T02:33:22.950Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++    151ms  other           GET     200     128ms  https://devopsdays-119f5.web.app/   
++    247ms  app-asset       GET     200      75ms  https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css   
++    350ms  app-asset       GET     200     179ms  https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js   
++   1480ms  hls-manifest    GET     200      65ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++   1558ms  hls-manifest    GET     200      78ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++   1670ms  hls-segment     GET     200      21ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++   2054ms  hls-manifest    GET     200      33ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   2131ms  hls-segment     GET     200      77ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   2650ms  hls-segment     GET     200      35ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   3292ms  hls-segment     GET     200      55ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   4189ms  hls-segment     GET     200      34ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   4762ms  hls-segment     GET     200      39ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   5607ms  hls-segment     GET     200       0ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
