@@ -494,9 +494,10 @@ jobs:
         working-directory: web-player
         env:
           FIREBASE_TOKEN:       ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT_ID:  ${{ secrets.FIREBASE_PROJECT_ID }}
+          # Project ID is NOT secret (it appears in every public Firebase URL).
+          # Accepting from vars avoids GitHub redacting the URL output downstream.
+          FIREBASE_PROJECT_ID:  ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CHANNEL_ID:  ${{ vars.FIREBASE_CHANNEL_ID }}
-          # Accept the URL from either a repo Variable OR a repo Secret
           FIREBASE_PREVIEW_URL: ${{ vars.FIREBASE_PREVIEW_URL || secrets.FIREBASE_PREVIEW_URL }}
 
       - name: Calculate deploy duration
@@ -689,7 +690,7 @@ jobs:
         working-directory: web-player
         env:
           FIREBASE_TOKEN:      ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
 
       - name: Notify Slack — promote result
         if: always()
