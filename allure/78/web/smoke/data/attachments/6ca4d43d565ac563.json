@@ -1,0 +1,168 @@
+[
+  {
+    "id": 1,
+    "url": "https://devopsdays-119f5.web.app/",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 137,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 155
+  },
+  {
+    "id": 2,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 112,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 273
+  },
+  {
+    "id": 3,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 173,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 334
+  },
+  {
+    "id": 4,
+    "url": "https://devopsdays-119f5.web.app/?scenario=baseline&e2e_autoplay=1",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 29,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 407
+  },
+  {
+    "id": 5,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 1,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 437
+  },
+  {
+    "id": 6,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 0,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 442
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 121,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 635
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 39,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 715
+  },
+  {
+    "id": 9,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 44,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 760
+  },
+  {
+    "id": 10,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 21,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1070
+  },
+  {
+    "id": 11,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": null,
+    "durationMs": 130,
+    "category": "hls-segment",
+    "failed": true,
+    "slow": false,
+    "errorText": "net::ERR_ABORTED",
+    "startedAt": 1211
+  },
+  {
+    "id": 12,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 173,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 1384
+  },
+  {
+    "id": 13,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 107,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 2174
+  },
+  {
+    "id": 14,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 0,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 2740
+  },
+  {
+    "id": 15,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 47,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3056
+  }
+]

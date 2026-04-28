@@ -1,0 +1,2714 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "playwright-qoe-capture",
+      "version": "1.0.0"
+    },
+    "browser": {
+      "name": "Chromium (headless)",
+      "version": "unknown"
+    },
+    "pages": [
+      {
+        "startedDateTime": "2026-04-28T01:23:36.683Z",
+        "id": "page_1",
+        "title": "manual level override forces lowest quality",
+        "pageTimings": {
+          "onContentLoad": -1,
+          "onLoad": -1
+        }
+      }
+    ],
+    "entries": [
+      {
+        "startedDateTime": "2026-04-28T01:23:36.763Z",
+        "time": 56,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 55,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:36.800Z",
+        "time": 12,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 11,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:36.861Z",
+        "time": 73,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 72,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:36.947Z",
+        "time": 29,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/?scenario=baseline&e2e_autoplay=1",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 28,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:36.974Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 0,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:36.975Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 0,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.158Z",
+        "time": 42,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 41,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.201Z",
+        "time": 30,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 29,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.225Z",
+        "time": 20,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 19,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.473Z",
+        "time": 20,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 19,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.552Z",
+        "time": 68,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 67,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.567Z",
+        "time": 7,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 0,
+          "statusText": "Network Error",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 6,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": true,
+        "_slow": false,
+        "_errorText": "net::ERR_ABORTED"
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.603Z",
+        "time": 43,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/193039199_mp4_h264_aac_ld_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 42,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.645Z",
+        "time": 38,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_526/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 37,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.690Z",
+        "time": 31,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_527/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 30,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.795Z",
+        "time": 47,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_528/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 46,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:37.857Z",
+        "time": 35,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_529/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 34,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.021Z",
+        "time": 142,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_530/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 141,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.241Z",
+        "time": 211,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_531/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 210,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.287Z",
+        "time": 39,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_532/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 38,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.398Z",
+        "time": 97,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_533/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 96,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.466Z",
+        "time": 54,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_534/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 53,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.508Z",
+        "time": 35,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_535/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 34,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.600Z",
+        "time": 88,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_536/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 87,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.642Z",
+        "time": 38,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_537/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 37,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.681Z",
+        "time": 35,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_538/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 34,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.779Z",
+        "time": 91,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_539/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 90,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.875Z",
+        "time": 92,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_540/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 91,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:38.967Z",
+        "time": 88,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_541/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 87,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.012Z",
+        "time": 42,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_542/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 41,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.052Z",
+        "time": 36,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_543/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 35,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.174Z",
+        "time": 119,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_544/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 118,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.273Z",
+        "time": 93,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_545/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 92,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.372Z",
+        "time": 95,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_546/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 94,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.461Z",
+        "time": 84,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_547/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 83,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.577Z",
+        "time": 109,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_548/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 108,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.626Z",
+        "time": 41,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_549/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 40,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.649Z",
+        "time": 13,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_550/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 12,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.666Z",
+        "time": 13,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_551/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 12,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.689Z",
+        "time": 16,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_552/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 15,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.708Z",
+        "time": 15,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_553/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 14,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.730Z",
+        "time": 14,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_554/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 13,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.747Z",
+        "time": 13,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_555/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 12,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.766Z",
+        "time": 15,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_556/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 14,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.786Z",
+        "time": 12,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_557/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 11,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.805Z",
+        "time": 12,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_558/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 11,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.824Z",
+        "time": 14,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_559/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 13,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.842Z",
+        "time": 13,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_560/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 12,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:39.885Z",
+        "time": 37,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_561/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 36,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.297Z",
+        "time": 405,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_562/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 404,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.392Z",
+        "time": 87,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_563/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 86,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.486Z",
+        "time": 87,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_564/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 86,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.524Z",
+        "time": 37,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_565/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 36,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.617Z",
+        "time": 90,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_566/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 89,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.729Z",
+        "time": 110,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_567/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 109,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.837Z",
+        "time": 107,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_568/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 106,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:40.940Z",
+        "time": 95,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_569/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 94,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.045Z",
+        "time": 97,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_570/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 96,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.091Z",
+        "time": 37,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_571/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 36,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.194Z",
+        "time": 98,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_572/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 97,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.235Z",
+        "time": 35,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_573/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 34,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.327Z",
+        "time": 88,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_574/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 87,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.420Z",
+        "time": 90,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_575/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 89,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:23:41.717Z",
+        "time": 294,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_2/url_576/193039199_mp4_h264_aac_ld_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 293,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      }
+    ]
+  }
+}
