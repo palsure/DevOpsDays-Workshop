@@ -1,0 +1,20 @@
+# Network & Console Timeline
+# Generated: 2026-04-28T04:07:50.064Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     74ms  other           GET     200      55ms  https://devopsdays-119f5--staging-f94fjr68.web.app/   
++    106ms  app-asset       GET     200      11ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css   
++    194ms  app-asset       GET     200      99ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js   
++    726ms  hls-manifest    GET     200     106ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    741ms  hls-manifest    GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    778ms  hls-segment     GET     200      28ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    949ms  hls-manifest    GET     200      17ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    991ms  hls-segment     GET     200      40ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++   1229ms  hls-segment     GET     200      33ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   1362ms  hls-segment     GET     200      37ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   1574ms  hls-segment     GET     200      31ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   1705ms  hls-segment     GET     200      37ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   1841ms  hls-segment     GET     200      18ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   1924ms  hls-segment     GET     200      20ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   3857ms  hls-segment     GET     200      33ms  https://test-streams.mux.dev/x36xhzz/url_8/url_598/193039199_mp4_h264_aac_fhd_7.ts   
++   5687ms  qoe-api         POST    200      71ms  https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics   
