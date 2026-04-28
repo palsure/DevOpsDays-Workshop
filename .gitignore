@@ -57,6 +57,10 @@ qoe-automation-tests/target/
 web-player/dist/
 web-player/node_modules/
 web-player/test-results/
+ios-player/.build/
+
+# CI Slack payloads (any *-slack-payload.json — generated per workflow run)
+*-slack-payload.json
 
 # Temporary files
 tmp/

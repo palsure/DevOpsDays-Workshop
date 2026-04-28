@@ -1,6 +1,7 @@
 package com.devopsdays.qoe.player
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -12,6 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.devopsdays.qoe.player.services.QoECollector
+import com.newrelic.agent.android.NewRelic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +28,26 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // ── New Relic Mobile bootstrap ────────────────────────────────────────
+        // Token is baked into BuildConfig at build time (see app/build.gradle.kts).
+        // Empty token = disabled — keeps local dev / espresso runs from spamming
+        // a real NR account. We also disable on emulators just to be safe.
+        val nrToken = BuildConfig.NEWRELIC_TOKEN
+        if (nrToken.isNotBlank()) {
+            try {
+                NewRelic.withApplicationToken(nrToken)
+                    .withApplicationVersion(BuildConfig.VERSION_NAME)
+                    .withLogLevel(com.newrelic.agent.android.logging.AgentLog.INFO)
+                    .start(this.applicationContext)
+                Log.i("MainActivity", "New Relic Mobile agent started")
+            } catch (e: Throwable) {
+                // Never let observability bring down the player.
+                Log.w("MainActivity", "New Relic init failed", e)
+            }
+        } else {
+            Log.i("MainActivity", "New Relic Mobile disabled (no token)")
+        }
 
         val playerView: PlayerView = findViewById(R.id.player_view)
         playerView.setFullscreenButtonClickListener(null) // disable fullscreen during tests

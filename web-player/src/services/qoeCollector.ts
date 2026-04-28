@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { QoEMetricPayload } from '../../../ops/shared/schema/qoe-metrics.types';
+import { recordPageAction } from './newrelic';
 
 /** Same-origin `/api/v1`: Vite dev server proxies `/api` to Spring; Docker web-player nginx does the same. Override with `VITE_API_URL` if needed. */
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -153,6 +154,29 @@ export class QoECollector {
     } catch (error) {
       console.error('Failed to send QoE metrics:', error);
     }
+
+    // Mirror the metric to New Relic Insights so we can slice by browser/device
+    // without the API path being available (e.g. when the backend is down).
+    // Only scalar attributes — Insights drops strings > 4096 chars and arrays
+    // are flattened to "[object Object]" otherwise.
+    recordPageAction('QoEMetric', {
+      platform:           payload.platform,
+      videoId:            payload.videoId,
+      sessionId:          payload.sessionId,
+      playbackState:      metrics.playbackState,
+      playbackQuality:    metrics.playbackQuality ?? 'unknown',
+      currentTime:        metrics.currentTime,
+      duration:           metrics.duration,
+      totalBufferingTime: this.totalBufferingTime,
+      bufferingEvents:    this.bufferingEvents.length,
+      bitrateSwitches:    this.bitrateSwitches,
+      currentBitrate:     metrics.currentBitrate ?? 0,
+      currentResolution:  metrics.currentResolution ?? '',
+      errorCount:         this.errors.length,
+      framesDropped:      this.framesDropped,
+      framesRendered:     this.framesRendered,
+      startupTimeMs:      startupMs ?? 0,
+    });
   }
 
   private getDeviceType(): string {
