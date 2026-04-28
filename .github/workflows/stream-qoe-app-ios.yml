@@ -17,7 +17,7 @@
 #   .github/actions/slack-gate-notify     — gate pass/fail decision post
 #   .github/actions/slack-pipeline-report — inject thread_ts + summary + update header
 #   .github/actions/publish-allure        — Allure report → GitHub Pages
-#   .github/workflows/shared-notify-start.yml — initial "build started" message
+#   .github/workflows/shared-notify-build-started.yml — initial "build started" message
 #
 # JUnit XML: swift test --xunit-output test-results/swift-junit.xml
 #   → parsed by stage_result_to_slack.py to show test counts in Slack.
@@ -36,8 +36,8 @@ on:
   pull_request:
     paths:
       - 'ios-player/**'
-      - '.github/workflows/qoe-ios-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-ios.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -45,7 +45,7 @@ on:
     branches: [main, develop]
     paths:
       - 'ios-player/**'
-      - '.github/workflows/qoe-ios-tests.yml'
+      - '.github/workflows/stream-qoe-app-ios.yml'
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
@@ -79,7 +79,7 @@ concurrency:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    uses: ./.github/workflows/shared-notify-start.yml
+    uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       iOS
       pipeline-steps:    "Unit → Unit Gate → Build → BAT → Smoke → Regression (nightly) → Firebase"

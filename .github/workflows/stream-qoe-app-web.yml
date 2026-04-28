@@ -28,8 +28,8 @@ on:
   pull_request:
     paths:
       - 'web-player/**'
-      - '.github/workflows/qoe-web-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-web.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -37,8 +37,8 @@ on:
     branches: [main, develop]
     paths:
       - 'web-player/**'
-      - '.github/workflows/qoe-web-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-web.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -73,7 +73,7 @@ concurrency:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    uses: ./.github/workflows/shared-notify-start.yml
+    uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       WEB
       pipeline-steps:    "Build → Unit → Unit Gate → Deploy Preview → BAT → Promote → Smoke (async)"

@@ -1,5 +1,5 @@
 # Full-stack validation (parallel jobs). For an aggregate 80% pass-rate gate across platforms
-# plus optional GitHub Release on main, see: build-acceptance-release.yml
+# plus optional GitHub Release on main, see: stream-qoe-app-release.yml
 name: Stream-QoE-App-Validation
 
 on:
@@ -29,19 +29,19 @@ jobs:
           filters: |
             api:
               - 'backend-api/**'
-              - '.github/workflows/qoe-validation.yml'
+              - '.github/workflows/stream-qoe-app-validation.yml'
             web:
               - 'web-player/**'
-              - '.github/workflows/qoe-validation.yml'
+              - '.github/workflows/stream-qoe-app-validation.yml'
             android:
               - 'android-player/**'
-              - '.github/workflows/qoe-validation.yml'
+              - '.github/workflows/stream-qoe-app-validation.yml'
             automation:
               - 'qoe-automation-tests/**'
-              - '.github/workflows/qoe-validation.yml'
+              - '.github/workflows/stream-qoe-app-validation.yml'
 
   # ── Backend API ───────────────────────────────────────────────────────────
-  qoe-api-tests:
+  stream-qoe-app-api:
     name: Backend API Tests
     runs-on: ubuntu-latest
     needs: changes
@@ -81,7 +81,7 @@ jobs:
           path: backend-api/build/test-results/unitTest
 
   # ── Web Player ────────────────────────────────────────────────────────────
-  qoe-web-tests:
+  stream-qoe-app-web:
     name: Web Player Tests
     runs-on: ubuntu-latest
     needs: changes
@@ -115,7 +115,7 @@ jobs:
         working-directory: web-player
 
   # ── Android Player ────────────────────────────────────────────────────────
-  qoe-android-tests:
+  stream-qoe-app-android:
     name: Android Player Tests
     runs-on: ubuntu-latest
     needs: changes
@@ -177,21 +177,21 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [qoe-api-tests, qoe-web-tests, qoe-android-tests, qoe-test-framework]
+    needs: [stream-qoe-app-api, stream-qoe-app-web, stream-qoe-app-android, qoe-test-framework]
     if: always()
     steps:
       - name: Check test results
         run: |
-          echo "API Tests:       ${{ needs.qoe-api-tests.result }}"
-          echo "Web Tests:       ${{ needs.qoe-web-tests.result }}"
-          echo "Android Tests:   ${{ needs.qoe-android-tests.result }}"
+          echo "API Tests:       ${{ needs.stream-qoe-app-api.result }}"
+          echo "Web Tests:       ${{ needs.stream-qoe-app-web.result }}"
+          echo "Android Tests:   ${{ needs.stream-qoe-app-android.result }}"
           echo "Test Framework:  ${{ needs.qoe-test-framework.result }}"
 
       - name: Fail if any triggered tests failed
         if: |
-          (needs.qoe-api-tests.result    != 'success' && needs.qoe-api-tests.result    != 'skipped') ||
-          (needs.qoe-web-tests.result    != 'success' && needs.qoe-web-tests.result    != 'skipped') ||
-          (needs.qoe-android-tests.result != 'success' && needs.qoe-android-tests.result != 'skipped') ||
+          (needs.stream-qoe-app-api.result    != 'success' && needs.stream-qoe-app-api.result    != 'skipped') ||
+          (needs.stream-qoe-app-web.result    != 'success' && needs.stream-qoe-app-web.result    != 'skipped') ||
+          (needs.stream-qoe-app-android.result != 'success' && needs.stream-qoe-app-android.result != 'skipped') ||
           (needs.qoe-test-framework.result != 'success' && needs.qoe-test-framework.result != 'skipped')
         run: |
           echo "One or more test suites failed"

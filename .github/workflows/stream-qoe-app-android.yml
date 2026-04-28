@@ -78,8 +78,8 @@ on:
   pull_request:
     paths:
       - 'android-player/**'
-      - '.github/workflows/qoe-android-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-android.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -87,7 +87,7 @@ on:
     branches: [main, develop]
     paths:
       - 'android-player/**'
-      - '.github/workflows/qoe-android-tests.yml'
+      - '.github/workflows/stream-qoe-app-android.yml'
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
@@ -136,7 +136,7 @@ concurrency:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    uses: ./.github/workflows/shared-notify-start.yml
+    uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       ANDROID
       # vars context is available in workflow-level inputs; the suffix

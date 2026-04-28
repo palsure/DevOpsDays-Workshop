@@ -182,15 +182,15 @@ All workflows live in [`.github/workflows/`](.github/workflows/).
 
 | Workflow | Trigger | Module |
 |---|---|---|
-| `qoe-api-tests.yml` | push / PR on `backend-api/**` | Backend API |
-| `qoe-web-tests.yml` | push / PR on `web-player/**` | Web Player |
-| `qoe-android-tests.yml` | push / PR on `android-player/**` | Android Player |
-| `qoe-ios-tests.yml` | push / PR on `ios-player/**` | iOS Player |
-| `qoe-validation.yml` | pull request | Lightweight matrix across modules |
-| `qoe-pr-e2e.yml` | pull request | Web + API (Docker stack + Playwright gate) |
-| `qoe-newrelic.yml` | push / PR on monitoring config | New Relic dashboards / alerts |
-| `build-acceptance-release.yml` | manual | All modules — acceptance + release |
-| `shared-notify-start.yml` | `workflow_call` | Reusable "build started" Slack notify |
+| `stream-qoe-app-api.yml` | push / PR on `backend-api/**` | Backend API |
+| `stream-qoe-app-web.yml` | push / PR on `web-player/**` | Web Player |
+| `stream-qoe-app-android.yml` | push / PR on `android-player/**` | Android Player |
+| `stream-qoe-app-ios.yml` | push / PR on `ios-player/**` | iOS Player |
+| `stream-qoe-app-validation.yml` | pull request | Lightweight matrix across modules |
+| `stream-qoe-app-pr-e2e.yml` | pull request | Web + API (Docker stack + Playwright gate) |
+| `stream-qoe-app-newrelic.yml` | push / PR on monitoring config | New Relic dashboards / alerts |
+| `stream-qoe-app-release.yml` | manual | All modules — acceptance + release |
+| `shared-notify-build-started.yml` | `workflow_call` | Reusable "build started" Slack notify |
 
 Reusable composite actions: `slack-stage-notify`, `slack-gate-notify`, `slack-pipeline-report`, `publish-allure`, `lambdatest-espresso`.
 

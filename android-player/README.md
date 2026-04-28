@@ -95,7 +95,7 @@ The CI pipeline uses Espresso `@Category` filters to gate stages: BAT then Smoke
 ./gradlew connectedDebugAndroidTest -PtestStage=smoke
 ```
 
-## CI pipeline (qoe-android-tests.yml)
+## CI pipeline (stream-qoe-app-android.yml)
 
 ```mermaid
 flowchart LR

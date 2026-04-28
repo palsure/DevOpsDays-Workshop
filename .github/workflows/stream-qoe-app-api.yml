@@ -26,8 +26,8 @@ on:
   pull_request:
     paths:
       - 'backend-api/**'
-      - '.github/workflows/qoe-api-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-api.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -35,8 +35,8 @@ on:
     branches: [main, develop]
     paths:
       - 'backend-api/**'
-      - '.github/workflows/qoe-api-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-api.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -81,7 +81,7 @@ env:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    uses: ./.github/workflows/shared-notify-start.yml
+    uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       API
       pipeline-steps:    "Unit → Build → BAT → Promote → Smoke (async)"
