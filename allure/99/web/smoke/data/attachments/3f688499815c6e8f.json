@@ -1,0 +1,101 @@
+[
+  {
+    "id": 1,
+    "url": "https://devopsdays-119f5.web.app/",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 28,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 40
+  },
+  {
+    "id": 2,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BQ-6yWm3.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 0,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 75
+  },
+  {
+    "id": 3,
+    "url": "https://devopsdays-119f5.web.app/assets/index-BWbA6mav.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 114,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 189
+  },
+  {
+    "id": 4,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 8,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3581
+  },
+  {
+    "id": 5,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 11,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3597
+  },
+  {
+    "id": 6,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 12,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3609
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 11,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3683
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 28,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3711
+  },
+  {
+    "id": 9,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 41,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3938
+  }
+]
