@@ -16,13 +16,32 @@
 #   1. unit-tests       — JUnit4 + MockK; inline unit gate (≥80%).
 #   2. lint             — Android Lint (runs in parallel with unit-tests).
 #   3. build            — Assemble debug APK; ONLY runs if unit gate passed AND lint passed.
-#   4. bat-e2e          — @BAT Espresso tests on emulator; needs build.
-#   5. smoke-e2e        — @Smoke tests; after BAT gate passes.
+#   4. bat-e2e          — @BAT Espresso tests; dual-mode runner (see below).
+#   5. smoke-e2e        — @Smoke tests; after BAT gate passes; dual-mode runner.
 #   6. regression-e2e   — @Regression; nightly schedule only; continue-on-error.
 #   7. quality-gate     — Trigger if unit gate OR BAT gate failed; blocks publish.
 #   8. publish-internal — Firebase App Distribution (gated by unit AND BAT).
 #   9. publish-public   — Firebase App Distribution (public / testers).
 #  10. report           — Slack summary + update initial message.
+#
+# DUAL-MODE BAT/SMOKE RUNNER
+# ──────────────────────────
+# bat-e2e and smoke-e2e pick their runner at job-resolution time based on
+# whether `vars.LT_USERNAME` is set:
+#
+#   • LambdaTest (real-device cloud) — vars.LT_USERNAME is set
+#       runs-on: ubuntu-latest
+#       Uploads the prebuilt APKs to LambdaTest, runs Espresso on a real
+#       Android phone (default Pixel 6 Pro-13), polls for completion, and
+#       downloads JUnit XML for the existing Allure / Slack flow.
+#
+#   • Local emulator — vars.LT_USERNAME is empty
+#       runs-on: macos-13 (Intel — aarch64 macos-latest cannot host x86_64 AVDs)
+#       Boots a cached AVD snapshot and runs `connectedDebugAndroidTest`.
+#
+# Both paths are SOFT-GATED: if the device is unavailable (no JUnit XML
+# produced) the gate emits 'skipped' and Firebase deploy still proceeds
+# based on the Unit gate alone. Hard test failures continue to block.
 #
 # Required secrets (Slack steps are skipped when not set):
 #   SLACK_BOT_TOKEN       — Slack bot OAuth token
@@ -32,6 +51,11 @@
 #   FIREBASE_PROJECT_ID   — Firebase project ID
 #   FIREBASE_APP_ID_ANDROID — Firebase App ID for App Distribution
 #   FIREBASE_TESTERS      — Comma-separated list of tester emails
+#   LT_ACCESS_KEY         — LambdaTest access key (required for LT path)
+# Optional repository Variables (vars context):
+#   LT_USERNAME           — LambdaTest username; presence enables LT path
+#   LT_DEVICE_ANDROID     — Device name (default "Pixel 6 Pro-13")
+#   LT_REGION             — LT region: us | eu | in (default us)
 
 name: Stream-QoE-App-Android
 
@@ -85,7 +109,11 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       ANDROID
-      pipeline-steps:    "Unit ∥ Lint → Unit Gate → Build APK → BAT → Smoke → Firebase"
+      # vars context is available in workflow-level inputs; the suffix
+      # tells reviewers at a glance which device farm a given run targeted.
+      pipeline-steps: >-
+        Unit ∥ Lint → Unit Gate → Build APK → BAT → Smoke → Firebase
+        ${{ vars.LT_USERNAME != '' && '(BAT/Smoke on LambdaTest real device)' || '(BAT/Smoke on local emulator)' }}
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -362,22 +390,34 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. BAT E2E — @BAT Espresso tests on emulator; inline BAT gate
+# 4. BAT E2E — @BAT Espresso tests; inline BAT gate
+#
+#    Dual-mode runner selection (chosen at job-level via `vars.LT_USERNAME`):
+#      • LambdaTest path  (vars.LT_USERNAME set)  → ubuntu-latest
+#                                                    real device on LT cloud
+#      • Emulator path    (vars.LT_USERNAME unset) → macos-13
+#                                                    local Android emulator
+#
+#    Required when using the LambdaTest path:
+#      vars.LT_USERNAME       LambdaTest username (repository Variable)
+#      secrets.LT_ACCESS_KEY  LambdaTest access key (repository Secret)
+#    Optional:
+#      vars.LT_DEVICE_ANDROID Device name (default "Pixel 6 Pro-13")
+#      vars.LT_REGION         Region: us | eu | in (default us)
+#
+#    Both paths are soft-gated: if the device is unavailable the job still
+#    completes and downstream Firebase deploy proceeds based on the Unit
+#    gate. Hard test failures (tests ran but failed) still block.
 # ─────────────────────────────────────────────────────────────────────────────
   bat-e2e:
     name: "BAT — Build Acceptance Tests"
-    # macos-latest is now Apple Silicon (aarch64). Our cached AVD snapshot is
-    # x86_64, which the QEMU2 emulator cannot host on aarch64 ("Avd's CPU
-    # Architecture 'x86_64' is not supported by the QEMU2 emulator on aarch64
-    # host"). Pin to macos-13 (Intel) until we're ready to migrate the AVD
-    # cache to arm64-v8a system images.
-    runs-on: macos-13
+    # vars context is the only one available at runs-on; secrets are not.
+    # We toggle on the username Variable; the access key (secret) is consumed
+    # inside the LambdaTest composite action.
+    runs-on: ${{ vars.LT_USERNAME != '' && 'ubuntu-latest' || 'macos-13' }}
     timeout-minutes: 30
     needs: [notify-start, build, unit-tests]
     if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
-    # BAT is a soft gate: if the emulator can't boot within 60 s the job
-    # still completes and downstream Firebase deploy proceeds based on the
-    # Unit gate. Hard test failures (tests ran but failed) still block.
     continue-on-error: true
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
@@ -392,24 +432,56 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # Java is needed by the emulator path (gradle test exec). LambdaTest
+      # path doesn't need it but the setup is cheap (~10s) and harmless.
       - uses: actions/setup-java@v4
+        if: vars.LT_USERNAME == ''
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
+        if: vars.LT_USERNAME == ''
         uses: gradle/actions/setup-gradle@v3
 
-      # ── Speed up emulator boot on macos runners ──────────────────────────
-      # The system image + AVD definition are cached between runs so we avoid
-      # the 5-7 minute first-boot every time. With caching, subsequent runs
-      # boot from a snapshot in ~30-60s instead of timing out.
+      # ─── LambdaTest path ─────────────────────────────────────────────────
+      # Real-device cloud run — uploads APKs, dispatches via REST, polls,
+      # downloads JUnit XML into the same directory the emulator path would.
+      - name: Download prebuilt APKs (LambdaTest path)
+        if: vars.LT_USERNAME != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android-player/app/build/outputs/apk
+
+      - name: Run BAT on LambdaTest (real device)
+        id: bat-lt
+        if: vars.LT_USERNAME != ''
+        continue-on-error: true
+        uses: ./.github/actions/lambdatest-espresso
+        with:
+          lt-username:    ${{ vars.LT_USERNAME }}
+          lt-access-key:  ${{ secrets.LT_ACCESS_KEY }}
+          app-apk:        android-player/app/build/outputs/apk/debug/app-debug.apk
+          test-apk:       android-player/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          annotation:     com.devopsdays.qoe.player.categories.BAT
+          build-name:     "Android BAT — Build #${{ github.run_number }} (${{ github.head_ref || github.ref_name }})"
+          device:         ${{ vars.LT_DEVICE_ANDROID || 'Pixel 6 Pro-13' }}
+          output-dir:     android-player/app/build/outputs/androidTest-results/connected
+          region:         ${{ vars.LT_REGION || 'us' }}
+
+      # ─── Emulator path ───────────────────────────────────────────────────
+      # Local Android emulator on macos-13 (Intel) — used when LambdaTest
+      # is not configured. macos-latest (Apple Silicon) cannot host x86_64
+      # AVDs, so we pin to macos-13.
       - name: Enable KVM/HVF check (macOS)
+        if: vars.LT_USERNAME == ''
         run: |
           echo "Hypervisor framework check:"
           sysctl kern.hv_support || true
 
       - name: AVD cache
+        if: vars.LT_USERNAME == ''
         id: avd-cache
         uses: actions/cache@v4
         with:
@@ -419,7 +491,7 @@ jobs:
           key: avd-bat-api33-x86_64-v2
 
       - name: Create AVD snapshot (cache miss only)
-        if: steps.avd-cache.outputs.cache-hit != 'true'
+        if: vars.LT_USERNAME == '' && steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -431,20 +503,14 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          # 60 s boot budget. Cold boot rarely fits; with the AVD snapshot
-          # cache primed it usually boots in 25-45 s. If the device isn't
-          # ready in time, the bat-gate step downgrades to "skipped" and the
-          # pipeline still proceeds to Firebase based on the Unit gate.
           emulator-boot-timeout: 60
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: false
           script: echo "✅ AVD snapshot generated and cached"
 
       - name: Run BAT tests on emulator
-        id: bat
-        # Step-level continue-on-error so the rest of the job (Allure publish,
-        # Slack notify, gate evaluation) still runs even if the emulator
-        # never boots — we want the gate step to label it 'skipped'.
+        id: bat-emu
+        if: vars.LT_USERNAME == ''
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -457,19 +523,16 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          # 60 s boot budget. Cold boot rarely fits; with the AVD snapshot
-          # cache primed it usually boots in 25-45 s. If the device isn't
-          # ready in time, the bat-gate step downgrades to "skipped" and the
-          # pipeline still proceeds to Firebase based on the Unit gate.
+          # 60 s boot budget. With the AVD snapshot primed boot is 25-45 s.
+          # If the device isn't ready in time the gate step labels it
+          # 'skipped' and Firebase deploy proceeds on the Unit gate alone.
           emulator-boot-timeout: 60
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          # AndroidX Test Orchestrator runs each test in its own process
-          # (configured in app/build.gradle.kts), so they're isolated and can
-          # be dispatched concurrently. --parallel speeds up the build/install.
           script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --parallel --build-cache --max-workers=4
 
+      # ─── Common: post-test reporting ─────────────────────────────────────
       - name: Calculate BAT duration
         if: always()
         run: |
@@ -506,8 +569,8 @@ jobs:
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     ANDROID
-          stage-name:      "BAT (Build Acceptance Tests)"
-          stage-result:    ${{ steps.bat.outcome }}
+          stage-name:      "BAT (Build Acceptance Tests)${{ vars.LT_USERNAME != '' && ' on LambdaTest' || '' }}"
+          stage-result:    ${{ vars.LT_USERNAME != '' && steps.bat-lt.outcome || steps.bat-emu.outcome }}
           duration:        ${{ env.BAT_DURATION }}
           report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/bat
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
@@ -519,10 +582,16 @@ jobs:
         id: bat-gate
         if: always()
         run: |
-          BAT="${{ steps.bat.outcome }}"
+          # Pick the outcome from whichever path actually ran (the other one
+          # was skipped via `if:` and reports outcome='skipped').
+          if [ "${{ vars.LT_USERNAME }}" != "" ]; then
+            BAT="${{ steps.bat-lt.outcome }}"
+          else
+            BAT="${{ steps.bat-emu.outcome }}"
+          fi
           SKIP="${{ inputs.skip_tests }}"
           RESULTS_DIR="android-player/app/build/outputs/androidTest-results/connected"
-          # If the emulator never booted (or the test runner crashed before
+          # If the device never came up (or the runner crashed before
           # producing any JUnit XML), treat BAT as 'skipped' so Firebase
           # deployment can still proceed gated on the Unit test result.
           HAS_RESULTS="$(find "$RESULTS_DIR" -type f -name '*.xml' 2>/dev/null | head -n1)"
@@ -534,8 +603,8 @@ jobs:
             echo "✅ BAT gate PASSED — Smoke tests can start"
             echo "gate_passed=true" >> "$GITHUB_OUTPUT"
           elif [ -z "$HAS_RESULTS" ]; then
-            echo "⏭️  BAT SKIPPED — emulator unavailable within 60 s; proceeding to"
-            echo "    Firebase deploy on the Unit gate alone."
+            echo "⏭️  BAT SKIPPED — device unavailable; proceeding to Firebase"
+            echo "    deploy on the Unit gate alone."
             echo "gate_passed=skipped" >> "$GITHUB_OUTPUT"
           else
             echo "❌ BAT gate FAILED (bat=$BAT) — tests ran and reported failures."
@@ -559,7 +628,7 @@ jobs:
         uses: ./.github/actions/slack-gate-notify
         with:
           gate-passed:      'true'
-          proceed-message:  "BAT *SKIPPED* — Android emulator did not boot within 60 s. Proceeding to Firebase based on the Unit test gate."
+          proceed-message:  "BAT *SKIPPED* — Android device unavailable${{ vars.LT_USERNAME != '' && ' on LambdaTest' || ' (emulator did not boot within 60 s)' }}. Proceeding to Firebase based on the Unit test gate."
           blocked-message:  ""
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -567,15 +636,13 @@ jobs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. SMOKE E2E — @Smoke Espresso tests; after BAT gate passes
+#
+#    Same dual-mode runner selection as bat-e2e — see the BAT job header
+#    for required vars/secrets and the device-unavailable behaviour.
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-e2e:
     name: "Smoke Tests"
-    # macos-latest is now Apple Silicon (aarch64). Our cached AVD snapshot is
-    # x86_64, which the QEMU2 emulator cannot host on aarch64 ("Avd's CPU
-    # Architecture 'x86_64' is not supported by the QEMU2 emulator on aarch64
-    # host"). Pin to macos-13 (Intel) until we're ready to migrate the AVD
-    # cache to arm64-v8a system images.
-    runs-on: macos-13
+    runs-on: ${{ vars.LT_USERNAME != '' && 'ubuntu-latest' || 'macos-13' }}
     timeout-minutes: 30
     needs: [notify-start, build, bat-e2e]
     if: needs.bat-e2e.outputs.gate_passed == 'true' && needs.build.result == 'success'
@@ -591,14 +658,42 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
+        if: vars.LT_USERNAME == ''
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
+        if: vars.LT_USERNAME == ''
         uses: gradle/actions/setup-gradle@v3
 
+      # ─── LambdaTest path ─────────────────────────────────────────────────
+      - name: Download prebuilt APKs (LambdaTest path)
+        if: vars.LT_USERNAME != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android-player/app/build/outputs/apk
+
+      - name: Run Smoke on LambdaTest (real device)
+        id: smoke-lt
+        if: vars.LT_USERNAME != ''
+        continue-on-error: true
+        uses: ./.github/actions/lambdatest-espresso
+        with:
+          lt-username:    ${{ vars.LT_USERNAME }}
+          lt-access-key:  ${{ secrets.LT_ACCESS_KEY }}
+          app-apk:        android-player/app/build/outputs/apk/debug/app-debug.apk
+          test-apk:       android-player/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          annotation:     com.devopsdays.qoe.player.categories.Smoke
+          build-name:     "Android Smoke — Build #${{ github.run_number }} (${{ github.head_ref || github.ref_name }})"
+          device:         ${{ vars.LT_DEVICE_ANDROID || 'Pixel 6 Pro-13' }}
+          output-dir:     android-player/app/build/outputs/androidTest-results/connected
+          region:         ${{ vars.LT_REGION || 'us' }}
+
+      # ─── Emulator path ───────────────────────────────────────────────────
       - name: AVD cache
+        if: vars.LT_USERNAME == ''
         uses: actions/cache@v4
         with:
           path: |
@@ -607,7 +702,8 @@ jobs:
           key: avd-bat-api33-x86_64-v2
 
       - name: Run Smoke tests on emulator
-        id: smoke
+        id: smoke-emu
+        if: vars.LT_USERNAME == ''
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -620,16 +716,13 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          # 60 s boot budget. Cold boot rarely fits; with the AVD snapshot
-          # cache primed it usually boots in 25-45 s. If the device isn't
-          # ready in time, the bat-gate step downgrades to "skipped" and the
-          # pipeline still proceeds to Firebase based on the Unit gate.
           emulator-boot-timeout: 60
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
           script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --parallel --build-cache --max-workers=4
 
+      # ─── Common: post-test reporting ─────────────────────────────────────
       - name: Calculate Smoke duration
         if: always()
         run: |
@@ -661,13 +754,24 @@ jobs:
           allure-tag:         "Smoke"
           allure-language:    "kotlin"
 
+      - name: Compute Smoke outcome (LT or emulator)
+        id: smoke
+        if: always()
+        run: |
+          if [ "${{ vars.LT_USERNAME }}" != "" ]; then
+            OUT="${{ steps.smoke-lt.outcome }}"
+          else
+            OUT="${{ steps.smoke-emu.outcome }}"
+          fi
+          echo "outcome=$OUT" >> "$GITHUB_OUTPUT"
+
       - name: Notify Slack — Smoke result
         if: always()
         uses: ./.github/actions/slack-stage-notify
         with:
           module-name:     ANDROID
-          stage-name:      "Smoke Tests"
-          stage-result:    ${{ steps.smoke.outcome }}
+          stage-name:      "Smoke Tests${{ vars.LT_USERNAME != '' && ' on LambdaTest' || '' }}"
+          stage-result:    ${{ steps.smoke.outputs.outcome }}
           duration:        ${{ env.SMOKE_DURATION }}
           report-url:      https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/android/smoke
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
@@ -676,7 +780,7 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail if Smoke tests failed
-        if: steps.smoke.outcome == 'failure'
+        if: steps.smoke.outputs.outcome == 'failure'
         run: exit 1
 
 # ─────────────────────────────────────────────────────────────────────────────
