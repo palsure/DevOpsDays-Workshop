@@ -120,8 +120,8 @@ Two workflows consume this suite:
 
 | Workflow | Job | Trigger |
 |---|---|---|
-| [`qoe-validation.yml`](../.github/workflows/qoe-validation.yml) | `qoe-test-framework` | every push / PR |
-| [`build-acceptance-release.yml`](../.github/workflows/build-acceptance-release.yml) | `acceptance-automation` | manual release gate |
+| [`stream-qoe-app-validation.yml`](../.github/workflows/stream-qoe-app-validation.yml) | `qoe-test-framework` | every push / PR |
+| [`stream-qoe-app-release.yml`](../.github/workflows/stream-qoe-app-release.yml) | `acceptance-automation` | manual release gate |
 
 Both call [`junit_to_summary.py`](../.github/scripts/junit_to_summary.py) to turn the Surefire XML into a GitHub step summary and a Slack notification.
 

@@ -1,12 +1,12 @@
-# shared-notify-start.yml
+# shared-notify-build-started.yml
 #
 # Reusable workflow — post a "build started" message to Slack and
 # capture the thread_ts + start_epoch for downstream jobs to use.
 #
-# Called by:  qoe-api-tests.yml     (module-name: API)
-#             qoe-web-tests.yml     (module-name: WEB)
-#             qoe-android-tests.yml (module-name: ANDROID)
-#             qoe-ios-tests.yml     (module-name: iOS)
+# Called by:  stream-qoe-app-api.yml     (module-name: API)
+#             stream-qoe-app-web.yml     (module-name: WEB)
+#             stream-qoe-app-android.yml (module-name: ANDROID)
+#             stream-qoe-app-ios.yml     (module-name: iOS)
 
 name: Shared — Notify Build Started
 

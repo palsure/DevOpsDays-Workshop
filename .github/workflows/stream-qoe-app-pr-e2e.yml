@@ -24,7 +24,7 @@ on:
       - 'backend-api/**'
       - 'web-player/**'
       - 'docker-compose.yml'
-      - '.github/workflows/qoe-pr-e2e.yml'
+      - '.github/workflows/stream-qoe-app-pr-e2e.yml'
 
 permissions:
   contents: read

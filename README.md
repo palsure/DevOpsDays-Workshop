@@ -8,6 +8,8 @@ A workshop demonstrating end-to-end Quality of Experience (QoE) validation for s
 |---|---|
 | **Audience** | Practitioners working on video streaming, CI/CD, mobile, or QA |
 | **Outcome** | Run a full multi-platform QoE pipeline locally, then ship the same pipeline to GitHub Actions with Slack reporting and Firebase distribution |
+| **Duration** | 90-minute live workshop or self-paced |
+| **Materials** | [Slide deck](presentations/SLIDE-DECK-60-SLIDES.md) · [90-min facilitator guide](presentations/WORKSHOP-90MIN-FACILITATOR-GUIDE.md) · [Demo commands cheat sheet](presentations/DEMO-COMMANDS.md) |
 
 ## Architecture
 
@@ -97,6 +99,21 @@ flowchart LR
 
 The Web and API pipelines use Firebase Hosting (preview channel → live promotion); the Android and iOS pipelines use Firebase App Distribution (internal canary → public promotion). On a hard BAT failure the public promotion is blocked but the internal release stays live so the team can investigate on the same artifact testers are running.
 
+**Mobile E2E paths.** Both Android and iOS pipelines support two ways to run BAT/Smoke instrumented tests:
+
+| Mode | Selected when | Where it runs |
+|---|---|---|
+| **LambdaTest cloud device** | `vars.LT_USERNAME` is set on the repo | Real Pixel/iPhone hardware on LambdaTest |
+| **Self-hosted emulator/simulator** | `vars.LT_USERNAME` is unset | KVM-accelerated x86_64 AVD on `ubuntu-latest` (Android) / Xcode simulator on `macos-latest` (iOS) |
+
+**Workshop escape hatches.** Mobile device labs are flaky; these flags keep the rest of the pipeline shipping when the lab is down:
+
+| Variable | Effect |
+|---|---|
+| `vars.SKIP_BAT=true` *or* `[skip-bat]` in commit/PR title | Skip BAT entirely for one run; Firebase publishes on the Unit gate alone |
+| `vars.NO_DEVICE_LAB=true` | Persistent override — BAT reports `SKIPPED` (not `FAILED`) so Slack stays green |
+| `inputs.skip_tests=true` | Hotfix mode — bypass every gate, ship straight to public |
+
 ## Modules
 
 | Module | Description | README |
@@ -120,8 +137,11 @@ The Web and API pipelines use Firebase Hosting (preview channel → live promoti
 │   ├── infrastructure/          # nginx config, FFmpeg HLS transcoder, tc network sim
 │   ├── monitoring/              # New Relic dashboards, alerts, NRQL
 │   └── shared/schema/           # Canonical qoe-metrics.schema.json + TS types
+├── presentations/               # Slide deck + 90-min facilitator guide + demo commands
 ├── test-videos/                 # Sample HLS streams (gitignored placeholder)
 ├── docker-compose.yml           # Full local stack (api + web + db + nginx)
+├── QUICKSTART.md                # 5-minute "is everything working?" smoke test
+├── TESTING.md                   # Per-module BAT/Smoke/Regression playbook
 └── .github/
     ├── workflows/               # Per-module pipelines + shared/utility workflows
     ├── scripts/                 # Slack payload builders + Allure helpers
@@ -142,12 +162,10 @@ The Web and API pipelines use Firebase Hosting (preview channel → live promoti
 | Xcode | 15+ | `ios-player` (macOS only) |
 | Android Studio | Hedgehog or later | `android-player` |
 
-### Bring up the full stack
+### One-line bring-up
 
 ```bash
-docker compose up -d
-docker compose ps
-curl http://localhost:8080/actuator/health
+docker compose up -d && curl http://localhost:8080/actuator/health
 ```
 
 | Service | URL |
@@ -158,23 +176,7 @@ curl http://localhost:8080/actuator/health
 | nginx (video CDN) | http://localhost:8081 |
 | PostgreSQL | localhost:5432 |
 
-### Run the test suites
-
-```bash
-# API — unit only (no Docker), full E2E, or both
-cd backend-api && ./gradlew unitTest
-cd backend-api && ./gradlew e2eTest      # Testcontainers spins up its own Postgres
-cd backend-api && ./gradlew test         # both
-
-# Web — Vitest unit + Playwright E2E against the running stack
-cd web-player && npm test
-cd web-player && npm run e2e:docker
-
-# Cross-platform automation suite
-cd qoe-automation-tests && mvn test -Dapi.base.url=http://localhost:8080
-```
-
-A more detailed walk-through (BAT/Smoke/Regression stages, mobile, Allure local serving) lives in [`TESTING.md`](TESTING.md).
+For the 5-minute "is everything working?" walkthrough see [`QUICKSTART.md`](QUICKSTART.md). For the full per-module test playbook (unit / BAT / Smoke / Regression and Allure local serving) see [`TESTING.md`](TESTING.md).
 
 ## CI/CD workflows
 
@@ -182,17 +184,32 @@ All workflows live in [`.github/workflows/`](.github/workflows/).
 
 | Workflow | Trigger | Module |
 |---|---|---|
-| `qoe-api-tests.yml` | push / PR on `backend-api/**` | Backend API |
-| `qoe-web-tests.yml` | push / PR on `web-player/**` | Web Player |
-| `qoe-android-tests.yml` | push / PR on `android-player/**` | Android Player |
-| `qoe-ios-tests.yml` | push / PR on `ios-player/**` | iOS Player |
-| `qoe-validation.yml` | pull request | Lightweight matrix across modules |
-| `qoe-pr-e2e.yml` | pull request | Web + API (Docker stack + Playwright gate) |
-| `qoe-newrelic.yml` | push / PR on monitoring config | New Relic dashboards / alerts |
-| `build-acceptance-release.yml` | manual | All modules — acceptance + release |
-| `shared-notify-start.yml` | `workflow_call` | Reusable "build started" Slack notify |
+| `stream-qoe-app-api.yml` | push / PR on `backend-api/**` | Backend API |
+| `stream-qoe-app-web.yml` | push / PR on `web-player/**` | Web Player |
+| `stream-qoe-app-android.yml` | push / PR on `android-player/**` | Android Player |
+| `stream-qoe-app-ios.yml` | push / PR on `ios-player/**` | iOS Player |
+| `stream-qoe-app-validation.yml` | pull request | Lightweight matrix across modules |
+| `stream-qoe-app-pr-e2e.yml` | pull request | Web + API (Docker stack + Playwright gate) |
+| `stream-qoe-app-newrelic.yml` | push / PR on monitoring config | New Relic dashboards / alerts |
+| `stream-qoe-app-release.yml` | manual | All modules — acceptance + release |
+| `shared-notify-build-started.yml` | `workflow_call` | Reusable "build started" Slack notify |
 
-Reusable composite actions: `slack-stage-notify`, `slack-gate-notify`, `slack-pipeline-report`, `publish-allure`, `lambdatest-espresso`.
+Reusable composite actions in [`.github/actions/`](.github/actions/):
+
+| Action | Purpose |
+|---|---|
+| `slack-stage-notify` | Per-stage Slack message (PASSED / FAILED / SKIPPED + duration + report link) |
+| `slack-gate-notify` | "Gate PASSED — proceeding" / "Gate FAILED — blocking" gate decision |
+| `slack-pipeline-report` | Final per-platform summary with combined pass rate and total duration |
+| `publish-allure` | Generate Allure report from JUnit XML and deploy to GitHub Pages with retry/jitter |
+| `lambdatest-espresso` | Upload APKs + dispatch + poll a LambdaTest Espresso run, normalise JUnit XML output |
+
+Pipeline hardening:
+
+- **Maven Central mirror** baked into Android Gradle setup — falls through to Google's CDN when MC throttles GitHub Actions runners.
+- **Gradle dep cache** is written from feature branches so the build job primes cache for downstream BAT/Smoke jobs.
+- **3-attempt retry** with 30 s back-off on each on-emulator `connectedDebugAndroidTest` invocation.
+- **Allure publish** retries 6 times with exponential back-off + random jitter to survive concurrent GitHub Pages deploys from parallel jobs.
 
 ## License
 

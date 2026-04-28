@@ -78,8 +78,8 @@ on:
   pull_request:
     paths:
       - 'android-player/**'
-      - '.github/workflows/qoe-android-tests.yml'
-      - '.github/workflows/shared-notify-start.yml'
+      - '.github/workflows/stream-qoe-app-android.yml'
+      - '.github/workflows/shared-notify-build-started.yml'
       - '.github/actions/**'
       - '.github/scripts/stage_result_to_slack.py'
       - '.github/scripts/module_result_to_slack.py'
@@ -87,7 +87,7 @@ on:
     branches: [main, develop]
     paths:
       - 'android-player/**'
-      - '.github/workflows/qoe-android-tests.yml'
+      - '.github/workflows/stream-qoe-app-android.yml'
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
@@ -136,7 +136,7 @@ concurrency:
 # ─────────────────────────────────────────────────────────────────────────────
 jobs:
   notify-start:
-    uses: ./.github/workflows/shared-notify-start.yml
+    uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       ANDROID
       # vars context is available in workflow-level inputs; the suffix
@@ -178,6 +178,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # Default behaviour on feature branches is read-only — meaning
+          # the build job's resolved-dep cache never gets uploaded, and
+          # downstream BAT/Smoke/Regression jobs each re-resolve every
+          # plugin (~50 transitive deps) from Maven Central. That works
+          # right up until MC throttles the GitHub Actions IP block, at
+          # which point one job sails through and the next one fails
+          # with a wall of HTTP 403 Forbidden. Forcing writes from any
+          # branch lets the first job in the run prime the cache for
+          # the rest, so MC only has to be cooperative once per workflow.
+          cache-read-only: false
 
       - name: Run unit tests
         id: unit
@@ -318,6 +329,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # Default behaviour on feature branches is read-only — meaning
+          # the build job's resolved-dep cache never gets uploaded, and
+          # downstream BAT/Smoke/Regression jobs each re-resolve every
+          # plugin (~50 transitive deps) from Maven Central. That works
+          # right up until MC throttles the GitHub Actions IP block, at
+          # which point one job sails through and the next one fails
+          # with a wall of HTTP 403 Forbidden. Forcing writes from any
+          # branch lets the first job in the run prime the cache for
+          # the rest, so MC only has to be cooperative once per workflow.
+          cache-read-only: false
 
       - name: Run Android Lint
         id: lint
@@ -383,6 +405,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # Default behaviour on feature branches is read-only — meaning
+          # the build job's resolved-dep cache never gets uploaded, and
+          # downstream BAT/Smoke/Regression jobs each re-resolve every
+          # plugin (~50 transitive deps) from Maven Central. That works
+          # right up until MC throttles the GitHub Actions IP block, at
+          # which point one job sails through and the next one fails
+          # with a wall of HTTP 403 Forbidden. Forcing writes from any
+          # branch lets the first job in the run prime the cache for
+          # the rest, so MC only has to be cooperative once per workflow.
+          cache-read-only: false
 
       - name: Assemble debug APK
         id: build
@@ -500,6 +533,11 @@ jobs:
       - name: Setup Gradle
         if: vars.LT_USERNAME == ''
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # See cache-read-only commentary on the build job — same reasoning:
+          # let this run's first Gradle job populate the cache so MC only has
+          # to cooperate once per workflow instead of once per job.
+          cache-read-only: false
 
       # ─── LambdaTest path ─────────────────────────────────────────────────
       # Real-device cloud run — uploads APKs, dispatches via REST, polls,
@@ -594,7 +632,21 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --parallel --build-cache --max-workers=4
+          # Retry wrapper is here for one specific failure mode: Maven
+          # Central rate-limits the GitHub Actions IP pool and randomly
+          # 403s POM lookups during dependency resolution. When that
+          # happens the whole build fails before a single test runs.
+          # 3 attempts × 30 s back-off has empirically been enough to
+          # ride out the throttling window. The mirror in build.gradle.kts
+          # absorbs most of the noise; this is the belt-and-suspenders.
+          script: |
+            for attempt in 1 2 3; do
+              ./gradlew connectedDebugAndroidTest -PtestStage=bat --parallel --build-cache --max-workers=4 && exit 0
+              rc=$?
+              echo "::warning title=Gradle retry::BAT attempt ${attempt} failed (exit ${rc}); retrying in 30 s..."
+              sleep 30
+            done
+            exit 1
 
       # ─── Common: post-test reporting ─────────────────────────────────────
       - name: Calculate BAT duration
@@ -811,6 +863,11 @@ jobs:
       - name: Setup Gradle
         if: vars.LT_USERNAME == ''
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # See cache-read-only commentary on the build job — same reasoning:
+          # let this run's first Gradle job populate the cache so MC only has
+          # to cooperate once per workflow instead of once per job.
+          cache-read-only: false
 
       # ─── LambdaTest path ─────────────────────────────────────────────────
       - name: Download prebuilt APKs (LambdaTest path)
@@ -873,7 +930,15 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --parallel --build-cache --max-workers=4
+          # Same 403-recovery wrapper as the BAT job — see commentary there.
+          script: |
+            for attempt in 1 2 3; do
+              ./gradlew connectedDebugAndroidTest -PtestStage=smoke --parallel --build-cache --max-workers=4 && exit 0
+              rc=$?
+              echo "::warning title=Gradle retry::Smoke attempt ${attempt} failed (exit ${rc}); retrying in 30 s..."
+              sleep 30
+            done
+            exit 1
 
       # ─── Common: post-test reporting ─────────────────────────────────────
       - name: Calculate Smoke duration
@@ -966,6 +1031,17 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          # Default behaviour on feature branches is read-only — meaning
+          # the build job's resolved-dep cache never gets uploaded, and
+          # downstream BAT/Smoke/Regression jobs each re-resolve every
+          # plugin (~50 transitive deps) from Maven Central. That works
+          # right up until MC throttles the GitHub Actions IP block, at
+          # which point one job sails through and the next one fails
+          # with a wall of HTTP 403 Forbidden. Forcing writes from any
+          # branch lets the first job in the run prime the cache for
+          # the rest, so MC only has to be cooperative once per workflow.
+          cache-read-only: false
 
       - name: Enable KVM permissions
         run: |
@@ -1000,7 +1076,15 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=regression --parallel --build-cache --max-workers=4
+          # Same 403-recovery wrapper as the BAT job — see commentary there.
+          script: |
+            for attempt in 1 2 3; do
+              ./gradlew connectedDebugAndroidTest -PtestStage=regression --parallel --build-cache --max-workers=4 && exit 0
+              rc=$?
+              echo "::warning title=Gradle retry::Regression attempt ${attempt} failed (exit ${rc}); retrying in 30 s..."
+              sleep 30
+            done
+            exit 1
 
       - name: Calculate Regression duration
         if: always()
