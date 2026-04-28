@@ -116,7 +116,11 @@ jobs:
         id: unit
         run: |
           mkdir -p test-results
-          swift test --xunit-output test-results/swift-unit-junit.xml 2>&1 | tee test-output.log
+          # --parallel is required by SwiftPM for --xunit-output to actually
+          # write the XML file (verified with swift 5.10 on Linux/macOS).
+          swift test --parallel \
+            --xunit-output test-results/swift-unit-junit.xml \
+            2>&1 | tee test-output.log
         working-directory: ios-player
 
       - name: Calculate unit duration
@@ -308,7 +312,7 @@ jobs:
         id: bat
         run: |
           mkdir -p test-results
-          swift test --filter BATTests \
+          swift test --parallel --filter BATTests \
             --xunit-output test-results/swift-bat-junit.xml \
             2>&1 | tee bat-test-output.log
         working-directory: ios-player
@@ -419,7 +423,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p test-results
-          swift test --filter SmokeTests \
+          swift test --parallel --filter SmokeTests \
             --xunit-output test-results/swift-smoke-junit.xml \
             2>&1 | tee smoke-test-output.log
         working-directory: ios-player
@@ -507,7 +511,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p test-results
-          swift test --filter RegressionTests \
+          swift test --parallel --filter RegressionTests \
             --xunit-output test-results/swift-regression-junit.xml \
             2>&1 | tee regression-test-output.log
         working-directory: ios-player
