@@ -121,6 +121,11 @@ env:
   # Step-level `if:` cannot access secrets directly nor a step's own env.
   FIREBASE_TOKEN:           ${{ secrets.FIREBASE_TOKEN }}
   FIREBASE_APP_ID_ANDROID:  ${{ secrets.FIREBASE_APP_ID_ANDROID }}
+  # Variable (NOT a secret) — used to construct a clickable Firebase
+  # Console URL in the publish-internal / publish-public Slack messages.
+  # Secrets get masked in URL tokens, so we use the project ID (which
+  # is already public Firebase metadata) as the safe URL anchor.
+  FIREBASE_PROJECT_ID:      ${{ vars.FIREBASE_PROJECT_ID }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -641,6 +646,7 @@ jobs:
         id: bat-gate
         if: always()
         run: |
+          set -uo pipefail
           # Pick the outcome from whichever path actually ran (the other one
           # was skipped via `if:` and reports outcome='skipped').
           if [ "${{ vars.LT_USERNAME }}" != "" ]; then
@@ -649,25 +655,47 @@ jobs:
             BAT="${{ steps.bat-emu.outcome }}"
           fi
           SKIP="${{ inputs.skip_tests }}"
+          NO_LAB="${{ vars.NO_DEVICE_LAB }}"
           RESULTS_DIR="android-player/app/build/outputs/androidTest-results/connected"
-          # If the device never came up (or the runner crashed before
-          # producing any JUnit XML), treat BAT as 'skipped' so Firebase
-          # deployment can still proceed gated on the Unit test result.
-          HAS_RESULTS="$(find "$RESULTS_DIR" -type f -name '*.xml' 2>/dev/null | head -n1)"
+
+          # ── Count tests that ACTUALLY ran ────────────────────────────────
+          # An XML stub from a failed Gradle/emulator boot can have
+          # tests="0" — file existence alone is not enough. Sum the
+          # tests="N" attribute across every JUnit XML; if the total is 0
+          # we know nothing executed → device lab unavailable → skipped.
+          TOTAL_TESTS=0
+          if [ -d "$RESULTS_DIR" ]; then
+            while IFS= read -r xml; do
+              [ -f "$xml" ] || continue
+              # First tests="N" attribute on the <testsuite>/<testsuites> root
+              n=$(grep -oE 'tests="[0-9]+"' "$xml" | head -1 | grep -oE '[0-9]+' || echo 0)
+              TOTAL_TESTS=$(( TOTAL_TESTS + ${n:-0} ))
+            done < <(find "$RESULTS_DIR" -type f -name '*.xml' 2>/dev/null)
+          fi
+          echo "BAT step outcome: $BAT  |  tests executed: $TOTAL_TESTS"
 
           if [ "$SKIP" = "true" ]; then
-            echo "⚡ Hotfix mode — BAT gate bypassed"
+            echo "Hotfix mode — BAT gate bypassed"
             echo "gate_passed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$NO_LAB" = "true" ]; then
+            # Explicit operator override: workshop/demo with no device lab.
+            # Reports SKIPPED in the chain (not FAILED) so the pipeline
+            # demonstrates the soft-gate path on the green Unit gate.
+            echo "BAT SKIPPED — vars.NO_DEVICE_LAB=true (no device lab in this environment)"
+            echo "gate_passed=skipped" >> "$GITHUB_OUTPUT"
           elif [ "$BAT" = "success" ]; then
-            echo "✅ BAT gate PASSED — Smoke tests can start"
+            echo "BAT gate PASSED — Smoke tests can start"
             echo "gate_passed=true" >> "$GITHUB_OUTPUT"
-          elif [ -z "$HAS_RESULTS" ]; then
-            echo "⏭️  BAT SKIPPED — device unavailable; proceeding to Firebase"
-            echo "    deploy on the Unit gate alone."
+          elif [ "$TOTAL_TESTS" -eq 0 ]; then
+            # Device never came up, runner crashed before tests ran, or
+            # Gradle wrote a 0-test stub. Treat as device unavailable so
+            # Firebase deployment proceeds on the Unit gate alone.
+            echo "BAT SKIPPED — no tests executed (device unavailable)"
+            echo "    Firebase deploy proceeds on the Unit gate alone."
             echo "gate_passed=skipped" >> "$GITHUB_OUTPUT"
           else
-            echo "❌ BAT gate FAILED (bat=$BAT) — tests ran and reported failures."
-            echo "    Smoke tests and Firebase publish are BLOCKED."
+            echo "BAT gate FAILED (bat=$BAT, tests=$TOTAL_TESTS) — tests ran and reported failures."
+            echo "    Public promotion and Smoke are BLOCKED."
             echo "gate_passed=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -1160,6 +1188,17 @@ jobs:
           stage-name:      "Firebase Internal Distribution"
           stage-result:    ${{ steps.firebase-publish.outcome || 'skipped' }}
           duration:        ${{ env.PUBLISH_DURATION }}
+          # Deep-link to the Firebase Console App Distribution page for
+          # this project. The newest release (i.e. THIS one) is at the
+          # top of the list — clicking the link lands testers there
+          # immediately. We use the project ID (a non-secret Variable)
+          # rather than the App ID (a secret), because secret values
+          # would be masked to *** in the rendered URL.
+          report-url: >-
+            ${{ env.FIREBASE_PROJECT_ID != ''
+                && format('https://console.firebase.google.com/project/{0}/appdistribution', env.FIREBASE_PROJECT_ID)
+                || '' }}
+          link-label:      ":mobile_phone: View on Firebase"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -1263,6 +1302,11 @@ jobs:
           stage-name:      "Firebase Public Distribution"
           stage-result:    ${{ steps.firebase-publish-pub.outcome || 'skipped' }}
           duration:        ${{ env.PUBLISH_PUB_DURATION }}
+          report-url: >-
+            ${{ env.FIREBASE_PROJECT_ID != ''
+                && format('https://console.firebase.google.com/project/{0}/appdistribution', env.FIREBASE_PROJECT_ID)
+                || '' }}
+          link-label:      ":mobile_phone: View on Firebase"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
