@@ -1,18 +1,56 @@
 # QoE Automation Tests
 
-Java/TestNG test automation suite for end-to-end Quality of Experience validation across API, web, and mobile layers.
+Java / TestNG cross-platform end-to-end suite that exercises the live API, the running web player, and (optionally) connected mobile devices via Appium.
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Language | Java 17 |
+| Language | Java 17+ |
 | Test runner | TestNG |
 | API testing | REST Assured |
 | Web testing | Selenium WebDriver |
 | Mobile testing | Appium |
 | Build | Maven |
-| Reports | Surefire XML + Maven site |
+| Reports | Surefire XML + Allure |
+
+## Module architecture
+
+The framework is laid out as a small library plus a TestNG test tree per platform. The library (`src/main`) holds reusable building blocks (`ApiClient`, `ValidationEngine`, models); the tests (`src/test`) are grouped by surface (api / web / mobile / validation).
+
+```mermaid
+flowchart LR
+  subgraph Lib["src/main/java — framework"]
+    direction TB
+    Client["utils/<br/>ApiClient (REST Assured)"]
+    Models["models/<br/>QoE payload + verdicts"]
+    Engine["validation/<br/>ValidationEngine<br/>thresholds &amp; scoring"]
+  end
+  subgraph Tests["src/test/java"]
+    direction TB
+    APITest["api/<br/>QoEMetricsApiTest"]
+    WebTest["web/<br/>WebPlayerQoETest (Selenium)"]
+    MobileTest["mobile/<br/>MobileQoETest (Appium)"]
+    ValTest["validation/<br/>QoEValidationTest"]
+  end
+  Stack[["Running stack<br/>API · Web · DB"]]
+  Devices[["Local device<br/>or emulator (Appium)"]]
+  Reports["target/<br/>surefire-reports + allure-results"]
+
+  APITest --> Client
+  WebTest --> Client
+  MobileTest --> Client
+  ValTest --> Engine
+  Engine --> Models
+  Client --> Models
+
+  APITest -- "REST Assured" --> Stack
+  WebTest -- "Selenium WebDriver" --> Stack
+  MobileTest -- "Appium" --> Devices
+  ValTest -- "POST /api/v1/validations" --> Stack
+
+  Tests -. "JUnit XML / Allure" .-> Reports
+```
 
 ## Prerequisites
 
@@ -29,9 +67,7 @@ cd qoe-automation-tests
 mvn dependency:resolve
 ```
 
-### Configuration
-
-Edit `src/test/resources/test-config.properties`:
+Edit `src/test/resources/test-config.properties` to point at your stack:
 
 ```properties
 api.base.url=http://localhost:8080/api/v1
@@ -41,100 +77,71 @@ appium.server.url=http://localhost:4723
 test.timeout.seconds=30
 ```
 
-## Running Tests
-
-### All tests
+## Running tests
 
 ```bash
-mvn test
-```
+mvn test                                                     # all tests
+mvn test -DsuiteXmlFile=src/test/resources/testng.xml        # parallel TestNG suite
+mvn test -DsuiteXmlFile=src/test/resources/testng-mobile.xml # mobile suite
 
-### Using TestNG suite (parallel execution)
-
-```bash
-mvn test -DsuiteXmlFile=src/test/resources/testng.xml
-```
-
-### API tests only
-
-```bash
+# Single class
 mvn test -Dtest=QoEMetricsApiTest
-```
-
-### Validation tests only
-
-```bash
 mvn test -Dtest=QoEValidationTest
-```
-
-### Web player tests only
-
-```bash
 mvn test -Dtest=WebPlayerQoETest
-```
-
-### Mobile tests only
-
-```bash
 mvn test -Dtest=MobileQoETest
-```
 
-### Skip a specific test class
-
-```bash
+# Skip a class
 mvn test -Dtest='!MobileQoETest'
-```
 
-### Run with a specific platform tag (TestNG groups)
-
-```bash
+# By TestNG group
 mvn test -Dgroups=api
 mvn test -Dgroups=validation
 mvn test -Dgroups=mobile
 ```
 
-## Test Reports
-
-### Surefire XML (used by CI)
-
-```
-target/surefire-reports/*.xml
-```
-
-### HTML report
+## Reports
 
 ```bash
+# Surefire (JUnit XML — used by CI)
+ls target/surefire-reports/TEST-*.xml
+
+# Surefire HTML report
 mvn surefire-report:report
 open target/site/surefire-report.html
+
+# Allure (richer test detail)
+mvn allure:report
+allure serve target/allure-results --port 5055
 ```
 
-## CI Integration
+## CI integration
 
-Tests run in GitHub Actions as part of two workflows:
+Two workflows consume this suite:
 
 | Workflow | Job | Trigger |
 |---|---|---|
-| `qoe-validation.yml` | `qoe-test-framework` | Every push / PR |
-| `build-acceptance-release.yml` | `acceptance-automation` | Release gate |
+| [`qoe-validation.yml`](../.github/workflows/qoe-validation.yml) | `qoe-test-framework` | every push / PR |
+| [`build-acceptance-release.yml`](../.github/workflows/build-acceptance-release.yml) | `acceptance-automation` | manual release gate |
 
-The CI `junit_to_summary.py` script parses the Surefire XML output to produce a GitHub step summary and Slack notification.
+Both call [`junit_to_summary.py`](../.github/scripts/junit_to_summary.py) to turn the Surefire XML into a GitHub step summary and a Slack notification.
 
-## Project Structure
+## Project structure
 
 ```
 qoe-automation-tests/
 ├── src/
 │   ├── main/java/com/devopsdays/qoe/framework/
-│   │   ├── validation/          # Validation engine (thresholds, scoring)
+│   │   ├── validation/          # ValidationEngine — thresholds + scoring
 │   │   ├── models/              # Shared data models
-│   │   └── utils/               # HTTP client, retry helpers
+│   │   └── utils/               # ApiClient, retry helpers
 │   └── test/java/com/devopsdays/qoe/tests/
-│       ├── api/                 # QoEMetricsApiTest — REST Assured API tests
-│       ├── web/                 # WebPlayerQoETest — Selenium browser tests
-│       ├── mobile/              # MobileQoETest — Appium device tests
+│       ├── api/                 # QoEMetricsApiTest — REST Assured
+│       ├── web/                 # WebPlayerQoETest — Selenium
+│       ├── mobile/              # MobileQoETest — Appium
 │       └── validation/          # QoEValidationTest — threshold validation
 ├── src/test/resources/
 │   ├── testng.xml               # Suite config (parallel groups, listeners)
+│   ├── testng-mobile.xml        # Mobile-only suite
 │   └── test-config.properties   # URLs, timeouts, platform selection
 └── pom.xml
 ```

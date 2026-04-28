@@ -2,28 +2,28 @@
 
 Get the workshop up and running in 5 minutes!
 
-## Prerequisites Check
+## Prerequisites check
 
 ```bash
-# Check Docker
+# Check Docker (Compose v2 plugin — note the SPACE, not a hyphen)
 docker --version
-docker-compose --version
+docker compose version
 
 # Check Java
-java -version  # Should be 17+
+java -version  # Should be 21+
 
 # Check Node.js
 node --version  # Should be 18+
 ```
 
-## Start Everything
+## Start everything
 
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be ready (about 30 seconds)
-docker-compose ps
+docker compose ps
 
 # Check backend health
 curl http://localhost:8080/actuator/health
@@ -70,17 +70,17 @@ curl http://localhost:8080/api/v1/metrics?platform=web
 curl http://localhost:8080/api/v1/metrics/summary?platform=web
 ```
 
-## Stop Everything
+## Stop everything
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## Troubleshooting
 
 **Services not starting?**
 ```bash
-docker-compose logs
+docker compose logs
 ```
 
 **Port already in use?**
@@ -88,9 +88,9 @@ Edit `docker-compose.yml` to change ports.
 
 **Database connection issues?**
 ```bash
-docker-compose restart postgres
+docker compose restart postgres
 ```
 
-## Next Steps
+## Next steps
 
-See `workshop-guide.md` for detailed instructions and exercises.
+See [`TESTING.md`](TESTING.md) for the full local test playbook (unit / BAT / Smoke / Regression for each module, plus Allure report serving).

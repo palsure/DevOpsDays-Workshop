@@ -1,103 +1,116 @@
 # Backend API
 
-Java/Spring Boot REST API that ingests QoE metrics from all player clients, runs validation rules, and serves a pipeline acceptance gate.
+Java 21 / Spring Boot 3 REST API that ingests QoE metrics from every player client, runs validation rules, and exposes a pipeline acceptance gate.
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Runtime | Java 17, Spring Boot 3.2 |
-| Database | PostgreSQL 15 (Flyway migrations) |
+| Runtime | Java 21, Spring Boot 3.2 |
+| Database | PostgreSQL 15 + Flyway migrations |
 | Docs | Springdoc OpenAPI / Swagger UI |
 | Testing | JUnit 5, Mockito, REST Assured, Testcontainers |
 | Reports | Allure |
 | Build | Gradle 8 |
+| Observability | New Relic APM (optional) |
+
+## Module architecture
+
+Three layers — **controllers** (HTTP), **services** (business logic + validation), **repositories** (Spring Data JPA over PostgreSQL). The pipeline subsystem is a thin gate API that records per-platform run results and returns a verdict.
+
+```mermaid
+flowchart LR
+  Players["📱 Players<br/>(web · ios · android)"]
+  Auto["qoe-automation-tests<br/>REST Assured"]
+  CI["GitHub Actions<br/>pipeline gate"]
+  subgraph API["backend-api / src/main/java"]
+    direction TB
+    Controllers["controllers/<br/>MetricsController<br/>ValidationController<br/>PipelineController<br/>PlatformController"]
+    Services["services/<br/>QoEMetricsService<br/>ValidationEngine"]
+    Pipeline["pipeline/<br/>acceptance gate"]
+    Repos["repositories/<br/>Spring Data JPA"]
+    Models["models/<br/>JPA entities + Platform enum"]
+    Flyway["resources/db/migration/<br/>Flyway SQL"]
+    Controllers --> Services
+    Controllers --> Pipeline
+    Services --> Repos
+    Pipeline --> Repos
+    Repos --> Models
+    Flyway -. "schema" .-> DB
+  end
+  DB[("PostgreSQL 15")]
+  NR[["New Relic APM"]]
+
+  Players -- "POST /api/v1/metrics" --> Controllers
+  Auto -- "REST Assured" --> Controllers
+  CI -- "POST /api/v1/pipeline/runs" --> Controllers
+  Repos --> DB
+  Services -. "agent" .-> NR
+```
 
 ## Prerequisites
 
-- Java 17+
-- Docker & Docker Compose (for PostgreSQL and E2E tests)
+- Java 21+ (`brew install --cask temurin@21` on macOS)
+- Docker + Docker Compose (for PostgreSQL and Testcontainers-based E2E)
 
 ## Setup
 
-### 1. Start PostgreSQL
-
 ```bash
-docker compose up postgres -d
-```
-
-### 2. Run the API locally
-
-```bash
+docker compose up postgres -d        # start the database only
 cd backend-api
-./gradlew bootRun
+./gradlew bootRun                    # runs on http://localhost:8080
 ```
 
-The API starts on **http://localhost:8080**.
+Swagger UI: **http://localhost:8080/swagger-ui/index.html** — try every endpoint interactively.
 
-### 3. Swagger UI
-
-Open **http://localhost:8080/swagger-ui/index.html** to browse and try all endpoints interactively.
-
-## API Endpoints
+## API endpoints
 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/v1/metrics` | Ingest a QoE metric payload |
 | `GET` | `/api/v1/metrics/{videoId}` | Query metrics for a video |
-| `GET` | `/api/v1/platforms` | List all supported platforms (optional `?category=`) |
+| `GET` | `/api/v1/platforms` | List supported platforms (filter `?category=`) |
 | `POST` | `/api/v1/validations` | Create a validation rule |
 | `POST` | `/api/v1/validations/{id}/run` | Run a validation |
 | `GET` | `/api/v1/validations/{id}/results` | Get validation results |
 | `POST` | `/api/v1/pipeline/runs` | Start a pipeline acceptance run |
 | `POST` | `/api/v1/pipeline/runs/{id}/platforms` | Record a platform result |
-| `GET` | `/api/v1/pipeline/runs/{id}` | Get pipeline run result |
+| `GET` | `/api/v1/pipeline/runs/{id}` | Get pipeline run verdict |
 | `GET` | `/actuator/health` | Health check |
 
-## Running Tests
+## Tests
 
-### Unit tests (fast — no Docker required)
+The build defines **per-stage** Gradle tasks so the local commands mirror the CI pipeline shape (Unit → BAT → Smoke → Regression).
 
-```bash
-./gradlew unitTest
-```
-
-### E2E / API tests (requires Docker for Testcontainers)
-
-```bash
-./gradlew e2eTest
-```
-
-### All tests
+| Stage | Tag | Gradle task | Needs Docker? |
+|---|---|---|---|
+| Unit | `@Tag("unit")` | `unitTest` | no |
+| BAT | `@Tag("BAT")` | `batTest` | yes (Testcontainers) |
+| Smoke | `@Tag("Smoke")` | `smokeTest` | yes |
+| Regression | `@Tag("Regression")` | `regressionTest` | yes |
+| All E2E | `@Tag("e2e")` | `e2eTest` | yes |
+| Allure (per stage) | — | `allureReport{Unit,Bat,Smoke,Regression,E2e}` | n/a |
 
 ```bash
-./gradlew test
+./gradlew unitTest                                # fast Mockito tests, no Docker
+./gradlew batTest allureReportBat                 # BAT + Allure
+./gradlew e2eTest allureReportE2e                 # full E2E + report
+./gradlew cleanAll                                # classes + Allure results + reports
+allure serve build/allure-results/bat --port 5052 # view BAT report
 ```
 
-### Generate Allure report
+See [`TESTING.md`](../TESTING.md) for the full local pipeline simulation.
 
-```bash
-./gradlew allureReport
-# Opens at build/reports/allure-report/allureReport/index.html
-```
-
-### View Gradle HTML test report
-
-```bash
-open build/reports/tests/unitTest/index.html
-open build/reports/tests/e2eTest/index.html
-```
-
-## Build Docker image
+## Docker image
 
 ```bash
 cd backend-api
 docker build -t qoe-backend .
 ```
 
-The Dockerfile runs `unitTest` during the build (fast) — E2E tests run separately in CI after the stack is up.
+The Dockerfile runs `unitTest` during the build (fast, no Docker-in-Docker needed) — E2E runs separately in CI once the stack is up.
 
-## Environment Variables
+## Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
@@ -107,17 +120,17 @@ The Dockerfile runs `unitTest` during the build (fast) — E2E tests run separat
 | `NEWRELIC_ENABLED` | `false` | Enable New Relic agent |
 | `NEWRELIC_LICENSE_KEY` | — | New Relic license key |
 
-## Project Structure
+## Project structure
 
 ```
 backend-api/
 ├── src/main/java/com/devopsdays/qoe/api/
-│   ├── config/          # Spring config (CORS, OpenAPI, Web MVC)
+│   ├── config/          # CORS, OpenAPI, Web MVC, ObjectMapper
 │   ├── controllers/     # REST controllers
 │   ├── models/          # JPA entities + Platform enum
-│   ├── repositories/    # Spring Data JPA repositories
-│   ├── services/        # Business logic
-│   └── pipeline/        # Pipeline acceptance gate
+│   ├── repositories/    # Spring Data JPA
+│   ├── services/        # Business logic + validation
+│   └── pipeline/        # Acceptance-gate domain
 ├── src/main/resources/
 │   ├── application.yml  # App configuration
 │   └── db/migration/    # Flyway SQL migrations
