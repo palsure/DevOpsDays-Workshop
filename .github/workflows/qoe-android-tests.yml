@@ -1,15 +1,28 @@
 # Stream-QoE-App-Android
 #
-# Pipeline flow:
-#   0. notify-start     — Post "build started" to Slack; capture thread_ts + start_epoch.
-#   1. unit-tests  ┐   — JUnit4 + MockK unit tests with Allure; inline unit gate (≥80%).
-#   2. lint        ┘   — Both run IN PARALLEL (fail-fast). Lint via detekt/ktlint.
-#   3. build            — Assemble debug APK; produces artifact.
-#   4. bat-e2e          — @BAT Espresso tests on emulator; inline BAT gate.
+# Pipeline flow (unit-tests, lint, build, and BAT all start as soon as their
+# upstream artifact is ready — unit-tests run in PARALLEL with build → BAT):
+#
+#   notify-start ──┬─→ unit-tests  ──────────────┐
+#                  ├─→ lint                       │
+#                  └─→ build ─→ bat-e2e ─────────┤
+#                                  │              │
+#                                  └─ smoke-e2e   │
+#                                                 ▼
+#                              publish-internal (gates: unit + BAT)
+#                                                 ▼
+#                                          publish-public
+#
+#   0. notify-start     — Post "build started" to Slack.
+#   1. unit-tests       — JUnit4 + MockK; inline unit gate (≥80%).
+#   2. lint             — Android Lint (informational, runs in parallel).
+#   3. build            — Assemble debug APK; runs in parallel with unit + lint.
+#   4. bat-e2e          — @BAT Espresso tests on emulator; needs build only.
+#                         Runs in PARALLEL with unit-tests for fast feedback.
 #   5. smoke-e2e        — @Smoke tests; after BAT gate passes.
 #   6. regression-e2e   — @Regression; nightly schedule only; continue-on-error.
-#   7. quality-gate     — Final gate; blocks Firebase publish.
-#   8. publish-internal — Firebase App Distribution (internal track).
+#   7. quality-gate     — Trigger if unit gate OR BAT gate failed; blocks publish.
+#   8. publish-internal — Firebase App Distribution (gated by unit AND BAT).
 #   9. publish-public   — Firebase App Distribution (public / testers).
 #  10. report           — Slack summary + update initial message.
 #
@@ -74,7 +87,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       ANDROID
-      pipeline-steps:    "Unit ∥ Lint → Build APK → BAT → Smoke → Regression (nightly) → Firebase"
+      pipeline-steps:    "Unit ∥ Lint ∥ (Build → BAT) → Smoke → Firebase"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -111,7 +124,11 @@ jobs:
 
       - name: Run unit tests
         id: unit
-        run: ./gradlew testDebugUnitTest --no-daemon
+        # --parallel: run independent Gradle tasks concurrently
+        # --build-cache: re-use compile/test outputs from prior runs
+        # --max-workers=4: cap workers to runner vCPUs
+        # maxParallelForks (build.gradle.kts) parallelizes test classes within the test task
+        run: ./gradlew testDebugUnitTest --parallel --build-cache --max-workers=4
         working-directory: android-player
 
       - name: Calculate unit duration
@@ -204,7 +221,7 @@ jobs:
           if not gate_ok:
               print(f"❌ FAILED — {rate:.1f}% < {threshold}% or {failed} test(s) failed")
           else:
-              print(f"✅ PASSED — running BAT tests after build")
+              print(f"✅ PASSED — runs in parallel with build and BAT")
           EOF
 
       - name: Post unit gate decision to Slack
@@ -212,8 +229,8 @@ jobs:
         uses: ./.github/actions/slack-gate-notify
         with:
           gate-passed:      ${{ steps.unit-gate.outputs.gate_passed }}
-          proceed-message:  "Unit gate *PASSED* — build and BAT tests can proceed…"
-          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. BAT tests *BLOCKED*."
+          proceed-message:  "Unit gate *PASSED* — runs in parallel with BAT (Firebase publish enforces this gate)."
+          blocked-message:  "Unit gate *FAILED* — pass rate below ${{ env.QUALITY_GATE_THRESHOLD }}%. Firebase publish *BLOCKED* (BAT continues for diagnostics)."
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -243,7 +260,7 @@ jobs:
 
       - name: Run Android Lint
         id: lint
-        run: ./gradlew lintDebug --no-daemon
+        run: ./gradlew lintDebug --parallel --build-cache --max-workers=4
         working-directory: android-player
 
       - name: Calculate lint duration
@@ -277,13 +294,14 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. BUILD — Assemble debug APK; produces artifact for E2E tests
+# 3. BUILD — Assemble debug APK; runs IN PARALLEL with unit-tests + lint
 # ─────────────────────────────────────────────────────────────────────────────
   build:
     name: "Build APK"
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [notify-start, unit-tests, lint]
+    needs: [notify-start]
+    if: inputs.skip_tests != true
 
     steps:
       - name: Record job start time
@@ -301,7 +319,7 @@ jobs:
 
       - name: Assemble debug APK
         id: build
-        run: ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon
+        run: ./gradlew assembleDebug assembleDebugAndroidTest --parallel --build-cache --max-workers=4
         working-directory: android-player
 
       - name: Calculate build duration
@@ -417,7 +435,10 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --no-daemon
+          # AndroidX Test Orchestrator runs each test in its own process
+          # (configured in app/build.gradle.kts), so they're isolated and can
+          # be dispatched concurrently. --parallel speeds up the build/install.
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=bat --parallel --build-cache --max-workers=4
 
       - name: Calculate BAT duration
         if: always()
@@ -543,7 +564,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --no-daemon
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=smoke --parallel --build-cache --max-workers=4
 
       - name: Calculate Smoke duration
         if: always()
@@ -646,7 +667,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
-          script: ./gradlew connectedDebugAndroidTest -PtestStage=regression --no-daemon
+          script: ./gradlew connectedDebugAndroidTest -PtestStage=regression --parallel --build-cache --max-workers=4
 
       - name: Calculate Regression duration
         if: always()
