@@ -38,7 +38,6 @@ export function initNewRelic(): void {
   if (!licenseKey || !applicationID || !accountID) {
     // Quiet in production builds; only log in dev so attendees see why no data flows.
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.info(
         '[newrelic] Browser RUM disabled — set VITE_NEWRELIC_LICENSE_KEY, ' +
         'VITE_NEWRELIC_APPLICATION_ID, and VITE_NEWRELIC_ACCOUNT_ID to enable.',
