@@ -1,0 +1,404 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "playwright-qoe-capture",
+      "version": "1.0.0"
+    },
+    "browser": {
+      "name": "Chromium (headless)",
+      "version": "unknown"
+    },
+    "pages": [
+      {
+        "startedDateTime": "2026-04-28T01:19:00.386Z",
+        "id": "page_1",
+        "title": "baseline: first frame within generous budget",
+        "pageTimings": {
+          "onContentLoad": -1,
+          "onLoad": -1
+        }
+      }
+    ],
+    "entries": [
+      {
+        "startedDateTime": "2026-04-28T01:19:00.590Z",
+        "time": 170,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 169,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:00.654Z",
+        "time": 62,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 61,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:00.753Z",
+        "time": 161,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 160,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:01.836Z",
+        "time": 66,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 65,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:01.929Z",
+        "time": 91,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 90,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:01.983Z",
+        "time": 54,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 53,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:02.319Z",
+        "time": 28,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 27,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:02.386Z",
+        "time": 63,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 62,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:03.186Z",
+        "time": 82,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 81,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      }
+    ]
+  }
+}

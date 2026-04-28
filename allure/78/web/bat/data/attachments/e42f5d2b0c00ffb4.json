@@ -1,0 +1,1454 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "playwright-qoe-capture",
+      "version": "1.0.0"
+    },
+    "browser": {
+      "name": "Chromium (headless)",
+      "version": "unknown"
+    },
+    "pages": [
+      {
+        "startedDateTime": "2026-04-28T01:19:04.152Z",
+        "id": "page_1",
+        "title": "pause stops playback and isPaused is true",
+        "pageTimings": {
+          "onContentLoad": -1,
+          "onLoad": -1
+        }
+      }
+    ],
+    "entries": [
+      {
+        "startedDateTime": "2026-04-28T01:19:04.352Z",
+        "time": 163,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 162,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:04.421Z",
+        "time": 64,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 63,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:04.525Z",
+        "time": 169,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 168,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:04.682Z",
+        "time": 98,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/?scenario=baseline&e2e_autoplay=1",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 97,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "other",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:04.706Z",
+        "time": 1,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BfDhOn_j.js",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 0,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:04.706Z",
+        "time": 0,
+        "request": {
+          "method": "GET",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/octet-stream"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 0,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "app-asset",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:05.166Z",
+        "time": 191,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 190,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:05.244Z",
+        "time": 78,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 77,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:05.273Z",
+        "time": 29,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 28,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:05.742Z",
+        "time": 48,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/vnd.apple.mpegurl"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 47,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-manifest",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:05.796Z",
+        "time": 54,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 53,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:06.762Z",
+        "time": 46,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 45,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:07.050Z",
+        "time": 27,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 26,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:07.420Z",
+        "time": 45,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 44,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:07.650Z",
+        "time": 28,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 27,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:07.820Z",
+        "time": 49,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 48,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:07.915Z",
+        "time": 17,
+        "request": {
+          "method": "GET",
+          "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "video/mp2t"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 16,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "hls-segment",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:10.062Z",
+        "time": 84,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 83,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:15.024Z",
+        "time": 50,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 49,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:20.019Z",
+        "time": 46,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 45,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:25.016Z",
+        "time": 43,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 42,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:30.013Z",
+        "time": 39,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 38,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:35.048Z",
+        "time": 74,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 73,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:40.013Z",
+        "time": 40,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 39,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:45.015Z",
+        "time": 41,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 40,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:50.019Z",
+        "time": 46,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 45,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:19:55.054Z",
+        "time": 81,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 80,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:00.035Z",
+        "time": 61,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 60,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:05.029Z",
+        "time": 56,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 55,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:10.025Z",
+        "time": 52,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 51,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:15.110Z",
+        "time": 137,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 136,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:20.022Z",
+        "time": 48,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 47,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:25.014Z",
+        "time": 41,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 40,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      },
+      {
+        "startedDateTime": "2026-04-28T01:20:30.041Z",
+        "time": 68,
+        "request": {
+          "method": "POST",
+          "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "queryString": [],
+          "cookies": [],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "headers": [],
+          "cookies": [],
+          "content": {
+            "size": -1,
+            "mimeType": "application/json"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -1,
+          "dns": -1,
+          "connect": -1,
+          "send": 0,
+          "wait": 67,
+          "receive": 1,
+          "ssl": -1
+        },
+        "_category": "qoe-api",
+        "_failed": false,
+        "_slow": false,
+        "_errorText": null
+      }
+    ]
+  }
+}
