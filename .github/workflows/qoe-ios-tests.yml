@@ -82,7 +82,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       iOS
-      pipeline-steps:    "Unit → Build → BAT → Smoke → Regression (nightly) → Firebase"
+      pipeline-steps:    "Unit → Unit Gate → Build → BAT → Smoke → Regression (nightly) → Firebase"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -239,6 +239,8 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 20
     needs: [notify-start, unit-tests]
+    # Industry-standard fail-fast: only build if unit tests passed the gate.
+    if: needs.unit-tests.outputs.gate_passed == 'true'
 
     steps:
       - name: Record job start time

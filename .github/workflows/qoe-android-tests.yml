@@ -1,24 +1,22 @@
 # Stream-QoE-App-Android
 #
-# Pipeline flow (unit-tests, lint, build, and BAT all start as soon as their
-# upstream artifact is ready — unit-tests run in PARALLEL with build → BAT):
+# Pipeline flow — Build is gated on Unit-test gate AND Lint passing
+# (industry-standard fail-fast — don't waste runner minutes building
+#  if the code didn't pass its own tests/lint):
 #
-#   notify-start ──┬─→ unit-tests  ──────────────┐
-#                  ├─→ lint                       │
-#                  └─→ build ─→ bat-e2e ─────────┤
-#                                  │              │
-#                                  └─ smoke-e2e   │
-#                                                 ▼
-#                              publish-internal (gates: unit + BAT)
-#                                                 ▼
-#                                          publish-public
+#   notify-start ──┬─→ unit-tests (gate ≥80%) ─┐
+#                  └─→ lint ───────────────────┴─→ build ─→ bat-e2e ─→ smoke-e2e
+#                                                              │
+#                                                              ▼
+#                                                       publish-internal
+#                                                              ▼
+#                                                       publish-public
 #
 #   0. notify-start     — Post "build started" to Slack.
 #   1. unit-tests       — JUnit4 + MockK; inline unit gate (≥80%).
-#   2. lint             — Android Lint (informational, runs in parallel).
-#   3. build            — Assemble debug APK; runs in parallel with unit + lint.
-#   4. bat-e2e          — @BAT Espresso tests on emulator; needs build only.
-#                         Runs in PARALLEL with unit-tests for fast feedback.
+#   2. lint             — Android Lint (runs in parallel with unit-tests).
+#   3. build            — Assemble debug APK; ONLY runs if unit gate passed AND lint passed.
+#   4. bat-e2e          — @BAT Espresso tests on emulator; needs build.
 #   5. smoke-e2e        — @Smoke tests; after BAT gate passes.
 #   6. regression-e2e   — @Regression; nightly schedule only; continue-on-error.
 #   7. quality-gate     — Trigger if unit gate OR BAT gate failed; blocks publish.
@@ -87,7 +85,7 @@ jobs:
     uses: ./.github/workflows/shared-notify-start.yml
     with:
       module-name:       ANDROID
-      pipeline-steps:    "Unit ∥ Lint ∥ (Build → BAT) → Smoke → Firebase"
+      pipeline-steps:    "Unit ∥ Lint → Unit Gate → Build APK → BAT → Smoke → Firebase"
       environment-label: ${{ github.event.inputs.environment || 'STAGE' }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -294,14 +292,20 @@ jobs:
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. BUILD — Assemble debug APK; runs IN PARALLEL with unit-tests + lint
+# 3. BUILD — Assemble debug APK; gated on Unit gate (≥80%) + Lint passing
+#    Industry-standard fail-fast: don't waste runner minutes building if the
+#    code didn't pass its own tests/lint.
 # ─────────────────────────────────────────────────────────────────────────────
   build:
     name: "Build APK"
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [notify-start]
-    if: inputs.skip_tests != true
+    needs: [notify-start, unit-tests, lint]
+    if: |
+      always() &&
+      inputs.skip_tests != true &&
+      needs.unit-tests.outputs.gate_passed == 'true' &&
+      needs.lint.result == 'success'
 
     steps:
       - name: Record job start time
@@ -903,8 +907,8 @@ jobs:
           echo "| Stage | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Tests | ${{ needs.bat-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
@@ -920,14 +924,16 @@ jobs:
         if: always()
         env:
           MODULE_NAME: ANDROID
+          # Chain order matches the actual pipeline execution:
+          # Unit ∥ Lint → Unit Gate → Build → BAT → BAT Gate → Smoke
           STAGE1_NAME: Unit Tests (JUnit4)
           # Use gate output (actual test outcome) so cosmetic step failures
           # like Allure-publish flakes don't poison the chain rendering.
           STAGE1_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
-          STAGE2_NAME: "Unit Gate (≥80%)"
-          STAGE2_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
-          STAGE3_NAME: Lint
-          STAGE3_RESULT: ${{ needs.lint.result }}
+          STAGE2_NAME: Lint
+          STAGE2_RESULT: ${{ needs.lint.result }}
+          STAGE3_NAME: "Unit Gate (≥80%)"
+          STAGE3_RESULT: ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'success' || (needs.unit-tests.result == 'skipped' && 'skipped' || 'failure') }}
           STAGE4_NAME: Build APK
           STAGE4_RESULT: ${{ needs.build.result }}
           STAGE5_NAME: BAT Tests
