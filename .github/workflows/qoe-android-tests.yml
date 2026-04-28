@@ -82,6 +82,11 @@ on:
         required: false
         default: false
         type: boolean
+      skip_bat:
+        description: 'Skip BAT only (device lab unavailable) — Unit tests still run, Firebase deploy still proceeds on the Unit gate.'
+        required: false
+        default: false
+        type: boolean
       environment:
         description: 'Target environment (STAGE / PROD)'
         required: false
@@ -417,7 +422,19 @@ jobs:
     runs-on: ${{ vars.LT_USERNAME != '' && 'ubuntu-latest' || 'macos-13' }}
     timeout-minutes: 30
     needs: [notify-start, build, unit-tests]
-    if: inputs.skip_tests != true && needs.unit-tests.outputs.gate_passed == 'true' && needs.build.result == 'success'
+    # Skip path:
+    #   • inputs.skip_bat = true (workflow_dispatch checkbox)  → skip
+    #   • vars.SKIP_BAT = 'true'  (repo Variable for "lab is down today") → skip
+    # When the job is skipped this way, the bat-skip-notice sibling job
+    # below posts a Slack message ("device lab availability") and the rest
+    # of the pipeline (Smoke skipped, Firebase deploy on Unit gate alone)
+    # follows the existing soft-gate logic.
+    if: |
+      inputs.skip_tests != true &&
+      inputs.skip_bat   != true &&
+      vars.SKIP_BAT     != 'true' &&
+      needs.unit-tests.outputs.gate_passed == 'true' &&
+      needs.build.result == 'success'
     continue-on-error: true
     concurrency:
       group: gh-pages-deploy-${{ github.run_id }}
@@ -629,6 +646,51 @@ jobs:
         with:
           gate-passed:      'true'
           proceed-message:  "BAT *SKIPPED* — Android device unavailable${{ vars.LT_USERNAME != '' && ' on LambdaTest' || ' (emulator did not boot within 60 s)' }}. Proceeding to Firebase based on the Unit test gate."
+          blocked-message:  ""
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4b. BAT SKIP NOTICE — pre-flight skip when the device lab is unavailable
+#
+# Runs in PARALLEL with bat-e2e on a cheap ubuntu-latest runner. Only one of
+# the two will execute on any given run because their `if:` conditions are
+# mutually exclusive (skip_bat / vars.SKIP_BAT).
+#
+# Use this when:
+#   • The macos-13 emulator queue is backed up (today's case — workflow
+#     stuck >40 min waiting for a runner) and you just want Firebase to ship.
+#   • LambdaTest is throttling / device pool exhausted.
+#   • You're doing a docs-only or config-only change and BAT adds no value.
+#
+# Two ways to trigger:
+#   workflow_dispatch:  tick the "skip_bat" checkbox
+#   long-term outage:   Settings → Variables → SKIP_BAT = true
+#                       (flip back to false / delete when the lab is back)
+# ─────────────────────────────────────────────────────────────────────────────
+  bat-skip-notice:
+    name: "BAT — Skipped (device lab unavailable)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [notify-start, build, unit-tests]
+    if: |
+      (inputs.skip_bat == true || vars.SKIP_BAT == 'true') &&
+      inputs.skip_tests != true &&
+      needs.unit-tests.outputs.gate_passed == 'true' &&
+      needs.build.result == 'success'
+    steps:
+      - name: Log skip reason
+        run: |
+          echo "::notice title=BAT skipped::Android device lab unavailable — "\
+               "BAT stage skipped. Smoke is also skipped; Firebase deploy "\
+               "proceeds on the Unit gate alone (≥${{ env.QUALITY_GATE_THRESHOLD }}% pass rate)."
+
+      - name: Post Slack notice — skipped due to device lab availability
+        uses: ./.github/actions/slack-gate-notify
+        with:
+          gate-passed:      'true'
+          proceed-message:  ":warning: BAT *SKIPPED* — Android device lab unavailable (skip flag set${{ vars.SKIP_BAT == 'true' && ' via repo variable SKIP_BAT' || ' via workflow_dispatch input' }}). Proceeding to Firebase based on the Unit test gate."
           blocked-message:  ""
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -940,8 +1002,12 @@ jobs:
     # Soft-gate policy:
     #   • Build MUST succeed.
     #   • Unit gate MUST pass — this is the mandatory deploy gate.
-    #   • BAT gate must NOT be a hard failure ('false'). 'skipped' (device
-    #     unavailable) is acceptable — see bat-e2e.bat-gate step.
+    #   • BAT gate must NOT be a hard failure ('false'). All three "non-fail"
+    #     states are acceptable for Firebase publish:
+    #       - 'true'    → BAT passed
+    #       - 'skipped' → ran but device unavailable (see bat-e2e.bat-gate)
+    #       - empty     → bat-e2e job itself was skipped via inputs.skip_bat /
+    #                     vars.SKIP_BAT (device lab availability — see job 4b)
     #   • Smoke result must not be a hard failure (skipped/success both OK).
     if: |
       always() &&
@@ -1104,8 +1170,8 @@ jobs:
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build APK | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Tests | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (device unavailable)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (soft-gated)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Tests | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (device unavailable)' || (needs.bat-e2e.result == 'skipped' && 'skipped (device lab availability)' || 'failed')) }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (soft-gated)' || (needs.bat-e2e.result == 'skipped' && 'skipped (device lab availability)' || 'failed')) }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
@@ -1134,9 +1200,11 @@ jobs:
           # bat-e2e has continue-on-error: true, so needs.bat-e2e.result is
           # always 'success' even on hard failure. Read the gate output
           # instead — it is the source of truth (true | false | skipped).
-          STAGE5_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
+          # When bat-e2e.result == 'skipped' the whole job was bypassed via
+          # skip_bat / vars.SKIP_BAT (device lab availability).
+          STAGE5_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure')) }}
           STAGE6_NAME: BAT Gate
-          STAGE6_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
+          STAGE6_RESULT: ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure')) }}
           STAGE7_NAME: Smoke Tests
           STAGE7_RESULT: ${{ needs.smoke-e2e.result }}
           TOTAL_DURATION: ${{ env.TOTAL_DURATION }}
