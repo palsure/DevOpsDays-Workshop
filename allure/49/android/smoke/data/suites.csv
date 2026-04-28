@@ -1,0 +1,37 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","2313","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","status_text_is_not_empty_after_play_click","Status text is not empty after play click","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Status text is not empty after play click."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","1661","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","video_id_input_hint_is_present_when_empty","Video id input hint is present when empty","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Video id input hint is present when empty."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:58 UTC 2026","3957","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","url_input_accepts_typed_text","URL input accepts typed text","**Smoke** test in `SmokeTest`
+
+_Verifies:_ URL input accepts typed text."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:57 UTC 2026","3045","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","video_id_input_accepts_typed_text","Video id input accepts typed text","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Video id input accepts typed text."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","2454","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","play_button_remains_enabled_after_click","Play button remains enabled after click","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Play button remains enabled after click."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","1652","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","url_input_can_be_cleared","URL input can be cleared","**Smoke** test in `SmokeTest`
+
+_Verifies:_ URL input can be cleared."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:49:00 UTC 2026","5979","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","player_view_remains_visible_after_interaction","Player view remains visible after interaction","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Player view remains visible after interaction."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","1728","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","url_input_hint_is_present_when_empty","URL input hint is present when empty","**Smoke** test in `SmokeTest`
+
+_Verifies:_ URL input hint is present when empty."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:58 UTC 2026","3670","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","catalog_video_id_is_accepted_in_video_id_input","Catalog video id is accepted in video id input","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Catalog video id is accepted in video id input."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:59 UTC 2026","5224","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","catalog_baseline_url_is_accepted_in_url_input","Catalog baseline URL is accepted in URL input","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Catalog baseline URL is accepted in URL input."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","1599","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","video_id_input_can_be_cleared","Video id input can be cleared","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Video id input can be cleared."
+"passed","Tue Apr 28 13:48:54 UTC 2026","Tue Apr 28 13:48:56 UTC 2026","2239","","com.devopsdays.qoe.player.e2e.SmokeTest","SmokeTest","com.devopsdays.qoe.player.e2e.SmokeTest","clicking_play_with_default_url_does_not_crash","Clicking play with default URL does not crash","**Smoke** test in `SmokeTest`
+
+_Verifies:_ Clicking play with default URL does not crash."
