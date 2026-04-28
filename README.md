@@ -6,7 +6,6 @@ A workshop demonstrating end-to-end Quality of Experience (QoE) validation for s
 
 | | |
 |---|---|
-| **Duration** | 3–4 hours (half-day workshop) |
 | **Audience** | Practitioners working on video streaming, CI/CD, mobile, or QA |
 | **Outcome** | Run a full multi-platform QoE pipeline locally, then ship the same pipeline to GitHub Actions with Slack reporting and Firebase distribution |
 
@@ -194,13 +193,6 @@ All workflows live in [`.github/workflows/`](.github/workflows/).
 | `shared-notify-start.yml` | `workflow_call` | Reusable "build started" Slack notify |
 
 Reusable composite actions: `slack-stage-notify`, `slack-gate-notify`, `slack-pipeline-report`, `publish-allure`, `lambdatest-espresso`.
-
-## Workshop sessions
-
-1. **Foundation & Architecture** (45 min) — QoE metrics, why per-platform collection matters, schema design.
-2. **Hands-on Project Setup** (60 min) — bring up the stack, run tests locally, view reports.
-3. **CI/CD Integration** (60 min) — module pipelines, gates, threaded Slack output, Firebase distribution.
-4. **Advanced Scenarios & Best Practices** (45 min) — soft gates, device-lab outages, rollback, observability.
 
 ## License
 
