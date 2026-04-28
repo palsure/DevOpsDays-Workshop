@@ -159,6 +159,10 @@ jobs:
           results-src:        android-player/app/build/test-results/testDebugUnitTest
           pages-destination:  allure/${{ github.run_number }}/android/unit
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "Android Player"
+          allure-feature:     "Unit Tests"
+          allure-tag:         "Unit"
+          allure-language:    "kotlin"
 
       - name: Notify Slack — unit test result
         if: always()
@@ -470,6 +474,10 @@ jobs:
           results-src:        android-player/app/build/outputs/androidTest-results/connected
           pages-destination:  allure/${{ github.run_number }}/android/bat
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "Android Player E2E"
+          allure-feature:     "Build Acceptance Tests"
+          allure-tag:         "BAT"
+          allure-language:    "kotlin"
 
       - name: Notify Slack — BAT result
         if: always()
@@ -596,6 +604,10 @@ jobs:
           results-src:        android-player/app/build/outputs/androidTest-results/connected
           pages-destination:  allure/${{ github.run_number }}/android/smoke
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "Android Player E2E"
+          allure-feature:     "Smoke Tests"
+          allure-tag:         "Smoke"
+          allure-language:    "kotlin"
 
       - name: Notify Slack — Smoke result
         if: always()
@@ -699,6 +711,10 @@ jobs:
           results-src:        android-player/app/build/outputs/androidTest-results/connected
           pages-destination:  allure/${{ github.run_number }}/android/regression
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "Android Player E2E"
+          allure-feature:     "Regression Tests"
+          allure-tag:         "Regression"
+          allure-language:    "kotlin"
 
       - name: Notify Slack — Regression result
         if: always()

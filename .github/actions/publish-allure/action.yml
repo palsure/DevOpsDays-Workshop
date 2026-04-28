@@ -17,6 +17,23 @@ inputs:
   github-token:
     description: 'GitHub token used to push the gh-pages branch'
     required: true
+  # ── Optional Allure label overrides (only used when JUnit XML is converted)
+  allure-epic:
+    description: 'Allure Behaviors top-level group (e.g. "Android Player E2E")'
+    required: false
+    default: ''
+  allure-feature:
+    description: 'Allure Feature label override; defaults to inferred from stage'
+    required: false
+    default: ''
+  allure-tag:
+    description: 'Tag chip shown on each test (BAT / Smoke / Regression / Unit)'
+    required: false
+    default: ''
+  allure-language:
+    description: 'Language label (e.g. "kotlin", "swift", "java")'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -51,6 +68,13 @@ runs:
         GITHUB_RUN_NUMBER:  ${{ github.run_number }}
         GITHUB_SERVER_URL:  ${{ github.server_url }}
         ALLURE_REPORT_NAME: ${{ inputs.stage-title }}
+        # Picked up by .github/scripts/junit_to_allure.py to enrich each test
+        # case with Behaviors-tree labels (Epic → Feature → Story) and group
+        # chips (BAT / Smoke / Regression / Unit).
+        ALLURE_EPIC:     ${{ inputs.allure-epic }}
+        ALLURE_FEATURE:  ${{ inputs.allure-feature }}
+        ALLURE_TAG:      ${{ inputs.allure-tag }}
+        ALLURE_LANGUAGE: ${{ inputs.allure-language }}
       run: |
         mkdir -p stage-allure-report
         # Ensure Jekyll ignores this directory (required for Allure's asset paths)

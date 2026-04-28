@@ -157,6 +157,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/unit
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player"
+          allure-feature:     "Unit Tests"
+          allure-tag:         "Unit"
+          allure-language:    "swift"
 
       - name: Notify Slack — unit test result
         if: always()
@@ -353,6 +357,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/bat
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Build Acceptance Tests"
+          allure-tag:         "BAT"
+          allure-language:    "swift"
 
       - name: Notify Slack — BAT result
         if: always()
@@ -464,6 +472,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/smoke
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Smoke Tests"
+          allure-tag:         "Smoke"
+          allure-language:    "swift"
 
       - name: Notify Slack — Smoke result
         if: always()
@@ -552,6 +564,10 @@ jobs:
           results-src:        ios-player/test-results
           pages-destination:  allure/${{ github.run_number }}/ios/regression
           github-token:       ${{ secrets.GITHUB_TOKEN }}
+          allure-epic:        "iOS Player E2E"
+          allure-feature:     "Regression Tests"
+          allure-tag:         "Regression"
+          allure-language:    "swift"
 
       - name: Notify Slack — Regression result
         if: always()
