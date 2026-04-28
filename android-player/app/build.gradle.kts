@@ -49,11 +49,13 @@ android {
 
     testOptions {
         unitTests.all {
-            // Write Allure results alongside the test outputs
-            it.systemProperty(
-                "allure.results.directory",
-                "${layout.buildDirectory.get()}/allure-results/unit",
-            )
+            // Run JVM unit tests across multiple forked JVMs (one test class
+            // per fork). GitHub Actions runners have 2–4 cores; cap at 4 to
+            // avoid oversubscription and excessive memory use.
+            it.maxParallelForks =
+                (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 4)
+            // Recycle JVMs after this many test classes to keep heap stable.
+            it.forkEvery = 50
         }
     }
 }

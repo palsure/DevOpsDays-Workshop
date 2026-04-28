@@ -132,20 +132,16 @@ jobs:
           path: android-player/app/build/test-results/testDebugUnitTest/
           retention-days: 14
 
-      - name: Upload unit Allure raw results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results-android-unit
-          path: android-player/app/build/allure-results/unit/
-          retention-days: 14
-
       - name: Generate & deploy unit Allure report
+        # publish-allure auto-detects JUnit XML and converts to Allure JSON
+        # via .github/scripts/junit_to_allure.py (the allure-junit4 adapter
+        # never registers as a JUnit listener under Gradle, so we feed the
+        # Gradle-emitted TEST-*.xml directly).
         if: always()
         uses: ./.github/actions/publish-allure
         with:
           stage-title:        "Android Unit Tests"
-          results-src:        android-player/app/build/allure-results/unit
+          results-src:        android-player/app/build/test-results/testDebugUnitTest
           pages-destination:  allure/${{ github.run_number }}/android/unit
           github-token:       ${{ secrets.GITHUB_TOKEN }}
 

@@ -110,6 +110,16 @@ def _convert_file(xml_path: Path, out_dir: Path) -> int:
             test_uuid = _stable_uuid(xml_path.name, full_name)
             history_id = hashlib.md5(full_name.encode("utf-8")).hexdigest()
 
+            labels = [
+                {"name": "suite",     "value": suite_name},
+                {"name": "testClass", "value": classname or suite_name},
+                {"name": "testMethod","value": name},
+                {"name": "framework", "value": "junit"},
+            ]
+            language = os.environ.get("ALLURE_LANGUAGE", "").strip()
+            if language:
+                labels.append({"name": "language", "value": language})
+
             result: dict = {
                 "uuid":      test_uuid,
                 "historyId": history_id,
@@ -119,13 +129,7 @@ def _convert_file(xml_path: Path, out_dir: Path) -> int:
                 "stage":     "finished",
                 "start":     base_ts,
                 "stop":      base_ts + max(0, duration_ms),
-                "labels": [
-                    {"name": "suite",     "value": suite_name},
-                    {"name": "testClass", "value": classname or suite_name},
-                    {"name": "testMethod","value": name},
-                    {"name": "framework", "value": "junit"},
-                    {"name": "language",  "value": "swift"},
-                ],
+                "labels":    labels,
             }
             if details is not None:
                 # Allure renders `statusDetails.message` and `.trace` in the UI.
