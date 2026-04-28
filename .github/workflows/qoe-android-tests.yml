@@ -36,8 +36,10 @@
 #       downloads JUnit XML for the existing Allure / Slack flow.
 #
 #   • Local emulator — vars.LT_USERNAME is empty
-#       runs-on: macos-13 (Intel — aarch64 macos-latest cannot host x86_64 AVDs)
+#       runs-on: ubuntu-latest (KVM-accelerated x86_64 AVD)
 #       Boots a cached AVD snapshot and runs `connectedDebugAndroidTest`.
+#       Migrated off macos-13 because the macOS hosted-runner queue can
+#       sit at "Waiting for a runner..." for 10-15 min during peak hours.
 #
 # Both paths are SOFT-GATED: if the device is unavailable (no JUnit XML
 # produced) the gate emits 'skipped' and Firebase deploy still proceeds
@@ -397,11 +399,19 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. BAT E2E — @BAT Espresso tests; inline BAT gate
 #
-#    Dual-mode runner selection (chosen at job-level via `vars.LT_USERNAME`):
-#      • LambdaTest path  (vars.LT_USERNAME set)  → ubuntu-latest
-#                                                    real device on LT cloud
-#      • Emulator path    (vars.LT_USERNAME unset) → macos-13
-#                                                    local Android emulator
+#    Always runs on ubuntu-latest (no macOS queue wait). Two paths inside:
+#      • LambdaTest path  (vars.LT_USERNAME set)  → real device on LT cloud
+#      • Emulator path    (vars.LT_USERNAME unset) → KVM-accelerated x86_64
+#                                                     AVD on the same runner
+#
+#    Why ubuntu-latest for both?
+#      - macOS hosted runners regularly queue 5-15 min on standard plans,
+#        which is what made earlier runs sit at "Waiting for a runner..."
+#        for 13+ minutes (today's incident).
+#      - GitHub-hosted ubuntu-latest exposes /dev/kvm, so the Android
+#        x86_64 emulator runs hardware-accelerated, just like on macos-13.
+#      - ubuntu-latest is x86_64, dodging the aarch64 incompatibility that
+#        forced us off macos-latest in the first place.
 #
 #    Required when using the LambdaTest path:
 #      vars.LT_USERNAME       LambdaTest username (repository Variable)
@@ -416,10 +426,7 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   bat-e2e:
     name: "BAT — Build Acceptance Tests"
-    # vars context is the only one available at runs-on; secrets are not.
-    # We toggle on the username Variable; the access key (secret) is consumed
-    # inside the LambdaTest composite action.
-    runs-on: ${{ vars.LT_USERNAME != '' && 'ubuntu-latest' || 'macos-13' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [notify-start, build, unit-tests]
     # Skip path:
@@ -490,15 +497,18 @@ jobs:
           output-dir:     android-player/app/build/outputs/androidTest-results/connected
           region:         ${{ vars.LT_REGION || 'us' }}
 
-      # ─── Emulator path ───────────────────────────────────────────────────
-      # Local Android emulator on macos-13 (Intel) — used when LambdaTest
-      # is not configured. macos-latest (Apple Silicon) cannot host x86_64
-      # AVDs, so we pin to macos-13.
-      - name: Enable KVM/HVF check (macOS)
+      # ─── Emulator path (KVM-accelerated x86_64 AVD on ubuntu-latest) ─────
+      - name: Enable KVM permissions
         if: vars.LT_USERNAME == ''
         run: |
-          echo "Hypervisor framework check:"
-          sysctl kern.hv_support || true
+          # ubuntu-latest exposes /dev/kvm but the runner user needs the
+          # right udev rule to access it without sudo. Canonical setup
+          # recommended by reactivecircus/android-emulator-runner.
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
 
       - name: AVD cache
         if: vars.LT_USERNAME == ''
@@ -508,7 +518,10 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-bat-api33-x86_64-v2
+          # Fresh namespace for the ubuntu runner — old macos-13 cache is
+          # binary-compatible (x86_64 AVD), but a new key avoids any subtle
+          # ABI / SDK-path differences across host toolchains.
+          key: avd-bat-api33-x86_64-ubuntu-v1
 
       - name: Create AVD snapshot (cache miss only)
         if: vars.LT_USERNAME == '' && steps.avd-cache.outputs.cache-hit != 'true'
@@ -523,10 +536,10 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          emulator-boot-timeout: 60
+          emulator-boot-timeout: 300
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: false
-          script: echo "✅ AVD snapshot generated and cached"
+          script: echo "AVD snapshot generated and cached"
 
       - name: Run BAT tests on emulator
         id: bat-emu
@@ -543,10 +556,11 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          # 60 s boot budget. With the AVD snapshot primed boot is 25-45 s.
-          # If the device isn't ready in time the gate step labels it
-          # 'skipped' and Firebase deploy proceeds on the Unit gate alone.
-          emulator-boot-timeout: 60
+          # 5-min boot budget. KVM-accelerated boot on ubuntu-latest is
+          # ~60-90 s cold, ~30-45 s warm with the AVD cache primed. If the
+          # device isn't ready in time the gate step labels it 'skipped'
+          # and Firebase deploy proceeds on the Unit gate alone.
+          emulator-boot-timeout: 300
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
@@ -648,7 +662,7 @@ jobs:
         uses: ./.github/actions/slack-gate-notify
         with:
           gate-passed:      'true'
-          proceed-message:  "BAT *SKIPPED* — Android device unavailable${{ vars.LT_USERNAME != '' && ' on LambdaTest' || ' (emulator did not boot within 60 s)' }}. Proceeding to Firebase based on the Unit test gate."
+          proceed-message:  "BAT *SKIPPED* — Android device unavailable${{ vars.LT_USERNAME != '' && ' on LambdaTest' || ' (emulator did not boot within 5 min)' }}. Proceeding to Firebase based on the Unit test gate."
           blocked-message:  ""
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
@@ -710,7 +724,8 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   smoke-e2e:
     name: "Smoke Tests"
-    runs-on: ${{ vars.LT_USERNAME != '' && 'ubuntu-latest' || 'macos-13' }}
+    # ubuntu-latest for both LT and emulator paths (no macOS queue wait).
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [notify-start, build, bat-e2e]
     if: needs.bat-e2e.outputs.gate_passed == 'true' && needs.build.result == 'success'
@@ -759,7 +774,15 @@ jobs:
           output-dir:     android-player/app/build/outputs/androidTest-results/connected
           region:         ${{ vars.LT_REGION || 'us' }}
 
-      # ─── Emulator path ───────────────────────────────────────────────────
+      # ─── Emulator path (KVM-accelerated x86_64 AVD on ubuntu-latest) ─────
+      - name: Enable KVM permissions
+        if: vars.LT_USERNAME == ''
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: AVD cache
         if: vars.LT_USERNAME == ''
         uses: actions/cache@v4
@@ -767,7 +790,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-bat-api33-x86_64-v2
+          key: avd-bat-api33-x86_64-ubuntu-v1
 
       - name: Run Smoke tests on emulator
         id: smoke-emu
@@ -784,7 +807,7 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          emulator-boot-timeout: 60
+          emulator-boot-timeout: 300
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
@@ -856,12 +879,8 @@ jobs:
 # ─────────────────────────────────────────────────────────────────────────────
   regression-e2e:
     name: "Regression Tests"
-    # macos-latest is now Apple Silicon (aarch64). Our cached AVD snapshot is
-    # x86_64, which the QEMU2 emulator cannot host on aarch64 ("Avd's CPU
-    # Architecture 'x86_64' is not supported by the QEMU2 emulator on aarch64
-    # host"). Pin to macos-13 (Intel) until we're ready to migrate the AVD
-    # cache to arm64-v8a system images.
-    runs-on: macos-13
+    # ubuntu-latest with KVM-accelerated x86_64 AVD — no macOS queue wait.
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [notify-start, build, smoke-e2e]
     if: |
@@ -886,13 +905,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Enable KVM permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: AVD cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-bat-api33-x86_64-v2
+          key: avd-bat-api33-x86_64-ubuntu-v1
 
       - name: Run Regression tests on emulator
         id: regression
@@ -908,11 +934,7 @@ jobs:
           heap-size: 1024M
           disk-size: 6000M
           force-avd-creation: false
-          # 60 s boot budget. Cold boot rarely fits; with the AVD snapshot
-          # cache primed it usually boots in 25-45 s. If the device isn't
-          # ready in time, the bat-gate step downgrades to "skipped" and the
-          # pipeline still proceeds to Firebase based on the Unit gate.
-          emulator-boot-timeout: 60
+          emulator-boot-timeout: 300
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           working-directory: android-player
