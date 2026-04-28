@@ -1,12 +1,13 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-
-    // New Relic Mobile — instruments OkHttp, ANRs, native crashes; provides the
-    // NewRelic facade used by MainActivity / QoECollector. Apply it last so it
-    // can transform classes from the other plugins.
-    id("com.newrelic.agent.android")
 }
+
+// New Relic Mobile — instruments OkHttp, ANRs, native crashes; provides the
+// NewRelic facade used by MainActivity / QoECollector. The plugin registers
+// under the short id `newrelic`; classpath is loaded from the buildscript
+// block in the root project.
+apply(plugin = "newrelic")
 
 android {
     namespace = "com.devopsdays.qoe.player"
