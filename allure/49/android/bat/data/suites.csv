@@ -1,0 +1,40 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1778","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","play_button_is_enabled","Play button is enabled","**BAT** test in `BATTest`
+
+_Verifies:_ Play button is enabled."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1585","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","url_input_has_default_hls_url","URL input has default HLS URL","**BAT** test in `BATTest`
+
+_Verifies:_ URL input has default HLS URL."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1429","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","video_id_input_has_default_value","Video id input has default value","**BAT** test in `BATTest`
+
+_Verifies:_ Video id input has default value."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1607","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","play_button_has_correct_label","Play button has correct label","**BAT** test in `BATTest`
+
+_Verifies:_ Play button has correct label."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1680","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","status_text_is_visible","Status text is visible","**BAT** test in `BATTest`
+
+_Verifies:_ Status text is visible."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1833","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","video_id_input_is_enabled","Video id input is enabled","**BAT** test in `BATTest`
+
+_Verifies:_ Video id input is enabled."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1699","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","url_input_is_enabled","URL input is enabled","**BAT** test in `BATTest`
+
+_Verifies:_ URL input is enabled."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1625","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","video_id_input_is_visible","Video id input is visible","**BAT** test in `BATTest`
+
+_Verifies:_ Video id input is visible."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1627","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","status_text_shows_ready_on_launch","Status text shows ready on launch","**BAT** test in `BATTest`
+
+_Verifies:_ Status text shows ready on launch."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1660","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","url_input_is_visible","URL input is visible","**BAT** test in `BATTest`
+
+_Verifies:_ URL input is visible."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1653","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","player_view_is_visible","Player view is visible","**BAT** test in `BATTest`
+
+_Verifies:_ Player view is visible."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1730","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","app_launches_without_crashing","App launches without crashing","**BAT** test in `BATTest`
+
+_Verifies:_ App launches without crashing."
+"passed","Tue Apr 28 13:41:55 UTC 2026","Tue Apr 28 13:41:57 UTC 2026","1844","","com.devopsdays.qoe.player.e2e.BATTest","BATTest","com.devopsdays.qoe.player.e2e.BATTest","play_button_is_visible","Play button is visible","**BAT** test in `BATTest`
+
+_Verifies:_ Play button is visible."
