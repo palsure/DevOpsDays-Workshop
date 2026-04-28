@@ -1097,6 +1097,34 @@ jobs:
           name: android-debug-apk
           path: apk-artifacts
 
+      - name: Resolve internal Firebase distribution targets
+        id: targets
+        # Pick exactly ONE of groups or testers. Passing both makes the
+        # wzieba action append both --groups and --testers to the
+        # firebase CLI, and a missing group causes a 404 even when the
+        # email list is valid. Order of preference:
+        #   1. Email list from vars.FIREBASE_INTERNAL_TESTERS
+        #   2. Email list from secrets.FIREBASE_INTERNAL_TESTERS
+        #   3. Group list from vars.FIREBASE_INTERNAL_GROUPS
+        #   4. Default group name 'internal-testers'
+        env:
+          VAR_TESTERS:    ${{ vars.FIREBASE_INTERNAL_TESTERS }}
+          SECRET_TESTERS: ${{ secrets.FIREBASE_INTERNAL_TESTERS }}
+          VAR_GROUPS:     ${{ vars.FIREBASE_INTERNAL_GROUPS }}
+        run: |
+          set -euo pipefail
+          TESTERS="${VAR_TESTERS:-${SECRET_TESTERS:-}}"
+          if [ -n "$TESTERS" ]; then
+            echo "testers=$TESTERS" >> "$GITHUB_OUTPUT"
+            echo "groups=" >> "$GITHUB_OUTPUT"
+            echo "Using testers email list (count: $(echo "$TESTERS" | tr ',' '\n' | wc -l | tr -d ' '))"
+          else
+            GROUPS="${VAR_GROUPS:-internal-testers}"
+            echo "groups=$GROUPS" >> "$GITHUB_OUTPUT"
+            echo "testers=" >> "$GITHUB_OUTPUT"
+            echo "Using groups: $GROUPS"
+          fi
+
       - name: Publish to Firebase App Distribution (internal)
         id: firebase-publish
         if: env.FIREBASE_TOKEN != '' && env.FIREBASE_APP_ID_ANDROID != ''
@@ -1104,15 +1132,8 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
-          # Group name(s) MUST already exist in Firebase Console
-          # (App Distribution → Testers & Groups). Override with repo
-          # Variable FIREBASE_INTERNAL_GROUPS if your project uses a
-          # different name (comma-separated for multiple groups).
-          # If you don't use groups, set repo Secret
-          # FIREBASE_INTERNAL_TESTERS to a comma-separated list of
-          # tester emails — Firebase resolves at least one of the two.
-          groups:  ${{ vars.FIREBASE_INTERNAL_GROUPS || 'internal-testers' }}
-          testers: ${{ secrets.FIREBASE_INTERNAL_TESTERS }}
+          groups:  ${{ steps.targets.outputs.groups }}
+          testers: ${{ steps.targets.outputs.testers }}
           file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
             Internal canary — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
@@ -1180,6 +1201,33 @@ jobs:
           name: android-debug-apk
           path: apk-artifacts
 
+      - name: Resolve public Firebase distribution targets
+        id: targets-pub
+        # Same one-or-the-other logic as publish-internal. Order:
+        #   1. Email list from vars.FIREBASE_PUBLIC_TESTERS
+        #   2. Email list from secrets.FIREBASE_PUBLIC_TESTERS
+        #   3. Group list from vars.FIREBASE_PUBLIC_GROUPS
+        #   4. Group list from secrets.FIREBASE_TESTERS  (legacy name)
+        #   5. Default group name 'external-testers'
+        env:
+          VAR_TESTERS:        ${{ vars.FIREBASE_PUBLIC_TESTERS }}
+          SECRET_TESTERS:     ${{ secrets.FIREBASE_PUBLIC_TESTERS }}
+          VAR_GROUPS:         ${{ vars.FIREBASE_PUBLIC_GROUPS }}
+          LEGACY_GROUP_LIST:  ${{ secrets.FIREBASE_TESTERS }}
+        run: |
+          set -euo pipefail
+          TESTERS="${VAR_TESTERS:-${SECRET_TESTERS:-}}"
+          if [ -n "$TESTERS" ]; then
+            echo "testers=$TESTERS" >> "$GITHUB_OUTPUT"
+            echo "groups=" >> "$GITHUB_OUTPUT"
+            echo "Using testers email list (count: $(echo "$TESTERS" | tr ',' '\n' | wc -l | tr -d ' '))"
+          else
+            GROUPS="${VAR_GROUPS:-${LEGACY_GROUP_LIST:-external-testers}}"
+            echo "groups=$GROUPS" >> "$GITHUB_OUTPUT"
+            echo "testers=" >> "$GITHUB_OUTPUT"
+            echo "Using groups: $GROUPS"
+          fi
+
       - name: Publish to Firebase App Distribution (testers)
         id: firebase-publish-pub
         if: env.FIREBASE_TOKEN != '' && env.FIREBASE_APP_ID_ANDROID != ''
@@ -1187,15 +1235,8 @@ jobs:
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
-          # Override with repo Variable FIREBASE_PUBLIC_GROUPS, or use
-          # the existing FIREBASE_TESTERS secret (legacy name) for the
-          # group list. Either must reference groups that already exist
-          # in Firebase Console → App Distribution → Testers & Groups.
-          groups: >-
-            ${{ vars.FIREBASE_PUBLIC_GROUPS ||
-                secrets.FIREBASE_TESTERS ||
-                'external-testers' }}
-          testers: ${{ secrets.FIREBASE_PUBLIC_TESTERS }}
+          groups:  ${{ steps.targets-pub.outputs.groups }}
+          testers: ${{ steps.targets-pub.outputs.testers }}
           file: apk-artifacts/debug/app-debug.apk
           releaseNotes: |
             Public release — Build #${{ github.run_number }} — ${{ github.head_ref || github.ref_name }}
