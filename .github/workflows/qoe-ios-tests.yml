@@ -830,8 +830,8 @@ jobs:
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Unit Gate (≥80%) | ${{ needs.unit-tests.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build App | ${{ needs.build-app.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Tests | ${{ needs.bat-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Tests | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (toolchain unavailable)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BAT Gate | ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'passed' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped (soft-gated)' || 'failed') }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Smoke Tests | ${{ needs.smoke-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.head_ref || github.ref_name }}\` | **Commit:** \`${{ github.sha }}\` | **Duration:** ${{ env.TOTAL_DURATION }}" >> $GITHUB_STEP_SUMMARY
@@ -853,9 +853,12 @@ jobs:
           STAGE3_NAME:    Build App
           STAGE3_RESULT:  ${{ needs.build-app.result }}
           STAGE4_NAME:    BAT Tests
-          STAGE4_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure') }}
+          # bat-e2e has continue-on-error: true, so needs.bat-e2e.result is
+          # always 'success' even on hard failure. Read the gate output
+          # instead — it is the source of truth (true | false | skipped).
+          STAGE4_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
           STAGE5_NAME:    BAT Gate
-          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.result == 'skipped' && 'skipped' || 'failure') }}
+          STAGE5_RESULT:  ${{ needs.bat-e2e.outputs.gate_passed == 'true' && 'success' || (needs.bat-e2e.outputs.gate_passed == 'skipped' && 'skipped' || 'failure') }}
           STAGE6_NAME:    Smoke Tests
           STAGE6_RESULT:  ${{ needs.smoke-e2e.result }}
           TOTAL_DURATION:     ${{ env.TOTAL_DURATION }}
@@ -873,19 +876,26 @@ jobs:
         with:
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
           module-name:      iOS
+          # Soft-gate verdict: BAT 'skipped' (toolchain unavailable) is NOT
+          # a build failure — Firebase deploy is allowed to proceed on the
+          # Unit gate alone. Only a HARD BAT failure ('false') flips the
+          # overall pipeline verdict to 'failure'.
           build-verdict: >-
             ${{ (needs.unit-tests.result == 'success' &&
                  needs.unit-tests.outputs.gate_passed == 'true' &&
                  needs.build-app.result == 'success' &&
-                 needs.bat-e2e.outputs.gate_passed == 'true') && 'success' || 'failure' }}
+                 needs.bat-e2e.outputs.gate_passed != 'false') && 'success' || 'failure' }}
           env-label:        ${{ env.ENV_LABEL }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
       - name: Fail pipeline if critical stage failed
+        # bat-e2e uses continue-on-error: true so its job result is always
+        # 'success' — gate_passed is the real outcome (true | false | skipped).
+        # 'skipped' (toolchain unavailable) is NOT a critical failure.
         if: |
           needs.unit-tests.result == 'failure' ||
           needs.unit-tests.outputs.gate_passed == 'false' ||
           needs.build-app.result == 'failure' ||
-          needs.bat-e2e.result == 'failure'
+          needs.bat-e2e.outputs.gate_passed == 'false'
         run: exit 1
