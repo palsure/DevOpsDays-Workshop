@@ -9,7 +9,12 @@ Required env vars:
   SLACK_BOT_TOKEN          — Slack bot OAuth token
   SLACK_CHANNEL_ID         — Target channel ID
   THREAD_TS                — ts of the initial message to update
-  BUILD_VERDICT            — "success" | "failure"
+  BUILD_VERDICT            — "success" | "failure" | "skipped"
+                             "skipped" is used when no module changes were
+                             detected (workflow_dispatch with no diff) and
+                             the gate / release jobs were intentionally
+                             skipped — surfaces a neutral header rather
+                             than a misleading red "Failed".
   MODULE_NAME              — e.g. "API" or "WEB"  (shown in header as [MODULE_NAME])
   GITHUB_RUN_NUMBER, GITHUB_REPOSITORY, GITHUB_SHA,
   GITHUB_HEAD_REF,         — real source branch on PR events (may be empty)
@@ -56,8 +61,12 @@ def main() -> int:
     else:
         triggered   = f"{actor} ({event_name})"
 
-    outcome = "Success" if verdict == "success" else "Failed"
-    icon    = "\u2705" if verdict == "success" else "\u274c"   # ✅ / ❌
+    if verdict == "success":
+        outcome, icon = "Success",                        "\u2705"  # ✅
+    elif verdict == "skipped":
+        outcome, icon = "Skipped — no changes detected", "\u26AA"  # ⚪
+    else:
+        outcome, icon = "Failed",                         "\u274c"  # ❌
     header  = f"[{module}] Stream-QoE-App  |  Build #{run_number}  \u2014  {icon} {outcome}"
 
     payload = json.dumps({
