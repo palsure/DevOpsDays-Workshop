@@ -56,6 +56,12 @@ jobs:
       ios:         ${{ steps.filter.outputs.ios }}
       automation:  ${{ steps.filter.outputs.automation }}
       is_main:     ${{ github.ref == 'refs/heads/main' }}
+      # any_changed = at least one acceptance job will actually run.
+      # On main everything always runs (release gate), so it's true.
+      # On any other ref it's true only if dorny/paths-filter matched
+      # one of the five tracked modules. Used by quality-gate's `if:`
+      # to skip cleanly when a workflow_dispatch run has nothing to do.
+      any_changed: ${{ steps.any.outputs.any_changed }}
       start_epoch: ${{ steps.ts.outputs.start_epoch }}
     steps:
       - name: Record workflow start time
@@ -76,6 +82,25 @@ jobs:
               - 'ios-player/**'
             automation:
               - 'qoe-automation-tests/**'
+      - name: Compute any_changed
+        id: any
+        env:
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
+          API:        ${{ steps.filter.outputs.api }}
+          WEB:        ${{ steps.filter.outputs.web }}
+          ANDROID:    ${{ steps.filter.outputs.android }}
+          IOS:        ${{ steps.filter.outputs.ios }}
+          AUTOMATION: ${{ steps.filter.outputs.automation }}
+        run: |
+          if [ "$IS_MAIN" = "true" ] \
+            || [ "$API" = "true" ] || [ "$WEB" = "true" ] \
+            || [ "$ANDROID" = "true" ] || [ "$IOS" = "true" ] \
+            || [ "$AUTOMATION" = "true" ]; then
+            echo "any_changed=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No changes detected::No tracked module changed; quality-gate and release will be skipped."
+          fi
 
   acceptance-api:
     name: Acceptance — API (Spring)
@@ -457,7 +482,11 @@ jobs:
       - acceptance-automation
     # Run whenever at least one acceptance job ran (success or failure).
     # Skipped jobs (module unchanged) are ignored by the gate script.
-    if: always() && needs.changes.result == 'success'
+    # When `any_changed` is false (manual run on a non-main ref with no
+    # tracked module changes) every acceptance job was skipped, so there
+    # are no platform-summary.json artifacts to merge — skip the gate
+    # cleanly instead of failing the merge script.
+    if: always() && needs.changes.result == 'success' && needs.changes.outputs.any_changed == 'true'
     outputs:
       approved: ${{ steps.gate.outputs.approved }}
       overall_pass_rate: ${{ steps.gate.outputs.overall_pass_rate }}
@@ -601,9 +630,20 @@ jobs:
           SLACK_BOT_TOKEN:   ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID:  ${{ secrets.SLACK_CHANNEL_ID }}
           THREAD_TS:         ${{ needs.notify-start.outputs.thread_ts }}
-          # On non-main branches the release job is skipped by design —
-          # treat the gate result as the verdict in that case.
-          BUILD_VERDICT:     ${{ (needs.quality-gate.result == 'success' && needs.quality-gate.outputs.approved == 'true') && 'success' || 'failure' }}
+          # Verdict resolution:
+          #  • gate skipped      → 'skipped' (no tracked module changed —
+          #    workflow had nothing to do; render a neutral ⚪ header,
+          #    not a misleading red ❌ Failed).
+          #  • gate success + approved → 'success' (release proceeds; on
+          #    non-main the release job itself is skipped by design but
+          #    the acceptance result is still the meaningful verdict).
+          #  • everything else   → 'failure'.
+          BUILD_VERDICT: >-
+            ${{
+              needs.quality-gate.result == 'skipped' && 'skipped'
+              || (needs.quality-gate.result == 'success' && needs.quality-gate.outputs.approved == 'true') && 'success'
+              || 'failure'
+            }}
           ENV_LABEL:         PROD
           MODULE_NAME:       RELEASE
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
