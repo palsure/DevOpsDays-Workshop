@@ -33,7 +33,10 @@ jobs:
     uses: ./.github/workflows/shared-notify-build-started.yml
     with:
       module-name:       RELEASE
-      pipeline-steps:    "Detect changes → Acceptance (5 platforms) → Quality gate ≥${{ env.QUALITY_GATE_THRESHOLD }}% → GitHub Release"
+      # Threshold inlined as a literal: the env context is not available
+      # inside `with:` of a reusable workflow call (GitHub Actions limit).
+      # If QUALITY_GATE_THRESHOLD ever changes, update both spots.
+      pipeline-steps:    "Detect changes → Acceptance (5 platforms) → Quality gate ≥80% → GitHub Release"
       environment-label: PROD
     secrets:
       SLACK_BOT_TOKEN:  ${{ secrets.SLACK_BOT_TOKEN }}
