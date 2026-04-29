@@ -1,0 +1,21 @@
+# Network & Console Timeline
+# Generated: 2026-04-29T02:19:52.650Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     36ms  other           GET     200      29ms  https://devopsdays-119f5--staging-f94fjr68.web.app/   
++     52ms  app-asset       GET     200       9ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BQ-6yWm3.css   
++     85ms  app-asset       GET     200      42ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-BWbA6mav.js   
++    386ms  hls-manifest    GET     200      38ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++    407ms  hls-manifest    GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++    438ms  hls-segment     GET     200      24ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++    584ms  hls-manifest    GET     200      13ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++    628ms  hls-segment     GET     200      41ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
++    849ms  hls-segment     GET     200      26ms  https://test-streams.mux.dev/x36xhzz/url_8/url_592/193039199_mp4_h264_aac_fhd_7.ts   
++   1002ms  hls-segment     GET     200      53ms  https://test-streams.mux.dev/x36xhzz/url_8/url_593/193039199_mp4_h264_aac_fhd_7.ts   
++   1188ms  hls-segment     GET     200      25ms  https://test-streams.mux.dev/x36xhzz/url_8/url_594/193039199_mp4_h264_aac_fhd_7.ts   
++   1306ms  hls-segment     GET     200      29ms  https://test-streams.mux.dev/x36xhzz/url_8/url_595/193039199_mp4_h264_aac_fhd_7.ts   
++   1456ms  hls-segment     GET     200      41ms  https://test-streams.mux.dev/x36xhzz/url_8/url_596/193039199_mp4_h264_aac_fhd_7.ts   
++   1571ms  hls-segment     GET     200      57ms  https://test-streams.mux.dev/x36xhzz/url_8/url_597/193039199_mp4_h264_aac_fhd_7.ts   
++   3425ms  hls-segment     GET     200      35ms  https://test-streams.mux.dev/x36xhzz/url_8/url_598/193039199_mp4_h264_aac_fhd_7.ts   
++   5467ms  qoe-api         POST    200     121ms  https://devopsdays-119f5--staging-f94fjr68.web.app/api/v1/metrics   
++   5470ms  💥 [pageerror]  t.addPageAction is not a function
