@@ -1,0 +1,75 @@
+# Network & Console Timeline
+# Generated: 2026-04-29T17:27:49.553Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     68ms  other           GET     200      36ms  https://devopsdays-119f5.web.app/   
++    137ms  app-asset       GET     200      37ms  https://devopsdays-119f5.web.app/assets/index-DqH95kvE.css   
++    242ms  app-asset       GET     200     142ms  https://devopsdays-119f5.web.app/assets/index-CNvcbjNH.js   
++   1166ms  hls-manifest    GET     200      36ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++   1244ms  hls-manifest    GET     200      78ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++   1311ms  hls-segment     GET     200      67ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++   1616ms  hls-manifest    GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   1697ms  hls-segment     GET     ERR       4ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts ❌
+              └─ net::ERR_ABORTED
++   1735ms  hls-manifest    GET     200      42ms  https://test-streams.mux.dev/x36xhzz/url_2/193039199_mp4_h264_aac_ld_7.m3u8   
++   1756ms  hls-segment     GET     200      21ms  https://test-streams.mux.dev/x36xhzz/url_2/url_526/193039199_mp4_h264_aac_ld_7.ts   
++   1851ms  hls-segment     GET     200      47ms  https://test-streams.mux.dev/x36xhzz/url_2/url_527/193039199_mp4_h264_aac_ld_7.ts   
++   1980ms  hls-segment     GET     200      18ms  https://test-streams.mux.dev/x36xhzz/url_2/url_528/193039199_mp4_h264_aac_ld_7.ts   
++   2024ms  hls-segment     GET     200      20ms  https://test-streams.mux.dev/x36xhzz/url_2/url_529/193039199_mp4_h264_aac_ld_7.ts   
++   2090ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_2/url_530/193039199_mp4_h264_aac_ld_7.ts   
++   2126ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_2/url_531/193039199_mp4_h264_aac_ld_7.ts   
++   2173ms  hls-segment     GET     200      13ms  https://test-streams.mux.dev/x36xhzz/url_2/url_532/193039199_mp4_h264_aac_ld_7.ts   
++   2212ms  hls-segment     GET     200       2ms  https://test-streams.mux.dev/x36xhzz/url_2/url_533/193039199_mp4_h264_aac_ld_7.ts   
++   2264ms  hls-segment     GET     200      13ms  https://test-streams.mux.dev/x36xhzz/url_2/url_534/193039199_mp4_h264_aac_ld_7.ts   
++   2322ms  hls-segment     GET     200      26ms  https://test-streams.mux.dev/x36xhzz/url_2/url_535/193039199_mp4_h264_aac_ld_7.ts   
++   2353ms  hls-segment     GET     200      27ms  https://test-streams.mux.dev/x36xhzz/url_2/url_536/193039199_mp4_h264_aac_ld_7.ts   
++   2386ms  hls-segment     GET     200      17ms  https://test-streams.mux.dev/x36xhzz/url_2/url_537/193039199_mp4_h264_aac_ld_7.ts   
++   2411ms  hls-segment     GET     200      13ms  https://test-streams.mux.dev/x36xhzz/url_2/url_538/193039199_mp4_h264_aac_ld_7.ts   
++   2452ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_2/url_539/193039199_mp4_h264_aac_ld_7.ts   
++   2502ms  hls-segment     GET     200      22ms  https://test-streams.mux.dev/x36xhzz/url_2/url_540/193039199_mp4_h264_aac_ld_7.ts   
++   2538ms  hls-segment     GET     200      15ms  https://test-streams.mux.dev/x36xhzz/url_2/url_541/193039199_mp4_h264_aac_ld_7.ts   
++   2571ms  hls-segment     GET     200      16ms  https://test-streams.mux.dev/x36xhzz/url_2/url_542/193039199_mp4_h264_aac_ld_7.ts   
++   2610ms  hls-segment     GET     200      17ms  https://test-streams.mux.dev/x36xhzz/url_2/url_543/193039199_mp4_h264_aac_ld_7.ts   
++   2625ms  hls-segment     GET     200      13ms  https://test-streams.mux.dev/x36xhzz/url_2/url_544/193039199_mp4_h264_aac_ld_7.ts   
++   2652ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_2/url_545/193039199_mp4_h264_aac_ld_7.ts   
++   2680ms  hls-segment     GET     200      14ms  https://test-streams.mux.dev/x36xhzz/url_2/url_546/193039199_mp4_h264_aac_ld_7.ts   
++   2700ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_2/url_547/193039199_mp4_h264_aac_ld_7.ts   
++   2733ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_2/url_548/193039199_mp4_h264_aac_ld_7.ts   
++   2764ms  hls-segment     GET     200      14ms  https://test-streams.mux.dev/x36xhzz/url_2/url_549/193039199_mp4_h264_aac_ld_7.ts   
++   2788ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_2/url_550/193039199_mp4_h264_aac_ld_7.ts   
++   2809ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_551/193039199_mp4_h264_aac_ld_7.ts   
++   2827ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_2/url_552/193039199_mp4_h264_aac_ld_7.ts   
++   2862ms  hls-segment     GET     200      25ms  https://test-streams.mux.dev/x36xhzz/url_2/url_553/193039199_mp4_h264_aac_ld_7.ts   
++   2879ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_2/url_554/193039199_mp4_h264_aac_ld_7.ts   
++   2893ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_2/url_555/193039199_mp4_h264_aac_ld_7.ts   
++   2906ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_556/193039199_mp4_h264_aac_ld_7.ts   
++   2923ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_557/193039199_mp4_h264_aac_ld_7.ts   
++   2937ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_2/url_558/193039199_mp4_h264_aac_ld_7.ts   
++   2952ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_559/193039199_mp4_h264_aac_ld_7.ts   
++   2968ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_2/url_560/193039199_mp4_h264_aac_ld_7.ts   
++   2984ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_561/193039199_mp4_h264_aac_ld_7.ts   
++   2999ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_562/193039199_mp4_h264_aac_ld_7.ts   
++   3014ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_563/193039199_mp4_h264_aac_ld_7.ts   
++   3028ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_564/193039199_mp4_h264_aac_ld_7.ts   
++   3040ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_2/url_565/193039199_mp4_h264_aac_ld_7.ts   
++   3053ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_566/193039199_mp4_h264_aac_ld_7.ts   
++   3066ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_567/193039199_mp4_h264_aac_ld_7.ts   
++   3079ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_568/193039199_mp4_h264_aac_ld_7.ts   
++   3095ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_569/193039199_mp4_h264_aac_ld_7.ts   
++   3113ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_570/193039199_mp4_h264_aac_ld_7.ts   
++   3133ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_571/193039199_mp4_h264_aac_ld_7.ts   
++   3149ms  hls-segment     GET     200      12ms  https://test-streams.mux.dev/x36xhzz/url_2/url_572/193039199_mp4_h264_aac_ld_7.ts   
++   3164ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_573/193039199_mp4_h264_aac_ld_7.ts   
++   3178ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_574/193039199_mp4_h264_aac_ld_7.ts   
++   3190ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_575/193039199_mp4_h264_aac_ld_7.ts   
++   3203ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_576/193039199_mp4_h264_aac_ld_7.ts   
++   3219ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_2/url_577/193039199_mp4_h264_aac_ld_7.ts   
++   3232ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_2/url_578/193039199_mp4_h264_aac_ld_7.ts   
++   3245ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_579/193039199_mp4_h264_aac_ld_7.ts   
++   3259ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_580/193039199_mp4_h264_aac_ld_7.ts   
++   3278ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_2/url_581/193039199_mp4_h264_aac_ld_7.ts   
++   3296ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_582/193039199_mp4_h264_aac_ld_7.ts   
++   3311ms  hls-segment     GET     200       8ms  https://test-streams.mux.dev/x36xhzz/url_2/url_583/193039199_mp4_h264_aac_ld_7.ts   
++   3326ms  hls-segment     GET     200      11ms  https://test-streams.mux.dev/x36xhzz/url_2/url_584/193039199_mp4_h264_aac_ld_7.ts   
++   3343ms  hls-segment     GET     200      10ms  https://test-streams.mux.dev/x36xhzz/url_2/url_585/193039199_mp4_h264_aac_ld_7.ts   
++   3359ms  hls-segment     GET     200       9ms  https://test-streams.mux.dev/x36xhzz/url_2/url_586/193039199_mp4_h264_aac_ld_7.ts   
