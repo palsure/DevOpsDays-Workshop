@@ -158,8 +158,6 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.is_main == 'true'
     timeout-minutes: 25
     steps:
-      - name: Record start time
-        run: echo "WEB_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -167,6 +165,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: web-player
+
+      # ── Vitest (unit) ─────────────────────────────────────────────────────
+      - name: Record Vitest start time
+        run: echo "VITEST_START=$(date +%s)" >> "$GITHUB_ENV"
       - name: Vitest (JUnit)
         id: vitest
         continue-on-error: true
@@ -179,9 +181,37 @@ jobs:
           python3 .github/scripts/junit_to_summary.py web-vitest web-player/test-results \
             || echo '{"platform":"web-vitest","passed":0,"failed":1,"skipped":0,"total":1}' > platform-summary.json
           mv platform-summary.json web-merge/vitest.json
+      - name: Calculate Vitest duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${VITEST_START:-$(date +%s)} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "VITEST_DURATION=$DUR" >> "$GITHUB_ENV"
+      # Two separate Slack notifications instead of one combined: Vitest
+      # is unit-level, Playwright is E2E. stage_result_to_slack.py uses
+      # one source per call (JUnit XML OR Playwright JSON, not both), so
+      # splitting is the cleanest way to surface accurate per-framework
+      # counts in the thread.
+      - name: Notify Slack — Web Vitest result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:      RELEASE
+          stage-name:       "Acceptance — Web (Vitest unit)"
+          stage-result:     ${{ steps.vitest.outcome }}
+          duration:         ${{ env.VITEST_DURATION }}
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:        web-player/test-results
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      # ── Playwright (E2E) ──────────────────────────────────────────────────
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
         working-directory: web-player
+      - name: Record Playwright start time
+        run: echo "PLAYWRIGHT_START=$(date +%s)" >> "$GITHUB_ENV"
       - name: Playwright E2E
         id: e2e
         continue-on-error: true
@@ -191,10 +221,34 @@ jobs:
           CI: true
       - name: Summarize Playwright JSON
         if: always()
+        # playwright.config.ts writes the JSON to a stage-suffixed filename:
+        #   playwright-results-${STAGE}.json   (STAGE defaults to 'e2e')
+        # so the source path here matches what Playwright actually wrote.
         run: |
-          python3 .github/scripts/playwright_to_summary.py web-player/playwright-results.json \
+          python3 .github/scripts/playwright_to_summary.py web-player/playwright-results-e2e.json \
             || echo '{"platform":"web","passed":0,"failed":1,"skipped":0,"total":1}' > playwright-summary.json
           mv playwright-summary.json web-merge/playwright.json
+      - name: Calculate Playwright duration
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${PLAYWRIGHT_START:-$(date +%s)} ))
+          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
+          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
+          echo "PLAYWRIGHT_DURATION=$DUR" >> "$GITHUB_ENV"
+      - name: Notify Slack — Web Playwright result
+        if: always()
+        uses: ./.github/actions/slack-stage-notify
+        with:
+          module-name:      RELEASE
+          stage-name:       "Acceptance — Web (Playwright E2E)"
+          stage-result:     ${{ steps.e2e.outcome }}
+          duration:         ${{ env.PLAYWRIGHT_DURATION }}
+          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          playwright-json:  web-player/playwright-results-e2e.json
+          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+
+      # ── Combined gate input ───────────────────────────────────────────────
       - name: Combine web summaries
         if: always()
         run: |
@@ -205,27 +259,6 @@ jobs:
         with:
           name: acceptance-web-summary
           path: platform-summary.json
-      - name: Calculate Web acceptance duration
-        if: always()
-        run: |
-          ELAPSED=$(( $(date +%s) - ${WEB_START:-$(date +%s)} ))
-          MINS=$(( ELAPSED / 60 )); SECS=$(( ELAPSED % 60 ))
-          [ $MINS -gt 0 ] && DUR="${MINS}m $(printf '%02d' $SECS)s" || DUR="${SECS}s"
-          echo "WEB_DURATION=$DUR" >> "$GITHUB_ENV"
-      - name: Notify Slack — Web acceptance result
-        if: always()
-        uses: ./.github/actions/slack-stage-notify
-        with:
-          module-name:      RELEASE
-          stage-name:       "Acceptance — Web (Vitest + Playwright)"
-          # Use the worse of the two outcomes: a failed Vitest is just
-          # as bad as a failed Playwright run for the release gate.
-          stage-result:     ${{ (steps.vitest.outcome == 'failure' || steps.e2e.outcome == 'failure') && 'failure' || 'success' }}
-          duration:         ${{ env.WEB_DURATION }}
-          thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
-          junit-dir:        web-player/test-results
-          slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
-          slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
   acceptance-android:
     name: Acceptance — Android
@@ -299,7 +332,14 @@ jobs:
       - name: Run Swift tests
         id: swift_tests
         continue-on-error: true
-        run: swift test 2>&1 | tee swift-test.log
+        # --parallel is required for --xunit-output to actually write the
+        # XML file (verified with swift 5.10 on Linux/macOS). Output dir
+        # mirrors the per-module iOS pipeline so junit-dir below works.
+        run: |
+          mkdir -p test-results
+          swift test --parallel \
+            --xunit-output test-results/swift-junit.xml \
+            2>&1 | tee swift-test.log
         working-directory: ios-player
       - name: Summarize Swift log
         if: always()
@@ -327,6 +367,7 @@ jobs:
           stage-result:     ${{ steps.swift_tests.outcome }}
           duration:         ${{ env.IOS_DURATION }}
           thread-ts:        ${{ needs.notify-start.outputs.thread_ts }}
+          junit-dir:        ios-player/test-results
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
 
