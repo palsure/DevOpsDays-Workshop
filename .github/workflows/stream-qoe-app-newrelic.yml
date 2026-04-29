@@ -146,11 +146,14 @@ jobs:
     name: Deploy alerts & workflow
     runs-on: ubuntu-latest
     needs: validate-config
+    # hashFiles() is only allowed in step-level `if:` (the workflow
+    # planner can't peek inside the repo before checkout), so the
+    # "is the script present?" gate is enforced inside the run step
+    # below instead of being part of the job-level condition.
     if: >-
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'workflow_dispatch' &&
-        (github.event.inputs.task == 'alerts' || github.event.inputs.task == 'all'))) &&
-      hashFiles('ops/monitoring/newrelic/scripts/install-alerts.sh') != ''
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.task == 'alerts' || github.event.inputs.task == 'all'))
     environment: newrelic
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +164,17 @@ jobs:
           NEW_RELIC_USER_API_KEY: ${{ secrets.NEW_RELIC_USER_API_KEY }}
           NEW_RELIC_ACCOUNT_ID:   ${{ secrets.NEW_RELIC_ACCOUNT_ID }}
           SLACK_DESTINATION_ID:   ${{ secrets.NEW_RELIC_SLACK_DESTINATION_ID }}
-        run: ops/monitoring/newrelic/scripts/install-alerts.sh
+        # The install script is documented as a template in the project
+        # README and may not yet exist in every branch. Treat its absence
+        # as a clean skip with a warning rather than a hard failure.
+        run: |
+          SCRIPT=ops/monitoring/newrelic/scripts/install-alerts.sh
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::warning title=install-alerts.sh not found::Skipping alert deployment — script not present at $SCRIPT (template path documented in README)."
+            exit 0
+          fi
+          chmod +x "$SCRIPT"
+          "$SCRIPT"
 
   # ── 4. Deployment marker ──────────────────────────────────────────────────────
   # Records the release in NR APM so the dashboard's "Deployments" overlay shows
