@@ -8,7 +8,7 @@ A workshop demonstrating end-to-end Quality of Experience (QoE) validation for s
 |---|---|
 | **Audience** | Practitioners working on video streaming, CI/CD, mobile, or QA |
 | **Outcome** | Run a full multi-platform QoE pipeline locally, then ship the same pipeline to GitHub Actions with Slack reporting and Firebase distribution |
-| **Materials** | [Slide deck](https://docs.google.com/presentation/d/1ya-65s8Qe8QVx9oKd1o7y-ciC5mXAuDP/edit?usp=sharing&ouid=101214452921731730408&rtpof=true&sd=true)
+| **Materials** | [Slide deck](https://docs.google.com/presentation/d/1ya-65s8Qe8QVx9oKd1o7y-ciC5mXAuDP/edit?usp=sharing&ouid=101214452921731730408&rtpof=true&sd=true) · [GitHub Actions setup guide](./GITHUB_ACTIONS_SETUP.md)
 
 ## Architecture
 
