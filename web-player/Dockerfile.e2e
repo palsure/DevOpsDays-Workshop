@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────
+# Dockerfile.e2e — Playwright runner image for the web-player e2e suite.
+#
+# Why this exists:
+#   `npx playwright install --with-deps chromium` downloads ~150 MB and
+#   needs root for system libs. Running tests inside the official
+#   Microsoft Playwright image skips both — the browsers are already
+#   baked in and the image version pins us to a Playwright matching
+#   the @playwright/test in package.json.
+#
+# Image tag = Playwright version pinned in web-player/package.json.
+# Bump both together when upgrading Playwright.
+# ─────────────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/playwright:v1.49.0-jammy
+
+WORKDIR /workspace/web-player
+
+# Cache npm install on package*.json alone — re-runs are instant when
+# only test code or app code changed.
+COPY web-player/package*.json ./
+RUN npm ci --no-audit --no-fund
+
+# Copy the rest of the project so the playwright config + e2e specs
+# are present at /workspace/web-player. The shared schema in /ops is
+# pulled in too because the qoeCollector imports types from it.
+COPY ops    /workspace/ops
+COPY web-player /workspace/web-player
+
+# Default to running the BAT suite against an externally-provided URL.
+# Override at run time with:
+#   docker run -e PLAYWRIGHT_GREP="@Smoke" ...
+#   docker run -e PLAYWRIGHT_BASE_URL=http://web-player:3000 ...
+ENV PLAYWRIGHT_BASE_URL=http://web-player:3000 \
+    PLAYWRIGHT_STAGE=bat \
+    PLAYWRIGHT_GREP=@BAT \
+    CI=true
+
+# CMD — runs through `sh -c` so the env vars are interpolated lazily,
+# allowing the user to override PLAYWRIGHT_GREP / STAGE without
+# rebuilding the image.
+CMD ["sh", "-c", "npx playwright test --project=chromium --grep \"$PLAYWRIGHT_GREP\""]
