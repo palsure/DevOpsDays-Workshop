@@ -876,7 +876,12 @@ jobs:
           BRANCH_NAME:        ${{ github.head_ref }}
           STAGE_UNIT_RESULT:  ${{ needs.unit-tests.result }}
           STAGE_BAT_RESULT:   ${{ needs.bat-tests.result }}
-          STAGE_SMOKE_RESULT: ${{ needs.smoke-tests.result }}
+          # `report` does not depend on `smoke-tests` (we don't want to delay
+          # the build verdict in Slack/Pages by 2-3 min waiting for an async
+          # smoke run). Render Smoke as 🔄 RUNNING here when promote-live
+          # succeeded — the `pr-comment-update` job below replaces this comment
+          # with the real Smoke verdict once smoke-tests completes.
+          STAGE_SMOKE_RESULT: ${{ needs.promote-live.result == 'success' && 'in_progress' || 'skipped' }}
           BASE_PAGES_URL:     https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web
         run: python3 .github/scripts/pr_summary_web.py
 
@@ -922,3 +927,111 @@ jobs:
           needs.bat-tests.result == 'failure' ||
           needs.deploy-preview.result == 'failure'
         run: exit 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. PR-COMMENT UPDATE — re-renders the sticky PR comment AFTER smoke completes
+#
+#    The `report` job above writes the initial comment showing real Unit/BAT
+#    numbers and Smoke as 🔄 RUNNING. Smoke is async/non-blocking so we don't
+#    block the Slack build-completed message on it. This job runs in parallel
+#    with smoke-tests' downstream artifact uploads and refreshes the SAME
+#    sticky comment (matched by `<!-- qoe-web-results -->`) with real Smoke
+#    pass/fail counts when smoke is done.
+#
+#    PRs only — pushes to main don't open a PR comment. Always-runs so even a
+#    Smoke timeout / cancellation flips RUNNING → SKIPPED instead of leaving
+#    the comment stuck on RUNNING forever.
+# ─────────────────────────────────────────────────────────────────────────────
+  pr-comment-update:
+    name: "PR Comment — Smoke Update"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - notify-start
+      - build
+      - unit-tests
+      - bat-tests
+      - deploy-preview
+      - promote-live
+      - smoke-tests
+    if: always() && github.event_name == 'pull_request'
+
+    permissions:
+      contents:      read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download unit JUnit results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-unit-junit
+          path: artifacts/unit
+
+      - name: Download BAT Playwright JSON results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-bat-playwright-json
+          path: artifacts/bat
+
+      - name: Download Smoke Playwright JSON results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-smoke-playwright-json
+          path: artifacts/smoke
+
+      - name: Re-render PR comment with final Smoke result
+        env:
+          GITHUB_REPOSITORY:  ${{ github.repository }}
+          GITHUB_RUN_ID:      ${{ github.run_id }}
+          GITHUB_RUN_NUMBER:  ${{ github.run_number }}
+          GITHUB_SHA:         ${{ github.sha }}
+          PR_NUMBER:          ${{ github.event.pull_request.number }}
+          BRANCH_NAME:        ${{ github.head_ref }}
+          STAGE_UNIT_RESULT:  ${{ needs.unit-tests.result }}
+          STAGE_BAT_RESULT:   ${{ needs.bat-tests.result }}
+          # Map cancelled/skipped Smoke runs to plain `skipped` so the comment
+          # doesn't end up stuck on RUNNING when promote-live failed earlier.
+          STAGE_SMOKE_RESULT: ${{ needs.smoke-tests.result }}
+          BASE_PAGES_URL:     https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_number }}/web
+        run: python3 .github/scripts/pr_summary_web.py
+
+      - name: Update sticky PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs     = require('fs');
+            const body   = fs.readFileSync('pr-comment-web.md', 'utf8');
+            const MARKER = '<!-- qoe-web-results -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body && c.body.includes(MARKER));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner:      context.repo.owner,
+                repo:       context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              console.log('Updated PR comment with final Smoke result', existing.id);
+            } else {
+              // The `report` job should have created the comment already; if
+              // it didn't (e.g. report failed before posting), create one now
+              // so the user still gets the final summary.
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              console.log('Created PR comment (report job did not)');
+            }

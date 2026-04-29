@@ -79,7 +79,16 @@ def pct(passed: int, total: int) -> int:
     return math.floor(100.0 * passed / total) if total else 0
 
 
+# A stage that is still running needs a distinct icon so the PR comment
+# doesn't lie about it being "skipped" before its real result lands.
+# Both `in_progress` and `in-progress` are accepted for symmetry with the
+# Slack stage-chain naming used elsewhere in this repo.
+IN_PROGRESS_RESULTS = {'in_progress', 'in-progress', 'pending', 'running'}
+
+
 def verdict_icon(passed: int, total: int, job_result: str) -> str:
+    if job_result in IN_PROGRESS_RESULTS:
+        return '🔄'
     if job_result in ('skipped', 'cancelled'):
         return '⏭'
     if total == 0:
@@ -89,6 +98,8 @@ def verdict_icon(passed: int, total: int, job_result: str) -> str:
 
 
 def verdict_text(icon: str, rate: int, total: int, job_result: str) -> str:
+    if icon == '🔄':
+        return 'RUNNING'
     if icon == '⏭':
         return 'SKIPPED'
     if total == 0:
