@@ -1,0 +1,52 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Wed Apr 29 17:38:08 UTC 2026","Wed Apr 29 17:38:11 UTC 2026","3058","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","bandwidth estimate is non-zero after first segment download","HLS.js estimates the available bandwidth after downloading the first segment.
+This is the foundation of adaptive bitrate selection.
+
+**Pass condition:** `bandwidthEstimate > 0` within 30 s."
+"passed","Wed Apr 29 17:38:04 UTC 2026","Wed Apr 29 17:38:06 UTC 2026","2284","chromium","navbar.spec.ts","Navbar","","","clicking Home returns to the catalog from a detail page","The Home link is the primary ""escape hatch"" out of any sub-page. This test
+navigates into a detail page via the home carousel, then asserts that clicking
+the Home nav link returns to the catalog (the QoE Demo Scenarios row is the
+canonical landmark — only present on the home page)."
+"passed","Wed Apr 29 17:38:04 UTC 2026","Wed Apr 29 17:38:06 UTC 2026","1980","chromium","navbar.spec.ts","Navbar","","","renders the StreamApp brand and the four nav items","The navbar is the global chrome on every page. This BAT-gated test asserts:
+
+- The **StreamApp** brand is visible.
+- The nav exposes exactly **Home / Movies / Shows / Live** in that order.
+- The right-hand affordances (**Search** + **Profile**) are reachable by their
+  ARIA labels.
+
+Any rebrand or nav restructure should be a deliberate UX decision and will trip
+this test, prompting the change to be reviewed before it ships to users."
+"passed","Wed Apr 29 17:38:04 UTC 2026","Wed Apr 29 17:38:08 UTC 2026","3683","chromium","player-controls.spec.ts","Player Controls (pause / play / seek)","","","pause stops playback and isPaused is true","Verifies that calling pause() via the QoE bridge halts playback.
+
+**Steps:**
+1. Autoplay baseline stream, wait for first frame.
+2. Call bridge.pause() — equivalent to video.pause().
+3. Assert isPaused = true and currentTime is frozen.
+
+**Pass condition:** `isPaused === true`"
+"passed","Wed Apr 29 17:38:09 UTC 2026","Wed Apr 29 17:38:17 UTC 2026","7947","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","black_screen_pulse: blackout overlay appears for CV-style probes","**Scenario:** Visual fault — a black overlay covers the video at 3 500 ms
+for 1 600 ms, simulating a GPU decoder stall or frame corruption event.
+
+This fault is *invisible to server-side logs* — only a client-side visual
+probe (or computer-vision CI check) can catch it. The test asserts that the
+`data-testid=""visual-blackout-overlay""` element appears and then clears.
+
+**Pass conditions:**
+- Overlay becomes visible within 15 s
+- Overlay clears within 15 s of appearing"
+"passed","Wed Apr 29 17:38:08 UTC 2026","Wed Apr 29 17:38:11 UTC 2026","3493","chromium","qoe-gates.spec.ts","QoE quality gates (workshop demos)","","","baseline: first frame within generous budget","**Scenario:** Baseline — no faults injected.
+
+The player loads the HLS manifest immediately and begins buffering segments.
+This test asserts that the first decoded video frame is delivered within a
+generous 60-second budget (cloud CI networks serving external HLS streams
+can be slow; the budget is intentionally wide to distinguish real regressions
+from transient network latency).
+
+**Pass condition:** `timeToFirstFrameMs < 60 000`"
+"passed","Wed Apr 29 17:38:04 UTC 2026","Wed Apr 29 17:38:06 UTC 2026","2123","chromium","navbar.spec.ts","Navbar","","","does not show the removed Pipeline link","Regression guard. The Pipeline page was removed from the web player; the navbar
+must not surface a link to it. If a future PR re-adds an ""onPipeline"" prop or a
+list item labelled ""Pipeline"", this test fails before merge."
+"passed","Wed Apr 29 17:38:07 UTC 2026","Wed Apr 29 17:38:11 UTC 2026","3242","chromium","player-controls.spec.ts","ABR & Bitrate (HLS.js level management)","","","multiple quality levels are available after manifest parse","Verifies that the HLS manifest exposes more than one quality rendition.
+ABR requires at least 2 levels to be meaningful.
+
+**Pass condition:** `hlsLevels.length > 1`"
