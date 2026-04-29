@@ -8,8 +8,7 @@ A workshop demonstrating end-to-end Quality of Experience (QoE) validation for s
 |---|---|
 | **Audience** | Practitioners working on video streaming, CI/CD, mobile, or QA |
 | **Outcome** | Run a full multi-platform QoE pipeline locally, then ship the same pipeline to GitHub Actions with Slack reporting and Firebase distribution |
-| **Duration** | 90-minute live workshop or self-paced |
-| **Materials** | [Slide deck](presentations/SLIDE-DECK-60-SLIDES.md) · [90-min facilitator guide](presentations/WORKSHOP-90MIN-FACILITATOR-GUIDE.md) · [Demo commands cheat sheet](presentations/DEMO-COMMANDS.md) |
+| **Materials** | [Slide deck](https://docs.google.com/presentation/d/1ya-65s8Qe8QVx9oKd1o7y-ciC5mXAuDP/edit?usp=sharing&ouid=101214452921731730408&rtpof=true&sd=true)
 
 ## Architecture
 
@@ -137,7 +136,6 @@ The Web and API pipelines use Firebase Hosting (preview channel → live promoti
 │   ├── infrastructure/          # nginx config, FFmpeg HLS transcoder, tc network sim
 │   ├── monitoring/              # New Relic dashboards, alerts, NRQL
 │   └── shared/schema/           # Canonical qoe-metrics.schema.json + TS types
-├── presentations/               # Slide deck + 90-min facilitator guide + demo commands
 ├── test-videos/                 # Sample HLS streams (gitignored placeholder)
 ├── docker-compose.yml           # Full local stack (api + web + db + nginx)
 ├── QUICKSTART.md                # 5-minute "is everything working?" smoke test
@@ -194,7 +192,7 @@ All workflows live in [`.github/workflows/`](.github/workflows/).
 | `stream-qoe-app-release.yml` | manual | All modules — acceptance + release |
 | `shared-notify-build-started.yml` | `workflow_call` | Reusable "build started" Slack notify |
 
-Reusable composite actions in [`.github/actions/`](.github/actions/):
+Reusable composite actions in [`.github/actions/`](.github/actions/README.md):
 
 | Action | Purpose |
 |---|---|

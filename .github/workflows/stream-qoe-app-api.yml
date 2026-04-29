@@ -591,6 +591,17 @@ jobs:
     timeout-minutes: 10
     needs: [notify-start, bat-tests]
     if: always() && needs.bat-tests.outputs.gate_passed == 'true'
+    # Mirrors web's promote-live: surface the public live URL as a job
+    # output so other jobs (or downstream workflows) can target the same
+    # base URL the Slack message advertises. Sourced from the repo
+    # Variable vars.API_LIVE_URL (Settings → Variables → Actions).
+    # Set it to the public URL of the deployed API, e.g.
+    #   https://api.qoe.example.com
+    #   https://qoe-api-prod-abc123.run.app    (Cloud Run)
+    # If unset the promote still runs and the Slack message just omits
+    # the link — useful while the deployment target isn't wired up yet.
+    outputs:
+      live_url: ${{ steps.promote.outputs.live_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -600,11 +611,20 @@ jobs:
 
       - name: Promote to production
         id: promote
+        env:
+          API_LIVE_URL: ${{ vars.API_LIVE_URL }}
         run: |
           echo "✅ BAT gate passed — build #${{ github.run_number }} promoted to production"
           echo "Commit: ${{ github.sha }}"
           echo "Branch: ${{ github.head_ref || github.ref_name }}"
           echo "Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          if [ -n "${API_LIVE_URL:-}" ]; then
+            echo "🌐 Live URL: $API_LIVE_URL"
+          else
+            echo "⚠️  vars.API_LIVE_URL is not set — Slack message will omit the live URL link."
+            echo "    Set it under Settings → Variables → Actions to surface a clickable link."
+          fi
+          echo "live_url=${API_LIVE_URL:-}" >> "$GITHUB_OUTPUT"
           # In a real pipeline this step would:
           # - Re-tag Docker image as :latest / :stable / :v{run_number}
           # - Push to production container registry
@@ -629,6 +649,11 @@ jobs:
           stage-name:      "API Promoted to Live"
           stage-result:    ${{ steps.promote.outcome }}
           duration:        ${{ env.PROMOTE_DURATION }}
+          # Mirrors web pipeline's "Live URL" link. Empty string when
+          # vars.API_LIVE_URL is not configured — slack-stage-notify
+          # hides the link section when the URL is blank.
+          report-url:       ${{ steps.promote.outputs.live_url }}
+          link-label:       ":rocket: Live URL"
           thread-ts:       ${{ needs.notify-start.outputs.thread_ts }}
           slack-bot-token:  ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
