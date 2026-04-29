@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "url": "https://devopsdays-119f5.web.app/",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 64,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 78
+  },
+  {
+    "id": 2,
+    "url": "https://devopsdays-119f5.web.app/assets/index-DqH95kvE.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 61,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 156
+  },
+  {
+    "id": 3,
+    "url": "https://devopsdays-119f5.web.app/assets/index-CNvcbjNH.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 108,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 203
+  },
+  {
+    "id": 4,
+    "url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 62,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3573
+  },
+  {
+    "id": 5,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 21,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3602
+  },
+  {
+    "id": 6,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 30,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3642
+  },
+  {
+    "id": 7,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 22,
+    "category": "hls-manifest",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3890
+  },
+  {
+    "id": 8,
+    "url": "https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 38,
+    "category": "hls-segment",
+    "failed": false,
+    "slow": false,
+    "startedAt": 3928
+  }
+]
