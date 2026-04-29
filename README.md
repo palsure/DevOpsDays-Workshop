@@ -124,6 +124,16 @@ The Web and API pipelines use Firebase Hosting (preview channel → live promoti
 | [`qoe-automation-tests/`](qoe-automation-tests/README.md) | Java / TestNG cross-platform automation | API, web, mobile, validation tests |
 | [`ops/`](ops/README.md) | Infrastructure, monitoring, shared schema | nginx, FFmpeg, New Relic, JSON schema |
 
+## Integration guides
+
+End-to-end setup for the third-party services the pipelines wire into. Each guide covers tokens / scopes / repo secrets, the local manual flow, the CI flow, and a troubleshooting matrix.
+
+| Guide | Covers |
+|---|---|
+| [`docs/slack-integration.md`](docs/slack-integration.md) | Creating the Slack app, OAuth scopes, threaded build notifications, gate replies, header chat.update on success/failure |
+| [`docs/newrelic-integration.md`](docs/newrelic-integration.md) | Java APM agent, Browser RUM, Android Mobile agent, dashboards/alerts as code via NerdGraph, deployment markers |
+| [`docs/firebase-integration.md`](docs/firebase-integration.md) | Hosting (preview channel + live promotion) for the web player, App Distribution (internal + public) for Android & iOS |
+
 ## Project structure
 
 ```
@@ -140,6 +150,7 @@ The Web and API pipelines use Firebase Hosting (preview channel → live promoti
 ├── docker-compose.yml           # Full local stack (api + web + db + nginx)
 ├── QUICKSTART.md                # 5-minute "is everything working?" smoke test
 ├── TESTING.md                   # Per-module BAT/Smoke/Regression playbook
+├── docs/                        # Integration guides — Slack, New Relic, Firebase
 └── .github/
     ├── workflows/               # Per-module pipelines + shared/utility workflows
     ├── scripts/                 # Slack payload builders + Allure helpers
