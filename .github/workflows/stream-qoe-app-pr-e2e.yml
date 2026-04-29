@@ -83,19 +83,22 @@ jobs:
         working-directory: web-player
 
       # ── E2E tests ────────────────────────────────────────────────
+      # `e2e:docker` already exports the env vars that point Playwright
+      # at the running Docker stack (PLAYWRIGHT_BASE_URL=http://localhost:3000)
+      # and pins PLAYWRIGHT_STAGE=e2e — driving the JSON reporter to write
+      # `web-player/playwright-results-e2e.json` (the parser below honours
+      # that stage suffix).
       - name: Run E2E QoE gate tests
         id: playwright
-        run: npm run e2e
+        run: npm run e2e:docker
         working-directory: web-player
         env:
           CI: true
-          # Points Playwright at the running Docker web-player container.
-          # The webServer block in playwright.config.ts is skipped when
-          # this variable is set.
-          PLAYWRIGHT_BASE_URL: http://localhost:3000
         continue-on-error: true   # capture failures without stopping the job
 
       # ── Artifacts ────────────────────────────────────────────────
+      # The HTML reporter writes to `playwright-report/${STAGE}` so we
+      # upload the parent dir and keep the stage subfolder structure.
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
@@ -130,6 +133,8 @@ jobs:
           retention-days: 14
 
       # ── Parse results → pr-comment.md + slack-payload.json ───────
+      # PLAYWRIGHT_STAGE must match the stage that produced the JSON file
+      # (npm run e2e:docker pins it to "e2e" → playwright-results-e2e.json).
       - name: Parse test results and evaluate quality gate
         id: gate
         if: always()
@@ -138,6 +143,7 @@ jobs:
           PR_NUMBER:               ${{ github.event.pull_request.number }}
           BRANCH_NAME:             ${{ github.head_ref }}
           PLAYWRIGHT_OUTCOME:      ${{ steps.playwright.outcome }}
+          PLAYWRIGHT_STAGE:        e2e
           QUALITY_GATE_THRESHOLD:  ${{ env.QUALITY_GATE_THRESHOLD }}
 
       # ── PR comment (create or update, sticky per PR) ─────────────
