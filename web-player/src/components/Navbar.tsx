@@ -1,9 +1,8 @@
 interface NavbarProps {
   onHome: () => void;
-  onPipeline?: () => void;
 }
 
-export function Navbar({ onHome, onPipeline }: NavbarProps) {
+export function Navbar({ onHome }: NavbarProps) {
   return (
     <nav className="navbar">
       <button className="navbar-logo" onClick={onHome} type="button" aria-label="Go home">
@@ -12,11 +11,6 @@ export function Navbar({ onHome, onPipeline }: NavbarProps) {
       </button>
       <ul className="navbar-links">
         <li><button type="button" onClick={onHome}>Home</button></li>
-        {onPipeline && (
-          <li>
-            <button type="button" onClick={onPipeline}>Pipeline</button>
-          </li>
-        )}
         <li><button type="button" onClick={onHome}>Movies</button></li>
         <li><button type="button" onClick={onHome}>Shows</button></li>
         <li><button type="button" onClick={onHome}>Live</button></li>
