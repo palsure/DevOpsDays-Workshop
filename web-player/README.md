@@ -138,3 +138,5 @@ docker compose up -d
 ```
 
 Served by nginx on **http://localhost:3000**.
+
+_(CI pipeline validation: documentation-only edit on branch `demo/actions-pipeline-smoke`.)_

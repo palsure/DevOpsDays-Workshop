@@ -140,3 +140,5 @@ backend-api/
 ├── Dockerfile
 └── build.gradle
 ```
+
+_(CI pipeline validation: documentation-only edit on branch `demo/actions-pipeline-smoke`.)_

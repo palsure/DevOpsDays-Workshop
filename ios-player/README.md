@@ -150,3 +150,5 @@ flowchart LR
 | API base URL (app) | `QoePlayerApp/QoECollector.swift` → `apiBase` | `http://localhost:8080/api/v1` |
 
 For a physical device replace `localhost` with your Mac's local IP address.
+
+_(CI pipeline validation: documentation-only edit on branch `demo/actions-pipeline-smoke`.)_

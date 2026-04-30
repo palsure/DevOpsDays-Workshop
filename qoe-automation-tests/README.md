@@ -145,3 +145,5 @@ qoe-automation-tests/
 │   └── test-config.properties   # URLs, timeouts, platform selection
 └── pom.xml
 ```
+
+_(CI pipeline validation: documentation-only edit on branch `demo/actions-pipeline-smoke`.)_
