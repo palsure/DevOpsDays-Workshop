@@ -1,5 +1,0 @@
-# Network & Console Timeline
-# Generated: 2026-04-27T03:00:46.124Z
-# Columns: [+offset_ms]  category        method  status  duration  url
-
-+     17ms  other           GET     200       2ms  http://localhost:3000/?scenario=baseline&e2e_autoplay=1   
