@@ -34,3 +34,5 @@ SELECT average(bitrateSwitches) as 'Avg Bitrate Switches'
 FROM QoEMetric
 WHERE timestamp >= SINCE 1 hour ago
 FACET platform
+
+-- CI pipeline validation: demo branch (comment only; no query change)

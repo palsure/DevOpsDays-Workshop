@@ -161,3 +161,5 @@ Every 5 seconds the app sends a payload to `POST /api/v1/metrics` including:
 - Buffering events + total buffering time
 - Current bitrate + resolution + bitrate switch count
 - Quality score (excellent / good / fair / poor)
+
+_(CI pipeline validation: documentation-only edit on branch `demo/actions-pipeline-smoke`.)_

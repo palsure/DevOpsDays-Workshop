@@ -112,3 +112,4 @@ services:
 
 volumes:
   postgres_data:
+# CI pipeline validation: demo branch (comment only; YAML unchanged above)
