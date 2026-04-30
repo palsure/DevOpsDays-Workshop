@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 234,
+    "category": "other",
+    "failed": false,
+    "slow": false,
+    "startedAt": 260
+  },
+  {
+    "id": 2,
+    "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-DqH95kvE.css",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 198,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 467
+  },
+  {
+    "id": 3,
+    "url": "https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-CNvcbjNH.js",
+    "method": "GET",
+    "status": 200,
+    "durationMs": 362,
+    "category": "app-asset",
+    "failed": false,
+    "slow": false,
+    "startedAt": 631
+  }
+]
