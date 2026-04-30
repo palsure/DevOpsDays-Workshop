@@ -1,0 +1,7 @@
+# Network & Console Timeline
+# Generated: 2026-04-30T19:31:52.327Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     57ms  other           GET     200      29ms  https://devopsdays-119f5--staging-f94fjr68.web.app/   
++     88ms  app-asset       GET     200      13ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-DqH95kvE.css   
++    183ms  app-asset       GET     200     109ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-CNvcbjNH.js   
