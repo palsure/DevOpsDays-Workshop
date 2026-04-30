@@ -101,18 +101,17 @@ jobs:
       - name: Run tests
         run: npm test
         working-directory: web-player
-      
+
       - name: Build
         run: npm run build
         working-directory: web-player
 
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-        working-directory: web-player
-
-      - name: End-to-end QoE gates
-        run: npm run e2e
-        working-directory: web-player
+      # E2E intentionally NOT run in this lightweight validation matrix:
+      #   - stream-qoe-app-web.yml      runs @BAT + @Smoke against Firebase preview / live
+      #   - stream-qoe-app-pr-e2e.yml   runs the full e2e:docker suite against the
+      #                                 docker-compose stack with quality-gate enforcement
+      # Both of those produce richer artifacts (Allure, PR comments, Slack threads) than
+      # this matrix can; running the suite a third time here just slows feedback down.
 
   # ── Android Player ────────────────────────────────────────────────────────
   stream-qoe-app-android:

@@ -4,3 +4,10 @@
 *.log
 .env
 .env.*
+
+# Test outputs — never copy these into images
+**/test-results
+**/playwright-report
+**/allure-results
+**/allure-report
+**/playwright-results-*.json

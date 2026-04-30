@@ -76,5 +76,39 @@ services:
     depends_on:
       - web-player
 
+  # ─────────────────────────────────────────────────────────────────
+  # Dockerized Playwright runner. Skipped by default — only starts when
+  # the `e2e` profile is active. Bring it up with:
+  #
+  #   docker compose --profile e2e run --rm e2e
+  #
+  # Override the suite by exporting PLAYWRIGHT_GREP=@Smoke (or any
+  # tag/title regex). Reports land in web-player/playwright-report and
+  # web-player/allure-results because the host directory is mounted in.
+  # ─────────────────────────────────────────────────────────────────
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      dockerfile: web-player/Dockerfile.e2e
+    container_name: qoe-e2e
+    depends_on:
+      web-player:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    environment:
+      PLAYWRIGHT_BASE_URL: http://web-player:3000
+      PLAYWRIGHT_STAGE:    ${PLAYWRIGHT_STAGE:-bat}
+      PLAYWRIGHT_GREP:     ${PLAYWRIGHT_GREP:-@BAT}
+      CI: "true"
+    volumes:
+      # Mount the report and Allure-results dirs back to the host so
+      # the user can serve them with `npx playwright show-report` or
+      # `allure serve` after the container exits.
+      - ./web-player/playwright-report:/workspace/web-player/playwright-report
+      - ./web-player/allure-results:/workspace/web-player/allure-results
+      - ./web-player/test-results:/workspace/web-player/test-results
+
 volumes:
   postgres_data:

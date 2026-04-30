@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { HomePage } from './pages/HomePage';
 import { DetailPage } from './pages/DetailPage';
-import { PipelinePage } from './pages/PipelinePage';
 import { Navbar } from './components/Navbar';
 import { CATALOG, type Video } from './data/catalog';
 import { parseDemoScenario } from './demo/scenarios';
@@ -29,8 +28,7 @@ function getE2EVideo(): { video: Video; autoPlay: boolean } | null {
 // ── Router state ───────────────────────────────────────────────────
 type Route =
   | { page: 'home' }
-  | { page: 'detail'; video: Video; autoPlay?: boolean }
-  | { page: 'pipeline' };
+  | { page: 'detail'; video: Video; autoPlay?: boolean };
 
 export default function App() {
   const e2e = getE2EVideo();
@@ -39,9 +37,8 @@ export default function App() {
     e2e ? { page: 'detail', video: e2e.video, autoPlay: e2e.autoPlay } : { page: 'home' },
   );
 
-  const goHome     = () => setRoute({ page: 'home' });
-  const goPipeline = () => setRoute({ page: 'pipeline' });
-  const goDetail   = (v: Video) => setRoute({ page: 'detail', video: v });
+  const goHome   = () => setRoute({ page: 'home' });
+  const goDetail = (v: Video) => setRoute({ page: 'detail', video: v });
 
   // Play with immediate fullscreen — called from the hero banner Play button.
   // requestFullscreen() must be called synchronously inside the user-gesture handler.
@@ -52,7 +49,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Navbar onHome={goHome} onPipeline={goPipeline} />
+      <Navbar onHome={goHome} />
 
       {route.page === 'home' && (
         <HomePage onSelect={goDetail} onPlay={goPlay} />
@@ -64,10 +61,6 @@ export default function App() {
           onBack={goHome}
           autoPlay={route.autoPlay ?? (e2e?.autoPlay ?? false)}
         />
-      )}
-
-      {route.page === 'pipeline' && (
-        <PipelinePage onBack={goHome} />
       )}
     </div>
   );

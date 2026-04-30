@@ -13,6 +13,14 @@
  *   GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_SHA,
  *   PR_NUMBER, BRANCH_NAME, PLAYWRIGHT_OUTCOME,
  *   QUALITY_GATE_THRESHOLD (default: 80)
+ *
+ *   PLAYWRIGHT_STAGE         (default: 'e2e')  — used to resolve the
+ *                                                stage-suffixed JSON output
+ *                                                (`playwright-results-${STAGE}.json`)
+ *                                                that playwright.config.ts
+ *                                                writes in CI.
+ *   PLAYWRIGHT_RESULTS_FILE  optional explicit override; takes precedence
+ *                            over the stage-derived name.
  */
 
 const fs   = require('fs');
@@ -26,19 +34,44 @@ const PR      = process.env.PR_NUMBER          || '';
 const BRANCH  = process.env.BRANCH_NAME        || 'unknown';
 const OUTCOME   = process.env.PLAYWRIGHT_OUTCOME      || 'failure';
 const THRESHOLD = parseInt(process.env.QUALITY_GATE_THRESHOLD ?? '80', 10);
+const STAGE     = (process.env.PLAYWRIGHT_STAGE ?? 'e2e').toLowerCase();
 
 const BASE_URL = `https://github.com/${REPO}`;
 const RUN_URL  = RUN_ID ? `${BASE_URL}/actions/runs/${RUN_ID}` : BASE_URL;
 const PR_URL   = PR      ? `${BASE_URL}/pull/${PR}`            : BASE_URL;
 
 // ── Read JSON report ─────────────────────────────────────────────
-const RESULTS_FILE = path.resolve(__dirname, '../../web-player/playwright-results.json');
+// playwright.config.ts writes `playwright-results-${STAGE}.json` in CI
+// (so concurrent stage runs don't trample each other). Try the
+// stage-suffixed file first, then fall back to the historical
+// unsuffixed name for back-compat with workflows that still produce it.
+const REPO_ROOT  = path.resolve(__dirname, '../..');
+const CANDIDATES = [
+  process.env.PLAYWRIGHT_RESULTS_FILE,
+  `web-player/playwright-results-${STAGE}.json`,
+  'web-player/playwright-results.json',
+].filter(Boolean).map(p => path.isAbsolute(p) ? p : path.resolve(REPO_ROOT, p));
 
-let report = null;
-try {
-  report = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf8'));
-} catch {
-  console.warn('⚠️  Could not read playwright-results.json — using empty results.');
+let report      = null;
+let resultsFile = null;
+for (const candidate of CANDIDATES) {
+  try {
+    report      = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+    resultsFile = candidate;
+    break;
+  } catch {
+    // try the next candidate
+  }
+}
+
+if (resultsFile) {
+  console.log(`📄 Loaded Playwright JSON report from ${path.relative(REPO_ROOT, resultsFile)}`);
+} else {
+  console.warn(
+    `⚠️  Could not read any Playwright results file. Tried:\n` +
+    CANDIDATES.map(c => `   - ${path.relative(REPO_ROOT, c)}`).join('\n') +
+    `\n   Using empty results.`,
+  );
 }
 
 // ── Flatten all specs from nested suites ─────────────────────────

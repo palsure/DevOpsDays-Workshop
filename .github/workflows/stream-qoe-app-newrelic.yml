@@ -183,11 +183,25 @@ jobs:
   record-deployment:
     name: Record APM deployment marker
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_call' &&
-      secrets.NEW_RELIC_APM_GUID != ''
+    # `secrets.*` is not available in job-level `if:` (workflow planner
+    # can't see secrets before the job is scheduled), so the
+    # NEW_RELIC_APM_GUID presence check is enforced at step level
+    # below — the job itself just gates on the trigger.
+    if: github.event_name == 'workflow_call'
     steps:
+      - name: Check New Relic APM GUID is configured
+        id: guard
+        env:
+          GUID: ${{ secrets.NEW_RELIC_APM_GUID }}
+        run: |
+          if [ -z "${GUID:-}" ]; then
+            echo "::warning title=NEW_RELIC_APM_GUID not set::Skipping APM deployment marker — secret is not configured."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true"  >> "$GITHUB_OUTPUT"
+          fi
       - name: New Relic deployment marker
+        if: steps.guard.outputs.configured == 'true'
         uses: newrelic/deployment-marker-action@v2.5.0
         with:
           apiKey:    ${{ secrets.NEW_RELIC_USER_API_KEY }}

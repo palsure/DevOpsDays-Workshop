@@ -83,20 +83,48 @@ npm run test:watch     # re-runs on file change
 
 ```bash
 npm run e2e:install        # install Chromium (first time only)
-npm run e2e                # against `npm run dev`
-npm run e2e:throttle       # slow network profile (forces buffering)
-npm run e2e:all            # all profiles
+npm run e2e:bat            # @BAT suite (fast sanity, ~90s budget)
+npm run e2e:smoke          # @Smoke suite
 
-# Against the running Docker stack
+# Against the already-running Docker stack
 npm run e2e:docker
-npm run e2e:docker:throttle
-npm run e2e:docker:all
 
 # Interactive
-npm run e2e:headed         # visible browser
+npm run e2e:bat:headed     # visible browser
 npm run e2e:debug          # Playwright inspector
 npm run e2e:ui             # Playwright UI mode
 ```
+
+#### E2E in Docker (no host install)
+
+If you don't want `~150 MB` of Chromium and its system libs on your
+laptop, run the suite inside the official Microsoft Playwright image
+instead. The image already has Chromium / Firefox / WebKit baked in,
+and `web-player/Dockerfile.e2e` pins the Playwright version to the one
+in `package.json`.
+
+```bash
+# Bring up the app stack so the e2e container has something to hit
+docker compose up -d backend web-player
+
+# Run the BAT suite against http://web-player:3000 inside the network
+docker compose --profile e2e run --rm e2e
+```
+
+Switch suites or override the grep without rebuilding the image:
+
+```bash
+PLAYWRIGHT_GREP=@Smoke   docker compose --profile e2e run --rm e2e
+PLAYWRIGHT_GREP="Navbar" docker compose --profile e2e run --rm e2e
+```
+
+Reports are written to the host via bind-mounts:
+
+| Path | What's inside |
+|---|---|
+| `web-player/playwright-report/` | Playwright HTML report — `npx playwright show-report` to open |
+| `web-player/allure-results/` | Allure raw results — `allure serve web-player/allure-results` |
+| `web-player/test-results/` | Per-test failure screenshots, videos, traces |
 
 ### Reports
 
