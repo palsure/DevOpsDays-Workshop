@@ -1,0 +1,12 @@
+# Network & Console Timeline
+# Generated: 2026-04-30T13:42:59.371Z
+# Columns: [+offset_ms]  category        method  status  duration  url
+
++     44ms  other           GET     200      28ms  https://devopsdays-119f5--staging-f94fjr68.web.app/   
++     72ms  app-asset       GET     200      15ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-DqH95kvE.css   
++    171ms  app-asset       GET     200     114ms  https://devopsdays-119f5--staging-f94fjr68.web.app/assets/index-CNvcbjNH.js   
++   1167ms  hls-manifest    GET     200      82ms  https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8   
++   1249ms  hls-manifest    GET     200      77ms  https://test-streams.mux.dev/x36xhzz/url_0/193039199_mp4_h264_aac_hd_7.m3u8   
++   1331ms  hls-segment     GET     200      81ms  https://test-streams.mux.dev/x36xhzz/url_0/url_462/193039199_mp4_h264_aac_hd_7.ts   
++   1705ms  hls-manifest    GET     200      19ms  https://test-streams.mux.dev/x36xhzz/url_8/193039199_mp4_h264_aac_fhd_7.m3u8   
++   1748ms  hls-segment     GET     200      27ms  https://test-streams.mux.dev/x36xhzz/url_8/url_591/193039199_mp4_h264_aac_fhd_7.ts   
