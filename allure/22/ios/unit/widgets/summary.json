@@ -1,1 +1,1 @@
-{"reportName":"Allure Report","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":0},"time":{}}
+{"reportName":"iOS Unit Tests","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":99,"unknown":0,"total":99},"time":{"start":1778394489362,"stop":1778394489726,"duration":364,"minDuration":42,"maxDuration":364,"sumDuration":8222}}
