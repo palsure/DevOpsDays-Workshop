@@ -1,100 +1,298 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","46","","TestResults","","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsNilForUnknownId","test_findVideo_returnsNilForUnknownId",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_fair_justBelowTenSeconds","test_fair_justBelowTenSeconds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_appleAdvancedVideoHasExpectedTitle","test_appleAdvancedVideoHasExpectedTitle",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","118","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_twoCollectorsDoNotShareState","test_smoke_twoCollectorsDoNotShareState",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","46","","TestResults","","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsMatchingVideo","test_findVideo_returnsMatchingVideo",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_poor_exactlyTenSeconds","test_poor_exactlyTenSeconds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_poor_zeroBufferingFiveErrors","test_poor_zeroBufferingFiveErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_stopCollecting_canBeCalledMultipleTimes","test_stopCollecting_canBeCalledMultipleTimes",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToGoodWithModeratebuffering","test_smoke_qualityDropsToGoodWithModeratebuffering",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","158","","TestResults","","QoePlayerTests.RegressionTests","test_regression_firstBitrateObservationIsNotSwitch","test_regression_firstBitrateObservationIsNotSwitch",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","118","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_qualityDropsWithErrors","test_smoke_qualityDropsWithErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","158","","TestResults","","QoePlayerTests.RegressionTests","test_regression_findVideoIsCaseSensitive","test_regression_findVideoIsCaseSensitive",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_baselineVideoHasExpectedHLSUrl","test_baselineVideoHasExpectedHLSUrl",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","295","","TestResults","","QoePlayerTests.RegressionTests","test_regression_catalogVideosHaveUniqueIds","test_regression_catalogVideosHaveUniqueIds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","382","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_eachBufferingEventIsRecorded","test_smoke_eachBufferingEventIsRecorded",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_fair_sevenSecondsThreeErrors","test_fair_sevenSecondsThreeErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogVideoEquality","test_catalogVideoEquality",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_initialErrorsIsEmpty","test_bat_initialErrorsIsEmpty",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","205","","TestResults","","QoePlayerTests.QoECollectorTests","test_bufferingTime_increasesAfterStartEndCycle","test_bufferingTime_increasesAfterStartEndCycle",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","405","","TestResults","","QoePlayerTests.QoECollectorTests","test_initialTotalBufferingTime_isZero","test_initialTotalBufferingTime_isZero",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","205","","TestResults","","QoePlayerTests.BATTests","test_bat_sessionIdIsNotEmpty","test_bat_sessionIdIsNotEmpty",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogVideoIdsAreUnique","test_catalogVideoIdsAreUnique",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_sessionIdHasDashSeparatedParts","test_regression_sessionIdHasDashSeparatedParts",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","47","","TestResults","","QoePlayerTests.BATTests","test_bat_collectorCreatesWithVideoId","test_bat_collectorCreatesWithVideoId",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly5ErrorsMakesPoor","test_regression_exactly5ErrorsMakesPoor",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_oneSecondBufferingNoErrors","test_excellent_oneSecondBufferingNoErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_payloadPlatformIsIos","test_bat_payloadPlatformIsIos",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","354","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_bufferingAccumulatesAcrossMultipleCycles","test_smoke_bufferingAccumulatesAcrossMultipleCycles",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToPoorWithVeryHighBuffering","test_smoke_qualityDropsToPoorWithVeryHighBuffering",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_negativeBufferingTreatedAsExcellent","test_negativeBufferingTreatedAsExcellent",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","382","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_catalogSubtitlesAreNonBlank","test_smoke_catalogSubtitlesAreNonBlank",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","85","","TestResults","","QoePlayerTests.QoECollectorTests","test_multipleDistinctBitrateChanges_countedIndividually","test_multipleDistinctBitrateChanges_countedIndividually",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToFairWithHighBuffering","test_smoke_qualityDropsToFairWithHighBuffering",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","491","","TestResults","","QoePlayerTests.QoECollectorTests","test_firstBitrateChange_doesNotIncrementCounter","test_firstBitrateChange_doesNotIncrementCounter",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_sessionId_isUniquePerInstance","test_sessionId_isUniquePerInstance",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_switchingToNewBitrate_incrementsCounter","test_switchingToNewBitrate_incrementsCounter",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","205","","TestResults","","QoePlayerTests.BATTests","test_bat_sessionIdStartsWithIosPrefix","test_bat_sessionIdStartsWithIosPrefix",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_initialBufferingTimeIsZero","test_bat_initialBufferingTimeIsZero",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogContainsThreeVideos","test_catalogContainsThreeVideos",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","382","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_errorsPreserveOrderOfRecording","test_smoke_errorsPreserveOrderOfRecording",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","491","","TestResults","","QoePlayerTests.QoECollectorTests","test_initialBitrateSwitches_isZero","test_initialBitrateSwitches_isZero",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","56","","TestResults","","QoePlayerTests.RegressionTests","test_regression_justBelow5SecondsIsGood","test_regression_justBelow5SecondsIsGood",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_recordError_incrementsErrorCount","test_recordError_incrementsErrorCount",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","85","","TestResults","","QoePlayerTests.QoECollectorTests","test_multipleErrors_areAllTracked","test_multipleErrors_areAllTracked",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogVideoInequality","test_catalogVideoInequality",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_sessionId_startsWithIosPrefix","test_sessionId_startsWithIosPrefix",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_fiveErrorsMakesPoorRegardlessOfBuffering","test_fiveErrorsMakesPoorRegardlessOfBuffering",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","47","","TestResults","","QoePlayerTests.BATTests","test_bat_catalogHasExpectedSize","test_bat_catalogHasExpectedSize",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_qualityCalculatorReturnsKnownLabel","test_bat_qualityCalculatorReturnsKnownLabel",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","158","","TestResults","","QoePlayerTests.RegressionTests","test_regression_findVideoWithEmptyString_returnsNil","test_regression_findVideoWithEmptyString_returnsNil",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","405","","TestResults","","QoePlayerTests.QoECollectorTests","test_initialErrors_isEmpty","test_initialErrors_isEmpty",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_fair_exactlyFiveSeconds","test_fair_exactlyFiveSeconds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly4ErrorsKeepsFair","test_regression_exactly4ErrorsKeepsFair",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","47","","TestResults","","QoePlayerTests.BATTests","test_bat_catalogIsNotEmpty","test_bat_catalogIsNotEmpty",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","354","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_bufferingEventHasPositiveDuration","test_smoke_bufferingEventHasPositiveDuration",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","79","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly2SecondsBufferingIsGood","test_regression_exactly2SecondsBufferingIsGood",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","85","","TestResults","","QoePlayerTests.QoECollectorTests","test_recordBufferingEnd_withoutStart_doesNotCrash","test_recordBufferingEnd_withoutStart_doesNotCrash",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_stopCollecting_withoutStart_doesNotCrash","test_stopCollecting_withoutStart_doesNotCrash",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","55","","TestResults","","QoePlayerTests.BATTests","test_bat_allCatalogVideosHaveM3u8Urls","test_bat_allCatalogVideosHaveM3u8Urls",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogHLSUrlsAreUnique","test_catalogHLSUrlsAreUnique",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_fair_zeroBufferingTwoErrors","test_fair_zeroBufferingTwoErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","50","","TestResults","","QoePlayerTests.VideoCatalogTests","test_allHLSUrlsUseHttps","test_allHLSUrlsUseHttps",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","79","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly2ErrorsMakesFair","test_regression_exactly2ErrorsMakesFair",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","118","","TestResults","","QoePlayerTests.VideoCatalogTests","test_allHLSUrlsPointToM3u8","test_allHLSUrlsPointToM3u8",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","50","","TestResults","","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankIds","test_allVideosHaveNonBlankIds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_good_exactlyTwoSeconds","test_good_exactlyTwoSeconds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_perfectPlaybackIsExcellent","test_bat_perfectPlaybackIsExcellent",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.BATTests","test_bat_payloadModelEncodes","test_bat_payloadModelEncodes",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","88","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_findVideoSucceedsForAllCatalogEntries","test_smoke_findVideoSucceedsForAllCatalogEntries",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","79","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly1ErrorKeepsGood","test_regression_exactly1ErrorKeepsGood",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","295","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly10SecondsBufferingIsPoor","test_regression_exactly10SecondsBufferingIsPoor",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","55","","TestResults","","QoePlayerTests.BATTests","test_bat_allCatalogVideosHaveHttpsUrls","test_bat_allCatalogVideosHaveHttpsUrls",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","491","","TestResults","","QoePlayerTests.QoECollectorTests","test_duplicateRecordBufferingStart_doesNotResetTimer","test_duplicateRecordBufferingStart_doesNotResetTimer",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankTitles","test_allVideosHaveNonBlankTitles",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.RegressionTests","test_regression_bufferingEndWithoutStartLeavesTimeAtZero","test_regression_bufferingEndWithoutStartLeavesTimeAtZero",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","46","","TestResults","","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsCorrectEntryForEachCatalogItem","test_findVideo_returnsCorrectEntryForEachCatalogItem",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","88","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_multipleBitrateSwitches_countedCorrectly","test_smoke_multipleBitrateSwitches_countedCorrectly",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_zeroBufferingNoErrors","test_excellent_zeroBufferingNoErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","57","","TestResults","","QoePlayerTests.RegressionTests","test_regression_justBelow2SecondsIsExcellent","test_regression_justBelow2SecondsIsExcellent",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_justBelowTwoSecondThreshold","test_excellent_justBelowTwoSecondThreshold",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_recordError_storesCorrectMessage","test_recordError_storesCorrectMessage",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_recordError_storesCorrectCode","test_recordError_storesCorrectCode",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","295","","TestResults","","QoePlayerTests.RegressionTests","test_regression_duplicateBufferingStart_isIdempotent","test_regression_duplicateBufferingStart_isIdempotent",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_sessionIdFirstPartIsIos","test_regression_sessionIdFirstPartIsIos",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","55","","TestResults","","QoePlayerTests.BATTests","test_bat_baselineVideoExists","test_bat_baselineVideoExists",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.VideoCatalogTests","test_catalogIsNotEmpty","test_catalogIsNotEmpty",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_sameBitrateRepeated_doesNotIncrementCounter","test_sameBitrateRepeated_doesNotIncrementCounter",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_poor_highBufferingHighErrors","test_poor_highBufferingHighErrors",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","88","","TestResults","","QoePlayerTests.SmokeTests","test_smoke_multipleErrorsAreAllTracked","test_smoke_multipleErrorsAreAllTracked",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_exactly5SecondsBufferingIsFair","test_regression_exactly5SecondsBufferingIsFair",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","42","","TestResults","","QoePlayerTests.QoECollectorTests","test_sessionId_containsVideoIdTimestamp","test_sessionId_containsVideoIdTimestamp",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","50","","TestResults","","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankHLSUrls","test_allVideosHaveNonBlankHLSUrls",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_good_justBelowFiveSeconds","test_good_justBelowFiveSeconds",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","354","","TestResults","","QoePlayerTests.RegressionTests","test_regression_sessionIdSecondPartIsNumeric","test_regression_sessionIdSecondPartIsNumeric",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_good_zeroBufferingOneError","test_good_zeroBufferingOneError",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","405","","TestResults","","QoePlayerTests.QoECollectorTests","test_multipleBufferingCycles_accumulate","test_multipleBufferingCycles_accumulate",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","57","","TestResults","","QoePlayerTests.RegressionTests","test_regression_justBelow10SecondsIsFair","test_regression_justBelow10SecondsIsFair",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.QoEQualityCalculatorTests","test_good_threeSecondsOneError","test_good_threeSecondsOneError",""
-"passed","Tue Apr 28 01:56:52 UTC 2026","Tue Apr 28 01:56:52 UTC 2026","43","","TestResults","","QoePlayerTests.RegressionTests","test_regression_payloadRoundTrip","test_regression_payloadRoundTrip",""
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","49","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_multipleErrorsAreAllTracked","Multiple errors are all tracked","**Unit** test in `SmokeTests`
+
+_Verifies:_ Multiple errors are all tracked."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","66","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankIds","All videos have non blank ids","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ All videos have non blank ids."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","50","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_zeroBufferingNoErrors","Excellent zero buffering no errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Excellent zero buffering no errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","49","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_multipleBitrateSwitches_countedCorrectly","Multiple bitrate switches counted correctly","**Unit** test in `SmokeTests`
+
+_Verifies:_ Multiple bitrate switches counted correctly."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","391","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_duplicateRecordBufferingStart_doesNotResetTimer","Duplicate record buffering start does not reset timer","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Duplicate record buffering start does not reset timer."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","63","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_sessionId_isUniquePerInstance","Session id is unique per instance","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Session id is unique per instance."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","188","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_twoCollectorsDoNotShareState","Two collectors do not share state","**Unit** test in `SmokeTests`
+
+_Verifies:_ Two collectors do not share state."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","91","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_allCatalogVideosHaveM3u8Urls","All catalog videos have m3u8 urls","**Unit** test in `BATTests`
+
+_Verifies:_ All catalog videos have m3u8 urls."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_recordBufferingEnd_withoutStart_doesNotCrash","Record buffering end without start does not crash","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Record buffering end without start does not crash."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","91","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_allCatalogVideosHaveHttpsUrls","All catalog videos have HTTPS urls","**Unit** test in `BATTests`
+
+_Verifies:_ All catalog videos have HTTPS urls."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","57","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_payloadModelEncodes","Payload model encodes","**Unit** test in `BATTests`
+
+_Verifies:_ Payload model encodes."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","45","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_initialBitrateSwitches_isZero","Initial bitrate switches is zero","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Initial bitrate switches is zero."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","51","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_sessionId_containsVideoIdTimestamp","Session id contains video id timestamp","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Session id contains video id timestamp."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","58","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_sameBitrateRepeated_doesNotIncrementCounter","Same bitrate repeated does not increment counter","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Same bitrate repeated does not increment counter."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","209","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogVideoEquality","Catalog video equality","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog video equality."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","70","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_sessionIdStartsWithIosPrefix","Session id starts with iOS prefix","**Unit** test in `BATTests`
+
+_Verifies:_ Session id starts with iOS prefix."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","104","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_stopCollecting_canBeCalledMultipleTimes","Stop collecting can be called multiple times","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Stop collecting can be called multiple times."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","251","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_bufferingEventHasPositiveDuration","Buffering event has positive duration","**Unit** test in `SmokeTests`
+
+_Verifies:_ Buffering event has positive duration."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","41","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_oneSecondBufferingNoErrors","Excellent one second buffering no errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Excellent one second buffering no errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","46","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_initialTotalBufferingTime_isZero","Initial total buffering time is zero","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Initial total buffering time is zero."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","52","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToFairWithHighBuffering","Quality drops to fair with high buffering","**Unit** test in `SmokeTests`
+
+_Verifies:_ Quality drops to fair with high buffering."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","45","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_good_threeSecondsOneError","Good three seconds one error","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Good three seconds one error."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","42","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_excellent_justBelowTwoSecondThreshold","Excellent just below two second threshold","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Excellent just below two second threshold."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","43","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToPoorWithVeryHighBuffering","Quality drops to poor with very high buffering","**Unit** test in `SmokeTests`
+
+_Verifies:_ Quality drops to poor with very high buffering."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","49","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_sessionIdHasDashSeparatedParts","Session id has DASH separated parts","**Unit** test in `RegressionTests`
+
+_Verifies:_ Session id has DASH separated parts."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","41","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_justBelow10SecondsIsFair","Just below10 seconds is fair","**Unit** test in `RegressionTests`
+
+_Verifies:_ Just below10 seconds is fair."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","41","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogVideoIdsAreUnique","Catalog video ids are unique","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog video ids are unique."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_recordError_storesCorrectCode","Record error stores correct code","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Record error stores correct code."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","260","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_multipleBufferingCycles_accumulate","Multiple buffering cycles accumulate","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Multiple buffering cycles accumulate."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","52","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_qualityDropsToGoodWithModeratebuffering","Quality drops to good with moderatebuffering","**Unit** test in `SmokeTests`
+
+_Verifies:_ Quality drops to good with moderatebuffering."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","55","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogHLSUrlsAreUnique","Catalog HLS urls are unique","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog HLS urls are unique."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","69","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_fair_sevenSecondsThreeErrors","Fair seven seconds three errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Fair seven seconds three errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","56","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_justBelow5SecondsIsGood","Just below5 seconds is good","**Unit** test in `RegressionTests`
+
+_Verifies:_ Just below5 seconds is good."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","66","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_sessionIdFirstPartIsIos","Session id first part is iOS","**Unit** test in `RegressionTests`
+
+_Verifies:_ Session id first part is iOS."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","48","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_initialBufferingTimeIsZero","Initial buffering time is zero","**Unit** test in `BATTests`
+
+_Verifies:_ Initial buffering time is zero."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","63","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_initialErrorsIsEmpty","Initial errors is empty","**Unit** test in `BATTests`
+
+_Verifies:_ Initial errors is empty."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","50","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_multipleErrors_areAllTracked","Multiple errors are all tracked","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Multiple errors are all tracked."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","39","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_catalogSubtitlesAreNonBlank","Catalog subtitles are non blank","**Unit** test in `SmokeTests`
+
+_Verifies:_ Catalog subtitles are non blank."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","43","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_allHLSUrlsPointToM3u8","All HLS urls point to m3u8","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ All HLS urls point to m3u8."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","67","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_catalogHasExpectedSize","Catalog has expected size","**Unit** test in `BATTests`
+
+_Verifies:_ Catalog has expected size."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","91","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_catalogIsNotEmpty","Catalog is not empty","**Unit** test in `BATTests`
+
+_Verifies:_ Catalog is not empty."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","62","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_switchingToNewBitrate_incrementsCounter","Switching to new bitrate increments counter","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Switching to new bitrate increments counter."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly2ErrorsMakesFair","Exactly2 errors makes fair","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly2 errors makes fair."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","71","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_payloadPlatformIsIos","Payload platform is iOS","**Unit** test in `BATTests`
+
+_Verifies:_ Payload platform is iOS."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","312","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_bufferingTime_increasesAfterStartEndCycle","Buffering time increases after start end cycle","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Buffering time increases after start end cycle."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","59","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_payloadRoundTrip","Payload round trip","**Unit** test in `RegressionTests`
+
+_Verifies:_ Payload round trip."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","54","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_fair_exactlyFiveSeconds","Fair exactly five seconds","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Fair exactly five seconds."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","77","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_stopCollecting_withoutStart_doesNotCrash","Stop collecting without start does not crash","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Stop collecting without start does not crash."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","72","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_recordError_storesCorrectMessage","Record error stores correct message","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Record error stores correct message."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","64","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_firstBitrateChange_doesNotIncrementCounter","First bitrate change does not increment counter","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ First bitrate change does not increment counter."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","60","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_good_zeroBufferingOneError","Good zero buffering one error","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Good zero buffering one error."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","62","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_catalogVideosHaveUniqueIds","Catalog videos have unique ids","**Unit** test in `RegressionTests`
+
+_Verifies:_ Catalog videos have unique ids."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","49","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_findVideoWithEmptyString_returnsNil","Find video with empty string returns nil","**Unit** test in `RegressionTests`
+
+_Verifies:_ Find video with empty string returns nil."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","69","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_sessionId_startsWithIosPrefix","Session id starts with iOS prefix","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Session id starts with iOS prefix."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","70","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_sessionIdIsNotEmpty","Session id is not empty","**Unit** test in `BATTests`
+
+_Verifies:_ Session id is not empty."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","55","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly4ErrorsKeepsFair","Exactly4 errors keeps fair","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly4 errors keeps fair."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","55","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_fair_zeroBufferingTwoErrors","Fair zero buffering two errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Fair zero buffering two errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","54","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsCorrectEntryForEachCatalogItem","Find video returns correct entry for each catalog item","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Find video returns correct entry for each catalog item."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","43","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_allHLSUrlsUseHttps","All HLS urls use HTTPS","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ All HLS urls use HTTPS."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_bufferingEndWithoutStartLeavesTimeAtZero","Buffering end without start leaves time at zero","**Unit** test in `RegressionTests`
+
+_Verifies:_ Buffering end without start leaves time at zero."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","66","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankHLSUrls","All videos have non blank HLS urls","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ All videos have non blank HLS urls."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","63","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_baselineVideoHasExpectedHLSUrl","Baseline video has expected HLS URL","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Baseline video has expected HLS URL."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","62","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsMatchingVideo","Find video returns matching video","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Find video returns matching video."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","43","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_qualityDropsWithErrors","Quality drops with errors","**Unit** test in `SmokeTests`
+
+_Verifies:_ Quality drops with errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","57","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_initialErrors_isEmpty","Initial errors is empty","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Initial errors is empty."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","59","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_poor_highBufferingHighErrors","Poor high buffering high errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Poor high buffering high errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","41","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_sessionIdSecondPartIsNumeric","Session id second part is numeric","**Unit** test in `RegressionTests`
+
+_Verifies:_ Session id second part is numeric."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","48","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_firstBitrateObservationIsNotSwitch","First bitrate observation is not switch","**Unit** test in `RegressionTests`
+
+_Verifies:_ First bitrate observation is not switch."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","63","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_recordError_incrementsErrorCount","Record error increments error count","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Record error increments error count."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","53","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly1ErrorKeepsGood","Exactly1 error keeps good","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly1 error keeps good."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","40","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogVideoInequality","Catalog video inequality","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog video inequality."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","70","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_qualityCalculatorReturnsKnownLabel","Quality calculator returns known label","**Unit** test in `BATTests`
+
+_Verifies:_ Quality calculator returns known label."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","58","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogContainsThreeVideos","Catalog contains three videos","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog contains three videos."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","57","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly5ErrorsMakesPoor","Exactly5 errors makes poor","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly5 errors makes poor."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","365","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_duplicateBufferingStart_isIdempotent","Duplicate buffering start is idempotent","**Unit** test in `RegressionTests`
+
+_Verifies:_ Duplicate buffering start is idempotent."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","45","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_appleAdvancedVideoHasExpectedTitle","Apple advanced video has expected title","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Apple advanced video has expected title."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","41","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_good_justBelowFiveSeconds","Good just below five seconds","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Good just below five seconds."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","45","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_allVideosHaveNonBlankTitles","All videos have non blank titles","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ All videos have non blank titles."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","91","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_baselineVideoExists","Baseline video exists","**Unit** test in `BATTests`
+
+_Verifies:_ Baseline video exists."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","57","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_errorsPreserveOrderOfRecording","Errors preserve order of recording","**Unit** test in `SmokeTests`
+
+_Verifies:_ Errors preserve order of recording."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","48","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_findVideo_returnsNilForUnknownId","Find video returns nil for unknown id","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Find video returns nil for unknown id."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","50","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_good_exactlyTwoSeconds","Good exactly two seconds","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Good exactly two seconds."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","46","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_negativeBufferingTreatedAsExcellent","Negative buffering treated as excellent","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Negative buffering treated as excellent."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","86","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_collectorCreatesWithVideoId","Collector creates with video id","**Unit** test in `BATTests`
+
+_Verifies:_ Collector creates with video id."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","67","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_fiveErrorsMakesPoorRegardlessOfBuffering","Five errors makes poor regardless of buffering","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Five errors makes poor regardless of buffering."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","40","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_justBelow2SecondsIsExcellent","Just below2 seconds is excellent","**Unit** test in `RegressionTests`
+
+_Verifies:_ Just below2 seconds is excellent."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","45","","TestResults","VideoCatalogTests","QoePlayerTests.VideoCatalogTests","test_catalogIsNotEmpty","Catalog is not empty","**Unit** test in `VideoCatalogTests`
+
+_Verifies:_ Catalog is not empty."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","57","","TestResults","QoECollectorTests","QoePlayerTests.QoECollectorTests","test_multipleDistinctBitrateChanges_countedIndividually","Multiple distinct bitrate changes counted individually","**Unit** test in `QoECollectorTests`
+
+_Verifies:_ Multiple distinct bitrate changes counted individually."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_poor_zeroBufferingFiveErrors","Poor zero buffering five errors","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Poor zero buffering five errors."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","56","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_findVideoSucceedsForAllCatalogEntries","Find video succeeds for all catalog entries","**Unit** test in `SmokeTests`
+
+_Verifies:_ Find video succeeds for all catalog entries."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","47","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_findVideoIsCaseSensitive","Find video is case sensitive","**Unit** test in `RegressionTests`
+
+_Verifies:_ Find video is case sensitive."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","54","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly5SecondsBufferingIsFair","Exactly5 seconds buffering is fair","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly5 seconds buffering is fair."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","263","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_bufferingAccumulatesAcrossMultipleCycles","Buffering accumulates across multiple cycles","**Unit** test in `SmokeTests`
+
+_Verifies:_ Buffering accumulates across multiple cycles."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:53 UTC 2026","407","","TestResults","SmokeTests","QoePlayerTests.SmokeTests","test_smoke_eachBufferingEventIsRecorded","Each buffering event is recorded","**Unit** test in `SmokeTests`
+
+_Verifies:_ Each buffering event is recorded."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","59","","TestResults","BATTests","QoePlayerTests.BATTests","test_bat_perfectPlaybackIsExcellent","Perfect playback is excellent","**Unit** test in `BATTests`
+
+_Verifies:_ Perfect playback is excellent."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","55","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly10SecondsBufferingIsPoor","Exactly10 seconds buffering is poor","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly10 seconds buffering is poor."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","49","","TestResults","RegressionTests","QoePlayerTests.RegressionTests","test_regression_exactly2SecondsBufferingIsGood","Exactly2 seconds buffering is good","**Unit** test in `RegressionTests`
+
+_Verifies:_ Exactly2 seconds buffering is good."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","61","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_poor_exactlyTenSeconds","Poor exactly ten seconds","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Poor exactly ten seconds."
+"passed","Sun May 17 06:38:52 UTC 2026","Sun May 17 06:38:52 UTC 2026","53","","TestResults","QoEQualityCalculatorTests","QoePlayerTests.QoEQualityCalculatorTests","test_fair_justBelowTenSeconds","Fair just below ten seconds","**Unit** test in `QoEQualityCalculatorTests`
+
+_Verifies:_ Fair just below ten seconds."
