@@ -1,1 +1,1 @@
-{"reportName":"iOS Unit Tests","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":99,"unknown":0,"total":99},"time":{"start":1777382844132,"stop":1777382844465,"duration":333,"minDuration":40,"maxDuration":333,"sumDuration":7613}}
+{"reportName":"iOS Unit Tests","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":99,"unknown":0,"total":99},"time":{"start":1780304905669,"stop":1780304906160,"duration":491,"minDuration":61,"maxDuration":491,"sumDuration":10716}}
